@@ -1,3 +1,5 @@
+import { AlertTriangle } from 'lucide-react';
+
 export default function ConfirmModal({ open, title, message, onConfirm, onCancel }) {
   if (!open) return null;
 
@@ -8,7 +10,7 @@ export default function ConfirmModal({ open, title, message, onConfirm, onCancel
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: '400px', textAlign: 'center' }}
       >
-        <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>⚠️</div>
+        <div style={{ marginBottom: '0.75rem', color: '#B85C4C' }}><AlertTriangle size={42} /></div>
         <h3 style={{ marginBottom: '0.5rem' }}>{title}</h3>
         <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
           {message}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { Sparkles, Gift, ArrowLeft } from 'lucide-react';
 
 const STEPS = [
   { number: 1, label: 'Tipo' },
@@ -169,13 +170,13 @@ export default function Booking() {
               <p className="wizard-step-subtitle">Elige entre servicios individuales o paquetes especiales</p>
               <div className="type-cards">
                 <div className="type-card" onClick={() => selectType('services')}>
-                  <div className="type-card-icon">💆</div>
+                  <div className="type-card-icon"><Sparkles size={32} /></div>
                   <h3>Servicios Individuales</h3>
                   <p>Selecciona uno o más servicios y personaliza la duración a tu medida</p>
                   <span className="type-card-price">Desde S/ 15</span>
                 </div>
                 <div className="type-card" onClick={() => selectType('packages')}>
-                  <div className="type-card-icon">🎁</div>
+                  <div className="type-card-icon"><Gift size={32} /></div>
                   <h3>Paquetes Especiales</h3>
                   <p>Combina servicios con precios especiales y ahorra hasta un 25%</p>
                   <span className="type-card-price">Ahorra hasta S/ 25</span>
@@ -476,7 +477,7 @@ export default function Booking() {
 
       <div className="wizard-nav">
         {step > 1 ? (
-          <button type="button" className="btn btn-secondary" onClick={goBack}>← Atrás</button>
+          <button type="button" className="btn btn-secondary" onClick={goBack}><ArrowLeft size={16} /> Atrás</button>
         ) : <div />}
         {step < totalSteps ? (
           <button type="button" className="btn btn-primary btn-lg" disabled={!canProceed()} onClick={goNext}>Siguiente →</button>

@@ -112,7 +112,7 @@ export default function UsersAdmin() {
                       const view = AVAILABLE_VIEWS.find((v) => v.id === p);
                       return view ? (
                         <span key={p} className="badge badge-pending" style={{ fontSize: '0.7rem' }}>
-                          {view.icon} {view.label}
+                          {view.icon && <view.icon size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />} {view.label}
                         </span>
                       ) : null;
                     })}
@@ -223,7 +223,7 @@ export default function UsersAdmin() {
                       <span className="view-check-icon">
                         {form.permissions.includes(view.id) ? '✓' : ''}
                       </span>
-                      <span className="view-icon">{view.icon}</span>
+                      <span className="view-icon">{view.icon && <view.icon size={14} />}</span>
                       <span className="view-label">{view.label}</span>
                     </label>
                   ))}

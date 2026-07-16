@@ -1,19 +1,20 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { authAPI, usersAPI, servicesAPI, packagesAPI, therapistsAPI, cabinsAPI, appointmentsAPI } from '../services/api';
+import { BarChart3, Calendar, Users, Home, Sparkles, Package, TrendingUp, Plus, User } from 'lucide-react';
 
 const AppContext = createContext(null);
 const API_URL = import.meta.env.VITE_API_URL;
 
 export const AVAILABLE_VIEWS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'citas', label: 'Citas', icon: '📅' },
-  { id: 'terapeutas', label: 'Terapeutas', icon: '👥' },
-  { id: 'cabinas', label: 'Cabinas', icon: '🏠' },
-  { id: 'servicios', label: 'Servicios', icon: '💆' },
-  { id: 'paquetes', label: 'Paquetes', icon: '📦' },
-  { id: 'reportes', label: 'Reportes', icon: '📈' },
-  { id: 'agendar', label: 'Agendar Cita', icon: '➕' },
-  { id: 'usuarios', label: 'Usuarios', icon: '👤' },
+  { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+  { id: 'citas', label: 'Citas', icon: Calendar },
+  { id: 'terapeutas', label: 'Terapeutas', icon: Users },
+  { id: 'cabinas', label: 'Cabinas', icon: Home },
+  { id: 'servicios', label: 'Servicios', icon: Sparkles },
+  { id: 'paquetes', label: 'Paquetes', icon: Package },
+  { id: 'reportes', label: 'Reportes', icon: TrendingUp },
+  { id: 'agendar', label: 'Agendar Cita', icon: Plus },
+  { id: 'usuarios', label: 'Usuarios', icon: User },
 ];
 
 export function AppProvider({ children }) {

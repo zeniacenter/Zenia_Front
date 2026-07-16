@@ -4,6 +4,7 @@ import {
   PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area,
 } from 'recharts';
 import { reportsAPI } from '../../services/api';
+import { BarChart3, DollarSign, Clock, Timer } from 'lucide-react';
 
 const COLORS = ['#C9A96E', '#E6C992', '#9A7D52', '#5A8F6A', '#D46B5A', '#B5A898'];
 
@@ -94,29 +95,29 @@ export default function Reports() {
       </div>
 
       <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon gold">📊</div>
+            <div className="stat-card">
+              <div className="stat-icon gold"><BarChart3 size={22} /></div>
           <div className="stat-info">
             <h4>{occupancyPercent}%</h4>
             <p>Ocupabilidad Semanal</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon green">💰</div>
+          <div className="stat-icon green"><DollarSign size={22} /></div>
           <div className="stat-info">
             <h4>S/ {occupancy?.total_hours_booked ? (occupancy.total_hours_booked * 30).toFixed(0) : '0'}</h4>
             <p>Ingresos Semana</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon blue">🕐</div>
+          <div className="stat-icon blue"><Clock size={22} /></div>
           <div className="stat-info">
             <h4>{peakHours.length > 0 ? peakHours.reduce((max, h) => h.citas > max.citas ? h : max, peakHours[0]).hour : 'N/A'}</h4>
             <p>Hora Pico</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon red">⏱</div>
+          <div className="stat-icon red"><Timer size={22} /></div>
           <div className="stat-info">
             <h4>{occupancy?.total_hours_booked || 0}h</h4>
             <p>Horas Reservadas</p>

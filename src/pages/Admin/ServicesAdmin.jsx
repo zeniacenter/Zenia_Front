@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
+import { Camera } from 'lucide-react';
 
 export default function ServicesAdmin() {
   const { services, addService, updateService, deleteService, updateEntityImage } = useApp();
@@ -104,7 +105,7 @@ export default function ServicesAdmin() {
                       style={{ width: '60px', height: '40px', objectFit: 'cover', borderRadius: '6px' }}
                     />
                   ) : (
-                    <div style={{ width: '60px', height: '40px', borderRadius: '6px', background: '#f0ebe3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>📷</div>
+                    <div style={{ width: '60px', height: '40px', borderRadius: '6px', background: '#f0ebe3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Camera size={18} color="#B5A898" /></div>
                   )}
                 </td>
                 <td><strong>{service.name}</strong></td>

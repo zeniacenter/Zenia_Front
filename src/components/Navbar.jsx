@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { Flower2 } from 'lucide-react';
 
 export default function Navbar() {
   const { isAdminLoggedIn, logoutAdmin, user } = useApp();
@@ -10,7 +11,7 @@ export default function Navbar() {
     return (
       <nav className="navbar navbar-admin-top">
         <NavLink to="/admin/dashboard" className="navbar-brand">
-          <span className="brand-icon">&#9775;</span>
+          <span className="brand-icon"><Flower2 size={22} /></span>
           Zenia Admin
         </NavLink>
         <div className="navbar-admin-right">
@@ -26,7 +27,7 @@ export default function Navbar() {
   return (
     <nav className="navbar">
       <NavLink to="/" className="navbar-brand">
-        <span className="brand-icon">&#9775;</span>
+        <span className="brand-icon"><Flower2 size={22} /></span>
         Zenia
       </NavLink>
       <div className="navbar-links">

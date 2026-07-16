@@ -1,16 +1,17 @@
 import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { BarChart3, Calendar, Users, Home, Sparkles, Package, TrendingUp, User, Settings } from 'lucide-react';
 
 const SIDEBAR_LINKS = [
-  { to: '/admin/dashboard', icon: '📊', label: 'Dashboard', permission: 'dashboard' },
-  { to: '/admin/citas', icon: '📅', label: 'Citas', permission: 'citas' },
-  { to: '/admin/terapeutas', icon: '👥', label: 'Terapeutas', permission: 'terapeutas' },
-  { to: '/admin/cabinas', icon: '🏠', label: 'Cabinas', permission: 'cabinas' },
-  { to: '/admin/servicios', icon: '💆', label: 'Servicios', permission: 'servicios' },
-  { to: '/admin/paquetes', icon: '📦', label: 'Paquetes', permission: 'paquetes' },
-  { to: '/admin/reportes', icon: '📈', label: 'Reportes', permission: 'reportes' },
-  { to: '/admin/usuarios', icon: '👤', label: 'Usuarios', permission: 'usuarios' },
-  { to: '/admin/configuracion', icon: '⚙️', label: 'Configuración', adminOnly: true },
+  { to: '/admin/dashboard', icon: BarChart3, label: 'Dashboard', permission: 'dashboard' },
+  { to: '/admin/citas', icon: Calendar, label: 'Citas', permission: 'citas' },
+  { to: '/admin/terapeutas', icon: Users, label: 'Terapeutas', permission: 'terapeutas' },
+  { to: '/admin/cabinas', icon: Home, label: 'Cabinas', permission: 'cabinas' },
+  { to: '/admin/servicios', icon: Sparkles, label: 'Servicios', permission: 'servicios' },
+  { to: '/admin/paquetes', icon: Package, label: 'Paquetes', permission: 'paquetes' },
+  { to: '/admin/reportes', icon: TrendingUp, label: 'Reportes', permission: 'reportes' },
+  { to: '/admin/usuarios', icon: User, label: 'Usuarios', permission: 'usuarios' },
+  { to: '/admin/configuracion', icon: Settings, label: 'Configuración', adminOnly: true },
 ];
 
 export default function AdminLayout() {
@@ -38,7 +39,7 @@ export default function AdminLayout() {
               to={link.to}
               className={({ isActive }) => `admin-nav-link ${isActive ? 'active' : ''}`}
             >
-              <span className="admin-nav-icon">{link.icon}</span>
+              <span className="admin-nav-icon"><link.icon size={18} /></span>
               <span className="admin-nav-label">{link.label}</span>
             </NavLink>
           ))}
@@ -46,12 +47,6 @@ export default function AdminLayout() {
 
       </aside>
       <main className="admin-content">
-        {currentLink && (
-          <div className="admin-breadcrumb">
-            <span>{currentLink.icon}</span>
-            <span>{currentLink.label}</span>
-          </div>
-        )}
         <Outlet />
       </main>
     </div>

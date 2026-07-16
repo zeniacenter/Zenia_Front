@@ -2,6 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 
+function toDateStr(d) {
+  if (!d) return '';
+  const s = typeof d === 'string' ? d : String(d);
+  return s.split('T')[0];
+}
+
 export default function AdminBooking() {
   const { services, therapists, cabins, appointments, addAppointment, settings } = useApp();
   const navigate = useNavigate();
@@ -30,7 +36,7 @@ export default function AdminBooking() {
       .filter((a) => {
         const aptTherapistId = a.therapistId || a.therapist_id;
         return String(aptTherapistId) === String(selectedTherapist)
-          && a.date === selectedDate
+          && toDateStr(a.date) === selectedDate
           && ['pendiente', 'confirmada'].includes(a.status);
       })
       .flatMap((a) => {

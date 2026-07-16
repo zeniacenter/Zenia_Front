@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import ConfirmModal from '../../components/ConfirmModal';
+import { Inbox } from 'lucide-react';
 
 const STATUS_CONFIG = {
   pendiente: { label: 'Pendiente', color: '#8B6520', bg: '#FDF6E9' },
@@ -20,11 +21,20 @@ const FILTERS = [
   { key: 'cancelada', label: 'Canceladas' },
 ];
 
+const inputStyle = {
+  width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px',
+  border: '1px solid #E8E0D6', background: '#FFFFFF', color: '#3D2E24',
+  fontSize: '0.85rem', fontFamily: 'inherit', outline: 'none',
+};
+
 export default function AppointmentsAdmin() {
   const { appointments, therapists, services, cabins, updateAppointment } = useApp();
   const navigate = useNavigate();
   const [filter, setFilter] = useState('todas');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [postponeTarget, setPostponeTarget] = useState(null);
+  const [postponeDate, setPostponeDate] = useState('');
+  const [postponeTime, setPostponeTime] = useState('');
 
   const counts = useMemo(() => ({
     todas: appointments.filter((a) => a.status !== 'cancelada').length,
@@ -48,10 +58,7 @@ export default function AppointmentsAdmin() {
 
   const getName = (apt) => apt.person?.name || apt.clientName || 'N/A';
   const getPhone = (apt) => apt.person?.phone || apt.clientPhone || 'N/A';
-  const getTherapist = (apt) => {
-    const id = apt.therapist_id || apt.therapistId;
-    return therapists.find((t) => t.id === id)?.name || 'N/A';
-  };
+  const getTherapist = (apt) => apt.therapist?.name || 'N/A';
   const getTime = (apt) => apt.start_time || apt.time || 'N/A';
   const getEndTime = (apt) => apt.end_time || '';
   const getTotal = (apt) => apt.total_price || apt.total || 0;
@@ -63,6 +70,34 @@ export default function AppointmentsAdmin() {
   };
 
   const isActive = (s) => ['pendiente', 'confirmada'].includes(s);
+
+  const openPostpone = (apt) => {
+    setPostponeTarget(apt);
+    setPostponeDate(apt.date || '');
+    setPostponeTime(apt.start_time || apt.time || '');
+  };
+
+  const confirmPostpone = async () => {
+    if (!postponeDate || !postponeTime) return;
+    const apt = postponeTarget;
+    const hours = apt.hours || 1;
+    const startMins = parseInt(postponeTime.split(':')[0]) * 60 + parseInt(postponeTime.split(':')[1]);
+    const endMins = startMins + hours * 60;
+    const endH = Math.floor(endMins / 60);
+    const endM = endMins % 60;
+    const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+
+    const newStatus = apt.status === 'postergada' ? 'pendiente' : 'postergada';
+    await updateAppointment(apt.id, {
+      status: newStatus,
+      date: postponeDate,
+      start_time: postponeTime,
+      end_time: endTime,
+    });
+    setPostponeTarget(null);
+  };
+
+  const today = new Date().toISOString().split('T')[0];
 
   return (
     <div>
@@ -188,13 +223,33 @@ export default function AppointmentsAdmin() {
                             }}
                           >Realizado</button>
                           <button
-                            onClick={() => updateAppointment(apt.id, { status: 'postergada' })}
+                            onClick={() => openPostpone(apt)}
                             style={{
                               fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px',
                               border: '1px solid #E8E0D6', background: '#FFFFFF',
                               color: '#3D2E24', cursor: 'pointer', whiteSpace: 'nowrap',
                             }}
                           >Postergar</button>
+                          <button
+                            onClick={() => updateAppointment(apt.id, { status: 'cancelada' })}
+                            style={{
+                              fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px',
+                              border: 'none', background: '#B85C4C', color: '#fff',
+                              cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap',
+                            }}
+                          >Cancelar</button>
+                        </div>
+                      )}
+                      {apt.status === 'postergada' && (
+                        <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => openPostpone(apt)}
+                            style={{
+                              fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px',
+                              border: '1px solid #E8E0D6', background: '#FFFFFF',
+                              color: '#3D2E24', cursor: 'pointer', whiteSpace: 'nowrap',
+                            }}
+                          >Editar</button>
                           <button
                             onClick={() => updateAppointment(apt.id, { status: 'cancelada' })}
                             style={{
@@ -215,11 +270,78 @@ export default function AppointmentsAdmin() {
 
         {filtered.length === 0 && (
           <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#A89888' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📭</div>
+            <div style={{ marginBottom: '0.5rem', color: '#A89888' }}><Inbox size={40} /></div>
             <p>No hay citas {filter !== 'todas' ? 'con este estado' : 'activas'}</p>
           </div>
         )}
       </div>
+
+      {postponeTarget && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          }}
+          onClick={() => setPostponeTarget(null)}
+        >
+          <div
+            style={{
+              background: '#FFFFFF', borderRadius: '14px', padding: '1.5rem',
+              width: '100%', maxWidth: '400px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 0.25rem', fontSize: '1.1rem', color: '#3D2E24' }}>
+              {postponeTarget.status === 'postergada' ? 'Reprogramar Cita' : 'Postergar Cita'}
+            </h3>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: '#A89888' }}>
+              {getName(postponeTarget)} — {getServices(postponeTarget)}
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>
+                  Nueva fecha
+                </label>
+                <input
+                  type="date"
+                  value={postponeDate}
+                  min={today}
+                  onChange={(e) => setPostponeDate(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>
+                  Nueva hora
+                </label>
+                <input
+                  type="time"
+                  value={postponeTime}
+                  onChange={(e) => setPostponeTime(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setPostponeTarget(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={!postponeDate || !postponeTime}
+                onClick={confirmPostpone}
+              >
+                Confirmar Reprogramación
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         open={!!deleteTarget}

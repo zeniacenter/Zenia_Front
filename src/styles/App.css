@@ -539,9 +539,11 @@ select.form-control option { background: var(--dark-700); color: var(--land-text
 }
 
 .admin-nav-icon {
-  font-size: 1rem;
   width: 24px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .admin-sidebar-footer {
@@ -612,12 +614,12 @@ select.form-control option { background: var(--dark-700); color: var(--land-text
 
 /* Admin stat cards */
 .admin-layout .stat-card {
-  background: var(--adm-bg-card);
-  border-color: var(--adm-border);
+  background: #FFFFFF;
+  border-color: #E8E0D6;
 }
 
-.admin-layout .stat-info h4 { color: var(--adm-text); }
-.admin-layout .stat-info p { color: var(--adm-text-muted); }
+.admin-layout .stat-info h4 { color: #3D2E24; }
+.admin-layout .stat-info p { color: #A89888; }
 
 /* Admin table */
 .admin-layout .table-container {
@@ -722,10 +724,15 @@ select.form-control option { background: var(--dark-700); color: var(--land-text
 
 /* ============ CALENDAR ============ */
 .calendar-wrapper {
-  background: var(--land-bg-card);
+  background: #FFFFFF;
   border-radius: var(--r-lg);
   padding: var(--sp-6);
-  border: 1px solid var(--land-border);
+  border: 1px solid #E8E0D6;
+}
+
+.admin-layout .calendar-wrapper {
+  background: #FFFFFF;
+  border-color: #E8E0D6;
 }
 
 .calendar-nav {
@@ -941,20 +948,21 @@ select.form-control option { background: var(--dark-700); color: var(--land-text
 /* ============ STAT CARDS ============ */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--sp-5);
   margin-bottom: var(--sp-8);
 }
 
 .stat-card {
-  background: var(--land-bg-card);
-  border: 1px solid var(--land-border);
+  background: #FFFFFF;
+  border: 1px solid #E8E0D6;
   border-radius: var(--r-lg);
   padding: var(--sp-5);
   display: flex;
   align-items: center;
   gap: var(--sp-4);
   transition: all var(--dur-base) var(--ease);
+  overflow: hidden;
 }
 
 .stat-card:hover {
@@ -972,22 +980,30 @@ select.form-control option { background: var(--dark-700); color: var(--land-text
   flex-shrink: 0;
 }
 
-.stat-icon.green { background: rgba(122,154,126,0.15); color: var(--sage); }
-.stat-icon.gold  { background: rgba(201,148,74,0.15); color: var(--amber); }
-.stat-icon.blue  { background: rgba(126,163,184,0.15); color: var(--sky); }
-.stat-icon.red   { background: rgba(196,122,108,0.15); color: var(--rose); }
+.stat-icon.green { background: #EDF5EE; color: #5C8A60; }
+.stat-icon.gold  { background: #FDF6E9; color: #C9944A; }
+.stat-icon.blue  { background: #EBF3F8; color: #4A7A9A; }
+.stat-icon.red   { background: #FCEEED; color: #B85C4C; }
+
+.stat-info {
+  min-width: 0;
+  overflow: hidden;
+}
 
 .stat-info h4 {
   font-family: var(--font-body);
   font-size: var(--fs-xl);
   font-weight: 700;
-  color: var(--land-text);
+  color: #3D2E24;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stat-info p {
   font-size: var(--fs-xs);
-  color: var(--land-text-muted);
+  color: #A89888;
   text-transform: uppercase;
   letter-spacing: var(--ls-wider);
   font-weight: 500;
@@ -1720,4 +1736,106 @@ select.form-control option { background: var(--dark-700); color: var(--land-text
 
 .toggle-switch input:checked + .toggle-slider::before {
   transform: translateX(22px);
+}
+
+/* ============ CALENDAR OVERRIDES (Admin Palette) ============ */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr 350px;
+  }
+}
+
+.admin-layout .rbc-calendar {
+  font-family: var(--font-body);
+}
+
+.admin-layout .rbc-header {
+  background: #F5F0E8;
+  border-bottom: 1px solid #E8E0D6;
+  padding: 0.5rem 0;
+}
+
+.admin-layout .rbc-header a {
+  color: #6B5B4E;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.admin-layout .rbc-month-view {
+  border: 1px solid #E8E0D6;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.admin-layout .rbc-day-bg {
+  background: #FFFFFF;
+  border-left: 1px solid #F0EBE3;
+  border-bottom: 1px solid #F0EBE3;
+}
+
+.admin-layout .rbc-off-range .rbc-off-range-bg {
+  background: #FAF8F4;
+}
+
+.admin-layout .rbc-today {
+  background-color: #FDF6E9;
+}
+
+.admin-layout .rbc-toolbar {
+  margin-bottom: 0.75rem;
+}
+
+.admin-layout .rbc-toolbar button {
+  color: #6B5B4E;
+  border: 1px solid #E8E0D6;
+  background: #FFFFFF;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.7rem;
+}
+
+.admin-layout .rbc-toolbar button:hover {
+  background: #F5F0E8;
+  color: #3D2E24;
+}
+
+.admin-layout .rbc-toolbar button.active {
+  background: #C9944A;
+  color: #FFFFFF;
+  border-color: #C9944A;
+}
+
+.admin-layout .rbc-toolbar-label {
+  color: #3D2E24;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.admin-layout .rbc-date-cell {
+  color: #3D2E24;
+  font-size: 0.8rem;
+}
+
+.admin-layout .rbc-date-cell a {
+  color: #3D2E24;
+}
+
+.admin-layout .rbc-show-more {
+  color: #C9944A;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.admin-layout .rbc-time-slot {
+  border-top: 1px solid #F0EBE3;
+}
+
+.admin-layout .rbc-time-header-set {
+  border-bottom: 1px solid #E8E0D6;
 }

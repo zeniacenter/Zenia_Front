@@ -1,5 +1,6 @@
 import { useState, useRef, useImperativeHandle, forwardRef } from 'react';
 import { uploadAPI } from '../services/api';
+import { Camera } from 'lucide-react';
 
 const ImageUpload = forwardRef(function ImageUpload({ value, onChange, imageableType, imageableId, label = 'Imagen' }, ref) {
   const [preview, setPreview] = useState(value || '');
@@ -167,7 +168,7 @@ const ImageUpload = forwardRef(function ImageUpload({ value, onChange, imageable
           </div>
         ) : (
           <div style={{ color: '#B5A898' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📷</div>
+            <div style={{ marginBottom: '0.5rem', color: '#B5A898' }}><Camera size={36} /></div>
             <p style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>
               Arrastra una imagen aquí o <span style={{ color: '#C9A96E' }}>haz clic</span>
             </p>
