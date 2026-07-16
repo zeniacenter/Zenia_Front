@@ -1,0 +1,68 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AppProvider, useApp } from './context/AppContext';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import Home from './pages/Client/Home';
+import Services from './pages/Client/Services';
+import Booking from './pages/Client/Booking';
+import Packages from './pages/Client/Packages';
+import Confirmation from './pages/Client/Confirmation';
+import Login from './pages/Admin/Login';
+import AdminLayout from './pages/Admin/AdminLayout';
+import Dashboard from './pages/Admin/Dashboard';
+import AppointmentsAdmin from './pages/Admin/AppointmentsAdmin';
+import TherapistsAdmin from './pages/Admin/TherapistsAdmin';
+import CabinsAdmin from './pages/Admin/CabinsAdmin';
+import ServicesAdmin from './pages/Admin/ServicesAdmin';
+import PackagesAdmin from './pages/Admin/PackagesAdmin';
+import Reports from './pages/Admin/Reports';
+import AdminBooking from './pages/Admin/AdminBooking';
+import UsersAdmin from './pages/Admin/UsersAdmin';
+import SettingsAdmin from './pages/Admin/SettingsAdmin';
+import './styles/App.css';
+
+function AppContent() {
+  const { isAdminLoggedIn } = useApp();
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Navbar />
+      <div style={{ flex: 1 }}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/servicios" element={<Services />} />
+          <Route path="/paquetes" element={<Packages />} />
+          <Route path="/agendar" element={<Booking />} />
+          <Route path="/confirmacion" element={<Confirmation />} />
+          <Route path="/admin/login" element={<Login />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="citas" element={<AppointmentsAdmin />} />
+            <Route path="terapeutas" element={<TherapistsAdmin />} />
+            <Route path="cabinas" element={<CabinsAdmin />} />
+            <Route path="servicios" element={<ServicesAdmin />} />
+            <Route path="paquetes" element={<PackagesAdmin />} />
+            <Route path="reportes" element={<Reports />} />
+            <Route path="agendar" element={<AdminBooking />} />
+            <Route path="usuarios" element={<UsersAdmin />} />
+            <Route path="configuracion" element={<SettingsAdmin />} />
+          </Route>
+        </Routes>
+      </div>
+      {!isAdminLoggedIn && <Footer />}
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <AppProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </AppProvider>
+  );
+}
+
+export default App;

@@ -1,0 +1,176 @@
+/* ============================================
+   ZENIA - Design System
+   Landing = Dark (warm espresso)
+   Admin = Light (clean ivory)
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* ============ DARK PALETTE (Landing) ============ */
+  --dark-900:    #1C1614;
+  --dark-800:    #241E1B;
+  --dark-700:    #2D2623;
+  --dark-600:    #362E2A;
+  --dark-500:    #403833;
+  --dark-400:    #5A4F48;
+  --dark-300:    #7A6E66;
+  --dark-200:    #A89888;
+  --dark-100:    #C8C0BA;
+
+  /* ============ LIGHT PALETTE (Admin) ============ */
+  --light-900:   #FAF8F4;
+  --light-800:   #F5F0E8;
+  --light-700:   #EDE6DA;
+  --light-600:   #D6C9B5;
+  --light-500:   #A89888;
+
+  /* ============ ACCENT ============ */
+  --amber:       #C9944A;
+  --amber-light: #D4A85C;
+  --amber-glow:  #E8C882;
+  --amber-deep:  #A87830;
+  --amber-pale:  #F5E6C8;
+
+  /* ============ SEMANTIC ============ */
+  --sage:        #7A9A7E;
+  --sage-light:  #B5D4B8;
+  --rose:        #C47A6C;
+  --rose-light:  #E8ADA3;
+  --sky:         #7EA3B8;
+
+  /* ============ LANDING TOKENS (Dark) ============ */
+  --land-bg:           #1C1614;
+  --land-bg-elevated:  #2D2623;
+  --land-bg-card:      #241E1B;
+  --land-bg-card-hover:#2D2623;
+  --land-text:         #F5F0E8;
+  --land-text-sec:     #A89888;
+  --land-text-muted:   #7A6E66;
+  --land-border:       #403833;
+  --land-border-light: #362E2A;
+  --land-accent:       #C9944A;
+  --land-accent-hover: #D4A85C;
+
+  /* ============ ADMIN TOKENS (Light) ============ */
+  --adm-bg:            #FAF8F4;
+  --adm-bg-warm:       #F5F0E8;
+  --adm-bg-card:       #FFFFFF;
+  --adm-bg-card-hover: #FDFCFA;
+  --adm-text:          #3D2E24;
+  --adm-text-sec:      #6B5B4E;
+  --adm-text-muted:    #A89888;
+  --adm-border:        #E8E0D6;
+  --adm-border-light:  #F0EBE3;
+  --adm-accent:        #C9944A;
+  --adm-accent-text:   #8B6520;
+  --adm-success:       #5C8A60;
+  --adm-success-bg:    #EDF5EE;
+  --adm-danger:        #B85C4C;
+  --adm-danger-bg:     #FCEEED;
+
+  /* ============ GRADIENTS ============ */
+  --grad-land:     linear-gradient(160deg, #241E1B 0%, #1C1614 50%, #2D2623 100%);
+  --grad-land-card:linear-gradient(180deg, #241E1B 0%, #2D2623 100%);
+  --grad-land-hero:linear-gradient(160deg, #1C1614 0%, #241E1B 40%, #362E2A 100%);
+  --grad-accent:   linear-gradient(135deg, #C9944A 0%, #D4A85C 100%);
+  --grad-adm:      linear-gradient(135deg, #FAF8F4 0%, #F5F0E8 100%);
+  --grad-adm-card: linear-gradient(180deg, #FFFFFF 0%, #FDFCFA 100%);
+
+  /* ============ TYPOGRAPHY ============ */
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body:    'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+
+  --fs-xs:  0.75rem;
+  --fs-sm:  0.8125rem;
+  --fs-base:0.9375rem;
+  --fs-md:  1rem;
+  --fs-lg:  1.125rem;
+  --fs-xl:  1.375rem;
+  --fs-2xl: 1.75rem;
+  --fs-3xl: 2.25rem;
+  --fs-4xl: 3rem;
+
+  --lh-tight:   1.2;
+  --lh-snug:    1.35;
+  --lh-normal:  1.6;
+  --lh-relaxed: 1.75;
+
+  --ls-tight:  -0.02em;
+  --ls-wide:   0.03em;
+  --ls-wider:  0.06em;
+
+  /* ============ SPACING ============ */
+  --sp-1: 0.25rem; --sp-2: 0.5rem; --sp-3: 0.75rem; --sp-4: 1rem;
+  --sp-5: 1.25rem; --sp-6: 1.5rem; --sp-8: 2rem;    --sp-10: 2.5rem;
+  --sp-12: 3rem;   --sp-16: 4rem;  --sp-20: 5rem;   --sp-24: 6rem;
+
+  /* ============ RADIUS ============ */
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-full: 9999px;
+
+  /* ============ SHADOWS ============ */
+  --sh-xs:  0 1px 2px rgba(0,0,0,0.15);
+  --sh-sm:  0 2px 8px rgba(0,0,0,0.2);
+  --sh-md:  0 4px 16px rgba(0,0,0,0.25);
+  --sh-lg:  0 8px 32px rgba(0,0,0,0.3);
+  --sh-xl:  0 16px 48px rgba(0,0,0,0.35);
+
+  /* ============ TRANSITIONS ============ */
+  --ease:    cubic-bezier(0.4, 0, 0.2, 1);
+  --spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast:150ms;
+  --dur-base:200ms;
+  --dur-slow:300ms;
+
+  --z-nav:    100;
+  --z-sticky: 200;
+  --z-modal:  1000;
+}
+
+/* ============ RESET ============ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  font-weight: 400;
+  line-height: var(--lh-normal);
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-tight);
+}
+
+a { text-decoration: none; }
+
+::selection {
+  background: var(--amber);
+  color: #1C1614;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--dark-400); border-radius: var(--r-full); }
+::-webkit-scrollbar-thumb:hover { background: var(--amber); }
+
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}

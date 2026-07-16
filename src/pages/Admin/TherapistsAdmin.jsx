@@ -1,0 +1,232 @@
+import { useState } from 'react';
+import { useApp } from '../../context/AppContext';
+import ImageUpload from '../../components/ImageUpload';
+import ConfirmModal from '../../components/ConfirmModal';
+
+const defaultSchedule = {
+  lunes: ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'],
+  martes: ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'],
+  miercoles: ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'],
+  jueves: ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'],
+  viernes: ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'],
+  sabado: ['09:00', '10:00', '11:00', '12:00'],
+  domingo: [],
+};
+
+const dayLabels = {
+  lunes: 'Lunes',
+  martes: 'Martes',
+  miercoles: 'Miércoles',
+  jueves: 'Jueves',
+  viernes: 'Viernes',
+  sabado: 'Sábado',
+  domingo: 'Domingo',
+};
+
+const timeOptions = [
+  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
+  '14:00', '15:00', '16:00', '17:00', '18:00', '19:00',
+];
+
+export default function TherapistsAdmin() {
+  const { therapists, addTherapist, updateTherapist, deleteTherapist } = useApp();
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [form, setForm] = useState({
+    name: '',
+    specialty: '',
+    experience: '',
+    image: '',
+    available: true,
+    schedule: { ...defaultSchedule },
+  });
+
+  const openNew = () => {
+    setEditingId(null);
+    setForm({
+      name: '',
+      specialty: '',
+      experience: '',
+      image: '',
+      available: true,
+      schedule: JSON.parse(JSON.stringify(defaultSchedule)),
+    });
+    setShowModal(true);
+  };
+
+  const openEdit = (therapist) => {
+    setEditingId(therapist.id);
+    setForm({
+      name: therapist.name,
+      specialty: therapist.specialty,
+      experience: therapist.experience,
+      image: therapist.image,
+      available: therapist.available,
+      schedule: JSON.parse(JSON.stringify(therapist.schedule)),
+    });
+    setShowModal(true);
+  };
+
+  const toggleTimeSlot = (day, time) => {
+    setForm((prev) => {
+      const current = prev.schedule[day];
+      const updated = current.includes(time)
+        ? current.filter((t) => t !== time)
+        : [...current, time].sort();
+      return { ...prev, schedule: { ...prev.schedule, [day]: updated } };
+    });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (editingId) {
+      updateTherapist(editingId, form);
+    } else {
+      addTherapist(form);
+    }
+    setShowModal(false);
+  };
+
+  const handleDelete = (id) => {
+    setDeleteTarget(id);
+  };
+
+  const confirmDelete = () => {
+    deleteTherapist(deleteTarget);
+    setDeleteTarget(null);
+  };
+
+  return (
+    <div>
+      <div className="admin-header">
+        <h2>Gestión de Terapeutas</h2>
+        <button className="btn btn-primary" onClick={openNew}>
+          + Nuevo Terapeuta
+        </button>
+      </div>
+
+      <div className="therapists-grid">
+        {therapists.map((therapist) => (
+          <div className="card therapist-card" key={therapist.id}>
+            <img src={therapist.image || 'https://via.placeholder.com/100'} alt={therapist.name} />
+            <h3>{therapist.name}</h3>
+            <p className="specialty">{therapist.specialty}</p>
+            <p className="experience">{therapist.experience}</p>
+            <span className={`badge ${therapist.available ? 'badge-confirmed' : 'badge-cancelled'}`}>
+              {therapist.available ? 'Disponible' : 'No disponible'}
+            </span>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+              <button className="btn btn-sm btn-outline" onClick={() => openEdit(therapist)}>
+                Editar
+              </button>
+              <button className="btn btn-sm btn-danger" onClick={() => handleDelete(therapist.id)}>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editingId ? 'Editar Terapeuta' : 'Nuevo Terapeuta'}</h3>
+              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label>Nombre</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Especialidad</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={form.specialty}
+                  onChange={(e) => setForm({ ...form, specialty: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Experiencia</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Ej: 5 años de experiencia"
+                  value={form.experience}
+                  onChange={(e) => setForm({ ...form, experience: e.target.value })}
+                  required
+                />
+              </div>
+              <ImageUpload
+                value={form.image}
+                onChange={(url) => setForm({ ...form, image: url })}
+                imageableType="therapist"
+                imageableId={editingId}
+                label="Foto del terapeuta"
+              />
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={form.available}
+                    onChange={(e) => setForm({ ...form, available: e.target.checked })}
+                    style={{ marginRight: '8px' }}
+                  />
+                  Disponible
+                </label>
+              </div>
+
+              <h4 style={{ marginBottom: '1rem', marginTop: '1.5rem' }}>Horarios de Disponibilidad</h4>
+              {Object.keys(dayLabels).map((day) => (
+                <div key={day} style={{ marginBottom: '1rem' }}>
+                  <label style={{ fontWeight: '600', fontSize: '0.9rem', marginBottom: '0.4rem', display: 'block' }}>
+                    {dayLabels[day]}
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    {timeOptions.map((time) => (
+                      <button
+                        key={time}
+                        type="button"
+                        className={`btn btn-sm ${form.schedule[day]?.includes(time) ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => toggleTimeSlot(day, time)}
+                        style={{ minWidth: '60px', fontSize: '0.78rem' }}
+                      >
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  {editingId ? 'Guardar Cambios' : 'Crear Terapeuta'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Eliminar terapeuta"
+        message="¿Estás seguro de que deseas eliminar este terapeuta? Esta acción no se puede deshacer."
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </div>
+  );
+}

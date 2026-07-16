@@ -1,0 +1,50 @@
+@import './styles/design-system.css';
+
+:root {
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--land-bg);
+  color: var(--land-text);
+  font-family: var(--font-body);
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  text-align: left;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+* { box-sizing: border-box; }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  color: var(--land-text);
+}
+
+p { margin: 0; }
+
+a {
+  color: var(--amber);
+  text-decoration: none;
+  transition: color 200ms ease;
+}
+
+a:hover { color: var(--amber-light); }
+
+::selection {
+  background: var(--amber);
+  color: var(--dark-900);
+}
