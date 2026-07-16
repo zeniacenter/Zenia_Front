@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 
 export default function AdminBooking() {
-  const { services, therapists, cabins, addAppointment, settings } = useApp();
+  const { services, therapists, cabins, appointments, addAppointment, settings } = useApp();
   const navigate = useNavigate();
 
   const [selectedService, setSelectedService] = useState('');
@@ -24,7 +24,31 @@ export default function AdminBooking() {
     const dateObj = new Date(selectedDate + 'T12:00:00');
     const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const dayName = dayNames[dateObj.getDay()];
-    return therapist.schedule[dayName] || [];
+    const scheduleSlots = therapist.schedule[dayName] || [];
+
+    const bookedSlots = appointments
+      .filter((a) => {
+        const aptTherapistId = a.therapistId || a.therapist_id;
+        return String(aptTherapistId) === String(selectedTherapist)
+          && a.date === selectedDate
+          && ['pendiente', 'confirmada'].includes(a.status);
+      })
+      .flatMap((a) => {
+        const start = a.start_time || a.time;
+        const end = a.end_time;
+        if (!start || !end) return [];
+        const booked = [];
+        let [sh, sm] = start.split(':').map(Number);
+        const [eh, em] = end.split(':').map(Number);
+        while (sh < eh || (sh === eh && sm < em)) {
+          booked.push(`${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`);
+          sm += 30;
+          if (sm >= 60) { sh++; sm = 0; }
+        }
+        return booked;
+      });
+
+    return scheduleSlots.filter((slot) => !bookedSlots.includes(slot));
   };
 
   const getTotal = () => {
@@ -56,7 +80,7 @@ export default function AdminBooking() {
         start_time: selectedTime,
         hours,
         total_price: getTotal(),
-        status: 'confirmada',
+        status: 'pendiente',
       });
       alert('Cita agendada exitosamente');
       navigate('/admin/citas');

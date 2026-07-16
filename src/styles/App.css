@@ -600,6 +600,8 @@ select.form-control option { background: var(--dark-700); color: var(--land-text
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   margin-bottom: var(--sp-8);
 }
 
@@ -996,7 +998,8 @@ select.form-control option { background: var(--dark-700); color: var(--land-text
   background: var(--land-bg-card);
   border-radius: var(--r-lg);
   border: 1px solid var(--land-border);
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table { width: 100%; border-collapse: collapse; }
@@ -1031,6 +1034,8 @@ select.form-control option { background: var(--dark-700); color: var(--land-text
 .badge-confirmed { background: rgba(122,154,126,0.15); color: var(--sage); }
 .badge-pending { background: rgba(201,148,74,0.15); color: var(--amber); }
 .badge-cancelled { background: rgba(196,122,108,0.15); color: var(--rose); }
+.badge-completed { background: rgba(122,154,126,0.25); color: #6a9a6e; }
+.badge-postponed { background: rgba(126,163,184,0.15); color: var(--sky); }
 .badge-admin { background: rgba(201,148,74,0.15); color: var(--amber); }
 .badge-receptionist { background: rgba(126,163,184,0.15); color: var(--sky); }
 .badge-therapist { background: rgba(122,154,126,0.15); color: var(--sage); }
