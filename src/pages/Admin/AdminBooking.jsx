@@ -15,8 +15,8 @@ export default function AdminBooking() {
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
 
-  const getSelectedTherapistObj = () => therapists.find((t) => t.id === selectedTherapist);
-  const getSelectedServiceObj = () => services.find((s) => s.id === selectedService);
+  const getSelectedTherapistObj = () => therapists.find((t) => String(t.id) === String(selectedTherapist));
+  const getSelectedServiceObj = () => services.find((s) => String(s.id) === String(selectedService));
 
   const getAvailableTimeSlots = () => {
     const therapist = getSelectedTherapistObj();
@@ -127,15 +127,6 @@ export default function AdminBooking() {
               </div>
             )}
 
-            <div className="hours-selector">
-              <button type="button" onClick={() => setHours((h) => Math.max(0.5, h - 0.5))}>−</button>
-              <div className="hours-display">{hours} {hours === 1 ? 'hora' : 'horas'}</div>
-              <button type="button" onClick={() => setHours((h) => Math.min(8, h + 0.5))}>+</button>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginLeft: '0.5rem' }}>
-                Total: S/ {getTotal()}
-              </span>
-            </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group">
                 <label>Fecha</label>
@@ -164,6 +155,37 @@ export default function AdminBooking() {
                     <option key={slot} value={slot}>{slot}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Duración (horas)</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setHours((h) => Math.max(0.5, h - 0.5))}
+                  style={{
+                    width: '36px', height: '36px', borderRadius: '50%',
+                    border: '1.5px solid var(--land-border)', background: 'var(--dark-700)',
+                    color: 'var(--land-text)', fontSize: '1.1rem', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >−</button>
+                <span style={{ fontSize: '1rem', fontWeight: 600, minWidth: '60px', textAlign: 'center' }}>
+                  {hours} {hours === 1 ? 'hora' : 'horas'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setHours((h) => Math.min(8, h + 0.5))}
+                  style={{
+                    width: '36px', height: '36px', borderRadius: '50%',
+                    border: '1.5px solid var(--land-border)', background: 'var(--dark-700)',
+                    color: 'var(--land-text)', fontSize: '1.1rem', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >+</button>
+                <span style={{ color: 'var(--land-text-muted)', fontSize: '0.85rem' }}>
+                  — S/ {getTotal()}
+                </span>
               </div>
             </div>
 

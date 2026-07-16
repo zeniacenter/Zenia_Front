@@ -1113,12 +1113,12 @@ select.form-control option { background: var(--dark-700); color: var(--land-text
   transition: all var(--dur-fast) var(--ease);
 }
 
-.hours-selector button:hover { background: var(--amber); color: var(--dark-900); }
+.hours-selector button:hover { background: var(--amber-light); color: var(--dark-900); }
 
 .hours-selector .hours-display {
-  font-size: var(--fs-xl);
+  font-size: var(--fs-lg);
   font-weight: 700;
-  min-width: 70px;
+  min-width: 40px;
   text-align: center;
 }
 
