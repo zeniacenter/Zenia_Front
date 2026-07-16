@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -29,10 +29,11 @@ const timeOptions = [
 ];
 
 export default function TherapistsAdmin() {
-  const { therapists, addTherapist, updateTherapist, deleteTherapist } = useApp();
+  const { therapists, addTherapist, updateTherapist, deleteTherapist, updateEntityImage } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const imageRef = useRef(null);
   const [form, setForm] = useState({
     name: '',
     specialty: '',
@@ -78,12 +79,20 @@ export default function TherapistsAdmin() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (editingId) {
-      updateTherapist(editingId, form);
+      await updateTherapist(editingId, form);
+      if (imageRef.current) {
+        const url = await imageRef.current.uploadPending(editingId);
+        if (url) updateEntityImage('therapist', editingId, url);
+      }
     } else {
-      addTherapist(form);
+      const newTh = await addTherapist(form);
+      if (newTh && newTh.id && imageRef.current) {
+        const url = await imageRef.current.uploadPending(newTh.id);
+        if (url) updateEntityImage('therapist', newTh.id, url);
+      }
     }
     setShowModal(false);
   };
@@ -168,6 +177,7 @@ export default function TherapistsAdmin() {
                 />
               </div>
               <ImageUpload
+                ref={imageRef}
                 value={form.image}
                 onChange={(url) => setForm({ ...form, image: url })}
                 imageableType="therapist"

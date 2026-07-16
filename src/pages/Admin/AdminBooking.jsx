@@ -21,7 +21,7 @@ export default function AdminBooking() {
   const getAvailableTimeSlots = () => {
     const therapist = getSelectedTherapistObj();
     if (!therapist || !selectedDate) return [];
-    const dateObj = new Date(selectedDate);
+    const dateObj = new Date(selectedDate + 'T12:00:00');
     const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const dayName = dayNames[dateObj.getDay()];
     return therapist.schedule[dayName] || [];
@@ -50,7 +50,7 @@ export default function AdminBooking() {
         client_name: clientName,
         client_phone: clientPhone,
         therapist_id: selectedTherapist,
-        cabin_id: selectedCabin,
+        cabin_id: selectedCabin || null,
         service_ids: [selectedService],
         date: selectedDate,
         start_time: selectedTime,
@@ -68,130 +68,134 @@ export default function AdminBooking() {
   const today = new Date().toISOString().split('T')[0];
 
   return (
-    <div>
-      <div className="admin-header">
-        <h2>Agendar Cita</h2>
-      </div>
+    <div style={{ display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: '100%', maxWidth: '700px' }}>
+        <div className="admin-header">
+          <h2>Agendar Cita</h2>
+        </div>
 
-      <div className="card" style={{ padding: '2rem', maxWidth: '700px' }}>
-        <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label>Servicio</label>
-              <select
-                className="form-control"
-                value={selectedService}
-                onChange={(e) => setSelectedService(e.target.value)}
-                required
-              >
-                <option value="">Seleccionar servicio</option>
-                {services.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name} - S/ {s.pricePerHour || s.price_per_hour}/h</option>
-                ))}
-              </select>
+        <div className="card" style={{ padding: '2rem' }}>
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group">
+                <label>Servicio</label>
+                <select
+                  className="form-control"
+                  value={selectedService}
+                  onChange={(e) => setSelectedService(e.target.value)}
+                  required
+                >
+                  <option value="">Seleccionar servicio</option>
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name} - S/ {s.pricePerHour}/h</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Terapeuta</label>
+                <select
+                  className="form-control"
+                  value={selectedTherapist}
+                  onChange={(e) => {
+                    setSelectedTherapist(e.target.value);
+                    setSelectedTime('');
+                  }}
+                  required
+                >
+                  <option value="">Seleccionar terapeuta</option>
+                  {therapists.filter((t) => t.available).map((t) => (
+                    <option key={t.id} value={t.id}>{t.name} - {t.specialty}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="form-group">
-              <label>Terapeuta</label>
-              <select
-                className="form-control"
-                value={selectedTherapist}
-                onChange={(e) => {
-                  setSelectedTherapist(e.target.value);
-                  setSelectedTime('');
-                }}
-                required
-              >
-                <option value="">Seleccionar terapeuta</option>
-                {therapists.filter((t) => t.is_available ?? t.available).map((t) => (
-                  <option key={t.id} value={t.id}>{t.name} - {t.specialty}</option>
-                ))}
-              </select>
-            </div>
-          </div>
 
-          <div className="form-group">
-            <label>Cabina {settings.cabinRequired ? '' : '(Opcional)'}</label>
-            <select
-              className="form-control"
-              value={selectedCabin}
-              onChange={(e) => setSelectedCabin(e.target.value)}
-              required={settings.cabinRequired}
-            >
-              <option value="">Seleccionar cabina</option>
-              {cabins.filter((c) => c.is_available ?? c.available).map((c) => (
-                <option key={c.id} value={c.id}>{c.name} (Cap: {c.capacity})</option>
-              ))}
-            </select>
-          </div>
+            {settings.cabinRequired && (
+              <div className="form-group">
+                <label>Cabina</label>
+                <select
+                  className="form-control"
+                  value={selectedCabin}
+                  onChange={(e) => setSelectedCabin(e.target.value)}
+                  required
+                >
+                  <option value="">Seleccionar cabina</option>
+                  {cabins.filter((c) => c.available).map((c) => (
+                    <option key={c.id} value={c.id}>{c.name} (Cap: {c.capacity})</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-          <div className="hours-selector">
-            <button type="button" onClick={() => setHours((h) => Math.max(0.5, h - 0.5))}>−</button>
-            <div className="hours-display">{hours} {hours === 1 ? 'hora' : 'horas'}</div>
-            <button type="button" onClick={() => setHours((h) => Math.min(8, h + 0.5))}>+</button>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginLeft: '0.5rem' }}>
-              Total: S/ {getTotal()}
-            </span>
-          </div>
+            <div className="hours-selector">
+              <button type="button" onClick={() => setHours((h) => Math.max(0.5, h - 0.5))}>−</button>
+              <div className="hours-display">{hours} {hours === 1 ? 'hora' : 'horas'}</div>
+              <button type="button" onClick={() => setHours((h) => Math.min(8, h + 0.5))}>+</button>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginLeft: '0.5rem' }}>
+                Total: S/ {getTotal()}
+              </span>
+            </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label>Fecha</label>
-              <input
-                type="date"
-                className="form-control"
-                value={selectedDate}
-                min={today}
-                onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime(''); }}
-                required
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group">
+                <label>Fecha</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={selectedDate}
+                  min={today}
+                  onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime(''); }}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Hora</label>
+                <select
+                  className="form-control"
+                  value={selectedTime}
+                  onChange={(e) => setSelectedTime(e.target.value)}
+                  disabled={!selectedTherapist || !selectedDate}
+                  required
+                >
+                  <option value="">
+                    {selectedTherapist && selectedDate ? 'Seleccionar hora' : 'Selecciona terapeuta y fecha primero'}
+                  </option>
+                  {getAvailableTimeSlots().map((slot) => (
+                    <option key={slot} value={slot}>{slot}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="form-group">
-              <label>Hora</label>
-              <select
-                className="form-control"
-                value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
-                disabled={!selectedTherapist || !selectedDate}
-                required
-              >
-                <option value="">
-                  {selectedTherapist && selectedDate ? 'Seleccionar hora' : 'Selecciona terapeuta y fecha primero'}
-                </option>
-                {getAvailableTimeSlots().map((slot) => (
-                  <option key={slot} value={slot}>{slot}</option>
-                ))}
-              </select>
-            </div>
-          </div>
 
-          <h4 style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>Datos del Cliente</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label>Nombre completo</label>
-              <input
-                type="text"
-                className="form-control"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                required
-              />
+            <h4 style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>Datos del Cliente</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group">
+                <label>Nombre completo</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Teléfono</label>
+                <input
+                  type="tel"
+                  className="form-control"
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(e.target.value)}
+                  required
+                />
+              </div>
             </div>
-            <div className="form-group">
-              <label>Teléfono</label>
-              <input
-                type="tel"
-                className="form-control"
-                value={clientPhone}
-                onChange={(e) => setClientPhone(e.target.value)}
-                required
-              />
-            </div>
-          </div>
 
-          <button type="submit" className="btn btn-primary btn-lg" style={{ marginTop: '1rem' }}>
-            Agendar Cita
-          </button>
-        </form>
+            <button type="submit" className="btn btn-primary btn-lg" style={{ marginTop: '1rem' }}>
+              Agendar Cita
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

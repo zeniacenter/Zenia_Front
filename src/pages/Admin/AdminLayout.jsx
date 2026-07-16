@@ -9,7 +9,6 @@ const SIDEBAR_LINKS = [
   { to: '/admin/servicios', icon: '💆', label: 'Servicios', permission: 'servicios' },
   { to: '/admin/paquetes', icon: '📦', label: 'Paquetes', permission: 'paquetes' },
   { to: '/admin/reportes', icon: '📈', label: 'Reportes', permission: 'reportes' },
-  { to: '/admin/agendar', icon: '➕', label: 'Agendar Cita', permission: 'agendar' },
   { to: '/admin/usuarios', icon: '👤', label: 'Usuarios', permission: 'usuarios' },
   { to: '/admin/configuracion', icon: '⚙️', label: 'Configuración', adminOnly: true },
 ];

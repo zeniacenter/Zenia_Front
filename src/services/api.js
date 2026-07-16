@@ -8,7 +8,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('zenia_token');
+  const token = sessionStorage.getItem('zenia_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -19,8 +19,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('zenia_token');
-      localStorage.removeItem('zenia_user');
+      sessionStorage.removeItem('zenia_token');
+      sessionStorage.removeItem('zenia_user');
       window.location.href = '/admin/login';
     }
     return Promise.reject(error);
@@ -97,9 +97,9 @@ export const uploadAPI = {
     const formData = new FormData();
     formData.append('image', file);
     formData.append('imageable_type', imageableType);
-    formData.append('imageable_id', imageableId);
+    formData.append('imageable_id', String(imageableId));
     return api.post('/admin/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      headers: { 'Content-Type': undefined },
     });
   },
 };

@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useImperativeHandle, forwardRef } from 'react';
 import { uploadAPI } from '../services/api';
 
-export default function ImageUpload({ value, onChange, imageableType, imageableId, label = 'Imagen' }) {
+const ImageUpload = forwardRef(function ImageUpload({ value, onChange, imageableType, imageableId, label = 'Imagen' }, ref) {
   const [preview, setPreview] = useState(value || '');
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
   const inputRef = useRef(null);
 
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
@@ -19,7 +20,27 @@ export default function ImageUpload({ value, onChange, imageableType, imageableI
     return url;
   };
 
-  const handleFile = async (file) => {
+  useImperativeHandle(ref, () => ({
+    async uploadPending(id) {
+      if (!pendingFile) return null;
+      setUploading(true);
+      try {
+        const res = await uploadAPI.image(pendingFile, imageableType, id);
+        const url = getFullUrl(res.data.url);
+        setPreview(url);
+        setPendingFile(null);
+        onChange(url);
+        return url;
+      } catch (err) {
+        console.error('Error subiendo imagen:', err);
+        return null;
+      } finally {
+        setUploading(false);
+      }
+    },
+  }));
+
+  const handleFile = (file) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       alert('Solo se permiten imágenes');
@@ -30,48 +51,48 @@ export default function ImageUpload({ value, onChange, imageableType, imageableI
       return;
     }
 
-    if (!imageableType || !imageableId) {
-      return;
-    }
-
     const localPreview = URL.createObjectURL(file);
     setPreview(localPreview);
-    setUploading(true);
 
-    try {
-      const res = await uploadAPI.image(file, imageableType, imageableId);
-      setPreview(getFullUrl(res.data.url));
-      onChange(res.data.url);
-    } catch (err) {
-      alert('Error al subir imagen');
-      setPreview(value || '');
-    } finally {
-      setUploading(false);
+    if (imageableId) {
+      setUploading(true);
+      uploadAPI.image(file, imageableType, imageableId)
+        .then((res) => {
+          setPreview(getFullUrl(res.data.url));
+          onChange(res.data.url);
+        })
+        .catch(() => {
+          alert('Error al subir imagen');
+          setPreview(value || '');
+        })
+        .finally(() => setUploading(false));
+    } else {
+      setPendingFile(file);
     }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
-    if (!imageableId) return;
     const file = e.dataTransfer.files[0];
     handleFile(file);
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
-    if (imageableId) setDragOver(true);
+    setDragOver(true);
   };
 
   const handleDragLeave = () => setDragOver(false);
 
   const handleRemove = () => {
     setPreview('');
+    setPendingFile(null);
     onChange('');
     if (inputRef.current) inputRef.current.value = '';
   };
 
-  const isDisabled = !imageableId;
+  const hasImage = preview || pendingFile;
 
   return (
     <div className="form-group">
@@ -80,16 +101,15 @@ export default function ImageUpload({ value, onChange, imageableType, imageableI
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        onClick={() => !isDisabled && inputRef.current?.click()}
+        onClick={() => inputRef.current?.click()}
         style={{
-          border: `2px dashed ${isDisabled ? '#3a302c' : dragOver ? '#C9A96E' : '#4A3D30'}`,
+          border: `2px dashed ${dragOver ? '#C9A96E' : '#4A3D30'}`,
           borderRadius: '8px',
-          padding: preview ? '0.5rem' : '1.5rem',
+          padding: hasImage ? '0.5rem' : '1.5rem',
           textAlign: 'center',
-          cursor: isDisabled ? 'not-allowed' : 'pointer',
+          cursor: 'pointer',
           transition: 'all 0.3s ease',
           background: dragOver ? 'rgba(201,169,110,0.05)' : 'transparent',
-          opacity: isDisabled ? 0.6 : 1,
         }}
       >
         <input
@@ -98,10 +118,9 @@ export default function ImageUpload({ value, onChange, imageableType, imageableI
           accept="image/jpeg,image/png,image/webp,image/gif"
           onChange={(e) => handleFile(e.target.files[0])}
           style={{ display: 'none' }}
-          disabled={isDisabled}
         />
 
-        {preview ? (
+        {hasImage ? (
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <img
               src={preview}
@@ -123,42 +142,41 @@ export default function ImageUpload({ value, onChange, imageableType, imageableI
                 Subiendo...
               </div>
             )}
-            {!isDisabled && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); handleRemove(); }}
-                style={{
-                  position: 'absolute', top: '-8px', right: '-8px',
-                  width: '24px', height: '24px', borderRadius: '50%',
-                  background: '#C45B4A', color: '#fff', border: 'none',
-                  cursor: 'pointer', fontSize: '14px', lineHeight: '24px',
-                }}
-              >
-                ×
-              </button>
+            {pendingFile && !uploading && (
+              <div style={{
+                position: 'absolute', bottom: '4px', left: '4px', right: '4px',
+                background: 'rgba(201,169,110,0.9)',
+                borderRadius: '4px', color: '#1a1a1a', fontSize: '0.7rem',
+                padding: '2px 4px',
+              }}>
+                Pendiente de subir
+              </div>
             )}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleRemove(); }}
+              style={{
+                position: 'absolute', top: '-8px', right: '-8px',
+                width: '24px', height: '24px', borderRadius: '50%',
+                background: '#C45B4A', color: '#fff', border: 'none',
+                cursor: 'pointer', fontSize: '14px', lineHeight: '24px',
+              }}
+            >
+              ×
+            </button>
           </div>
         ) : (
           <div style={{ color: '#B5A898' }}>
-            {isDisabled ? (
-              <>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💾</div>
-                <p style={{ fontSize: '0.85rem', marginBottom: '0.25rem' }}>
-                  Guarda el registro primero para subir una imagen
-                </p>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📷</div>
-                <p style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>
-                  Arrastra una imagen aquí o <span style={{ color: '#C9A96E' }}>haz clic</span>
-                </p>
-                <p style={{ fontSize: '0.75rem' }}>JPG, PNG, WebP — Máx. 5MB</p>
-              </>
-            )}
+            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📷</div>
+            <p style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>
+              Arrastra una imagen aquí o <span style={{ color: '#C9A96E' }}>haz clic</span>
+            </p>
+            <p style={{ fontSize: '0.75rem' }}>JPG, PNG, WebP — Máx. 5MB</p>
           </div>
         )}
       </div>
     </div>
   );
-}
+});
+
+export default ImageUpload;

@@ -1,24 +1,26 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 
 export default function CabinsAdmin() {
-  const { cabins, addCabin, updateCabin, deleteCabin } = useApp();
+  const { cabins, services, addCabin, updateCabin, deleteCabin, updateEntityImage } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const imageRef = useRef(null);
   const [form, setForm] = useState({
     name: '',
     description: '',
     capacity: 1,
     image: '',
     is_available: true,
+    serviceIds: [],
   });
 
   const openNew = () => {
     setEditingId(null);
-    setForm({ name: '', description: '', capacity: 1, image: '', is_available: true });
+    setForm({ name: '', description: '', capacity: 1, image: '', is_available: true, serviceIds: [] });
     setShowModal(true);
   };
 
@@ -30,16 +32,34 @@ export default function CabinsAdmin() {
       capacity: cabin.capacity,
       image: cabin.image || '',
       is_available: cabin.is_available ?? cabin.available ?? true,
+      serviceIds: cabin.serviceIds || [],
     });
     setShowModal(true);
   };
 
-  const handleSubmit = (e) => {
+  const toggleService = (serviceId) => {
+    setForm((prev) => {
+      const updated = prev.serviceIds.includes(serviceId)
+        ? prev.serviceIds.filter((id) => id !== serviceId)
+        : [...prev.serviceIds, serviceId];
+      return { ...prev, serviceIds: updated };
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (editingId) {
-      updateCabin(editingId, form);
+      await updateCabin(editingId, form);
+      if (imageRef.current) {
+        const url = await imageRef.current.uploadPending(editingId);
+        if (url) updateEntityImage('cabin', editingId, url);
+      }
     } else {
-      addCabin(form);
+      const newCabin = await addCabin(form);
+      if (newCabin && newCabin.id && imageRef.current) {
+        const url = await imageRef.current.uploadPending(newCabin.id);
+        if (url) updateEntityImage('cabin', newCabin.id, url);
+      }
     }
     setShowModal(false);
   };
@@ -52,6 +72,9 @@ export default function CabinsAdmin() {
     deleteCabin(deleteTarget);
     setDeleteTarget(null);
   };
+
+  const getServiceNames = (ids) =>
+    (ids || []).map((id) => services.find((s) => s.id === id)?.name || 'N/A').join(', ');
 
   return (
     <div>
@@ -76,9 +99,14 @@ export default function CabinsAdmin() {
                 </span>
               </div>
               <p className="card-text">{cabin.description || 'Sin descripción'}</p>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
                 Capacidad: {cabin.capacity} {cabin.capacity === 1 ? 'persona' : 'personas'}
               </p>
+              {cabin.serviceIds && cabin.serviceIds.length > 0 && (
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                  Servicios: {getServiceNames(cabin.serviceIds)}
+                </p>
+              )}
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button className="btn btn-sm btn-outline" onClick={() => openEdit(cabin)}>
                   Editar
@@ -137,7 +165,39 @@ export default function CabinsAdmin() {
                   required
                 />
               </div>
+
+              <div className="form-group">
+                <label>Servicios disponibles</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.4rem' }}>
+                  {services.map((svc) => (
+                    <label
+                      key={svc.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #5a4a40',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        background: form.serviceIds.includes(svc.id) ? 'rgba(197,160,89,0.1)' : '#3a302c',
+                        borderColor: form.serviceIds.includes(svc.id) ? '#C5A059' : '#5a4a40',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.serviceIds.includes(svc.id)}
+                        onChange={() => toggleService(svc.id)}
+                      />
+                      <span style={{ flex: 1 }}>{svc.name}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>S/ {svc.pricePerHour}/h</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               <ImageUpload
+                ref={imageRef}
                 value={form.image}
                 onChange={(url) => setForm({ ...form, image: url })}
                 imageableType="cabin"

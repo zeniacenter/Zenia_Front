@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 
 export default function PackagesAdmin() {
-  const { packages, services, addPackage, updatePackage, deletePackage } = useApp();
+  const { packages, services, addPackage, updatePackage, deletePackage, updateEntityImage } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const imageRef = useRef(null);
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -82,12 +83,20 @@ export default function PackagesAdmin() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (editingId) {
-      updatePackage(editingId, form);
+      await updatePackage(editingId, form);
+      if (imageRef.current) {
+        const url = await imageRef.current.uploadPending(editingId);
+        if (url) updateEntityImage('package', editingId, url);
+      }
     } else {
-      addPackage(form);
+      const newPkg = await addPackage(form);
+      if (newPkg && newPkg.id && imageRef.current) {
+        const url = await imageRef.current.uploadPending(newPkg.id);
+        if (url) updateEntityImage('package', newPkg.id, url);
+      }
     }
     setShowModal(false);
   };
@@ -265,6 +274,7 @@ export default function PackagesAdmin() {
               </div>
 
               <ImageUpload
+                ref={imageRef}
                 value={form.image}
                 onChange={(url) => setForm({ ...form, image: url })}
                 imageableType="package"

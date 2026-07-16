@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 
 export default function ServicesAdmin() {
-  const { services, addService, updateService, deleteService } = useApp();
+  const { services, addService, updateService, deleteService, updateEntityImage } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const imageRef = useRef(null);
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -43,12 +44,20 @@ export default function ServicesAdmin() {
     setShowModal(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (editingId) {
-      updateService(editingId, form);
+      await updateService(editingId, form);
+      if (imageRef.current) {
+        const url = await imageRef.current.uploadPending(editingId);
+        if (url) updateEntityImage('service', editingId, url);
+      }
     } else {
-      addService(form);
+      const newService = await addService(form);
+      if (newService && newService.id && imageRef.current) {
+        const url = await imageRef.current.uploadPending(newService.id);
+        if (url) updateEntityImage('service', newService.id, url);
+      }
     }
     setShowModal(false);
   };
@@ -88,11 +97,15 @@ export default function ServicesAdmin() {
             {services.map((service) => (
               <tr key={service.id}>
                 <td>
-                  <img
-                    src={service.image}
-                    alt={service.name}
-                    style={{ width: '60px', height: '40px', objectFit: 'cover', borderRadius: '6px' }}
-                  />
+                  {service.image ? (
+                    <img
+                      src={service.image}
+                      alt={service.name}
+                      style={{ width: '60px', height: '40px', objectFit: 'cover', borderRadius: '6px' }}
+                    />
+                  ) : (
+                    <div style={{ width: '60px', height: '40px', borderRadius: '6px', background: '#f0ebe3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>📷</div>
+                  )}
                 </td>
                 <td><strong>{service.name}</strong></td>
                 <td style={{ maxWidth: '250px', fontSize: '0.85rem', color: 'var(--text-light)' }}>
@@ -170,6 +183,7 @@ export default function ServicesAdmin() {
                 </div>
               </div>
               <ImageUpload
+                ref={imageRef}
                 value={form.image}
                 onChange={(url) => setForm({ ...form, image: url })}
                 imageableType="service"

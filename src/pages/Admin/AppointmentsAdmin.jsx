@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import ConfirmModal from '../../components/ConfirmModal';
 
 export default function AppointmentsAdmin() {
   const { appointments, therapists, services, cabins, updateAppointment, deleteAppointment } = useApp();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState('todas');
   const [deleteTarget, setDeleteTarget] = useState(null);
 
@@ -48,17 +50,20 @@ export default function AppointmentsAdmin() {
     <div>
       <div className="admin-header">
         <h2>Gestión de Citas</h2>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {['todas', 'confirmada', 'pendiente', 'cancelada'].map((f) => (
-            <button
-              key={f}
-              className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setFilter(f)}
-            >
-              {f === 'todas' ? 'Todas' : f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
+        <button className="btn btn-primary" onClick={() => navigate('/admin/agendar')}>
+          + Agendar Cita
+        </button>
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+        {['todas', 'confirmada', 'pendiente', 'cancelada'].map((f) => (
+          <button
+            key={f}
+            className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setFilter(f)}
+          >
+            {f === 'todas' ? 'Todas' : f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
       </div>
 
       <div className="table-container">
