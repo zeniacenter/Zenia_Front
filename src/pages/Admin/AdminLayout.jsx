@@ -1,6 +1,6 @@
 import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { BarChart3, Calendar, Users, Home, Sparkles, Package, TrendingUp, User, Settings } from 'lucide-react';
+import { BarChart3, Calendar, Users, Home, Sparkles, Package, TrendingUp, User, Settings, MessageSquare } from 'lucide-react';
 
 const SIDEBAR_LINKS = [
   { to: '/admin/dashboard', icon: BarChart3, label: 'Dashboard', permission: 'dashboard' },
@@ -11,6 +11,7 @@ const SIDEBAR_LINKS = [
   { to: '/admin/paquetes', icon: Package, label: 'Paquetes', permission: 'paquetes' },
   { to: '/admin/reportes', icon: TrendingUp, label: 'Reportes', permission: 'reportes' },
   { to: '/admin/usuarios', icon: User, label: 'Usuarios', permission: 'usuarios' },
+  { to: '/admin/whatsapp', icon: MessageSquare, label: 'WhatsApp', permission: 'dashboard' },
   { to: '/admin/configuracion', icon: Settings, label: 'Configuración', adminOnly: true },
 ];
 

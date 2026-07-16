@@ -1,13 +1,19 @@
 /* ============================================
-   ZENIA - Design System
-   Landing = Dark (warm espresso)
-   Admin = Light (clean ivory)
+   ZENIA - Design System (Inverted)
+   Landing = Light (clean ivory) | Admin = Light
    ============================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* ============ DARK PALETTE (Landing) ============ */
+  /* ============ LIGHT PALETTE (Landing - Inverted) ============ */
+  --light-900:   #FAF8F4;
+  --light-800:   #F5F0E8;
+  --light-700:   #EDE6DA;
+  --light-600:   #D6C9B5;
+  --light-500:   #A89888;
+
+  /* ============ DARK PALETTE ============ */
   --dark-900:    #1C1614;
   --dark-800:    #241E1B;
   --dark-700:    #2D2623;
@@ -18,13 +24,6 @@
   --dark-200:    #A89888;
   --dark-100:    #C8C0BA;
 
-  /* ============ LIGHT PALETTE (Admin) ============ */
-  --light-900:   #FAF8F4;
-  --light-800:   #F5F0E8;
-  --light-700:   #EDE6DA;
-  --light-600:   #D6C9B5;
-  --light-500:   #A89888;
-
   /* ============ ACCENT ============ */
   --amber:       #C9944A;
   --amber-light: #D4A85C;
@@ -33,24 +32,26 @@
   --amber-pale:  #F5E6C8;
 
   /* ============ SEMANTIC ============ */
-  --sage:        #7A9A7E;
+  --sage:        #5C8A60;
   --sage-light:  #B5D4B8;
-  --rose:        #C47A6C;
+  --rose:        #B85C4C;
   --rose-light:  #E8ADA3;
-  --sky:         #7EA3B8;
+  --sky:         #4A7A9A;
 
-  /* ============ LANDING TOKENS (Dark) ============ */
-  --land-bg:           #1C1614;
-  --land-bg-elevated:  #2D2623;
-  --land-bg-card:      #241E1B;
-  --land-bg-card-hover:#2D2623;
-  --land-text:         #F5F0E8;
-  --land-text-sec:     #A89888;
-  --land-text-muted:   #7A6E66;
-  --land-border:       #403833;
-  --land-border-light: #362E2A;
-  --land-accent:       #C9944A;
-  --land-accent-hover: #D4A85C;
+  /* ============ LANDING TOKENS (Light - Inverted) ============ */
+  --land-bg:           #FBFCF8;
+  --land-bg-elevated:  #FFFFFF;
+  --land-bg-card:      #FFFFFF;
+  --land-bg-card-hover:#F7FAF4;
+  --land-bg-warm:      #EFF4EB;
+  --land-text:         #26352A;
+  --land-text-sec:     #526257;
+  --land-text-muted:   #78867C;
+  --land-border:       #DCE6D8;
+  --land-border-light: #EAF0E7;
+  --land-accent:       #52745B;
+  --land-accent-hover: #385842;
+  --land-accent-text:  #385842;
 
   /* ============ ADMIN TOKENS (Light) ============ */
   --adm-bg:            #FAF8F4;
@@ -69,11 +70,11 @@
   --adm-danger:        #B85C4C;
   --adm-danger-bg:     #FCEEED;
 
-  /* ============ GRADIENTS ============ */
-  --grad-land:     linear-gradient(160deg, #241E1B 0%, #1C1614 50%, #2D2623 100%);
-  --grad-land-card:linear-gradient(180deg, #241E1B 0%, #2D2623 100%);
-  --grad-land-hero:linear-gradient(160deg, #1C1614 0%, #241E1B 40%, #362E2A 100%);
-  --grad-accent:   linear-gradient(135deg, #C9944A 0%, #D4A85C 100%);
+  /* ============ GRADIENTS (Light) ============ */
+  --grad-land:     linear-gradient(160deg, #FBFCF8 0%, #EFF4EB 52%, #F4EFE6 100%);
+  --grad-land-card:linear-gradient(180deg, #FFFFFF 0%, #F7FAF4 100%);
+  --grad-land-hero:linear-gradient(150deg, #F1F6EE 0%, #FBFCF8 48%, #F6F0E6 100%);
+  --grad-accent:   linear-gradient(135deg, #385842 0%, #64866C 100%);
   --grad-adm:      linear-gradient(135deg, #FAF8F4 0%, #F5F0E8 100%);
   --grad-adm-card: linear-gradient(180deg, #FFFFFF 0%, #FDFCFA 100%);
 
@@ -108,12 +109,12 @@
   /* ============ RADIUS ============ */
   --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-full: 9999px;
 
-  /* ============ SHADOWS ============ */
-  --sh-xs:  0 1px 2px rgba(0,0,0,0.15);
-  --sh-sm:  0 2px 8px rgba(0,0,0,0.2);
-  --sh-md:  0 4px 16px rgba(0,0,0,0.25);
-  --sh-lg:  0 8px 32px rgba(0,0,0,0.3);
-  --sh-xl:  0 16px 48px rgba(0,0,0,0.35);
+  /* ============ SHADOWS (Light tinted) ============ */
+  --sh-xs:  0 1px 2px rgba(42, 33, 26, 0.06);
+  --sh-sm:  0 2px 8px rgba(42, 33, 26, 0.08);
+  --sh-md:  0 4px 16px rgba(42, 33, 26, 0.1);
+  --sh-lg:  0 8px 32px rgba(42, 33, 26, 0.12);
+  --sh-xl:  0 16px 48px rgba(42, 33, 26, 0.14);
 
   /* ============ TRANSITIONS ============ */
   --ease:    cubic-bezier(0.4, 0, 0.2, 1);
@@ -142,6 +143,8 @@ body {
   font-weight: 400;
   line-height: var(--lh-normal);
   min-height: 100vh;
+  background: var(--land-bg);
+  color: var(--land-text);
 }
 
 #root {
@@ -155,9 +158,10 @@ h1, h2, h3, h4, h5 {
   font-weight: 400;
   line-height: var(--lh-tight);
   letter-spacing: var(--ls-tight);
+  color: var(--land-text);
 }
 
-a { text-decoration: none; }
+a { text-decoration: none; color: inherit; }
 
 ::selection {
   background: var(--amber);
@@ -165,8 +169,8 @@ a { text-decoration: none; }
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--dark-400); border-radius: var(--r-full); }
+::-webkit-scrollbar-track { background: var(--light-800); }
+::-webkit-scrollbar-thumb { background: var(--light-500); border-radius: var(--r-full); }
 ::-webkit-scrollbar-thumb:hover { background: var(--amber); }
 
 :focus-visible {

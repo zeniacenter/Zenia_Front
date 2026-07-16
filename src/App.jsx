@@ -3,9 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Client/Home';
-import Services from './pages/Client/Services';
 import Booking from './pages/Client/Booking';
-import Packages from './pages/Client/Packages';
 import Confirmation from './pages/Client/Confirmation';
 import Login from './pages/Admin/Login';
 import AdminLayout from './pages/Admin/AdminLayout';
@@ -19,7 +17,9 @@ import Reports from './pages/Admin/Reports';
 import AdminBooking from './pages/Admin/AdminBooking';
 import UsersAdmin from './pages/Admin/UsersAdmin';
 import SettingsAdmin from './pages/Admin/SettingsAdmin';
+import WhatsAppAdmin from './pages/Admin/WhatsAppAdmin';
 import './styles/App.css';
+import './styles/landing-premium.css';
 
 function AppContent() {
   const { isAdminLoggedIn } = useApp();
@@ -30,8 +30,6 @@ function AppContent() {
       <div style={{ flex: 1 }}>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/servicios" element={<Services />} />
-          <Route path="/paquetes" element={<Packages />} />
           <Route path="/agendar" element={<Booking />} />
           <Route path="/confirmacion" element={<Confirmation />} />
           <Route path="/admin/login" element={<Login />} />
@@ -46,6 +44,7 @@ function AppContent() {
             <Route path="reportes" element={<Reports />} />
             <Route path="agendar" element={<AdminBooking />} />
             <Route path="usuarios" element={<UsersAdmin />} />
+            <Route path="whatsapp" element={<WhatsAppAdmin />} />
             <Route path="configuracion" element={<SettingsAdmin />} />
           </Route>
         </Routes>
