@@ -4,7 +4,7 @@ import { Flower2, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Navbar() {
-  const { isAdminLoggedIn, logoutAdmin, user } = useApp();
+  const { isAdminLoggedIn, logoutAdmin } = useApp();
   const location = useLocation();
   const isAdminArea = location.pathname.startsWith('/admin');
   const isHome = location.pathname === '/';
@@ -29,7 +29,6 @@ export default function Navbar() {
           Zenia Admin
         </NavLink>
         <div className="navbar-admin-right">
-          <span className="navbar-admin-user">{user?.name}</span>
           <button className="btn btn-sm btn-admin-logout" onClick={logoutAdmin}>
             Cerrar Sesión
           </button>

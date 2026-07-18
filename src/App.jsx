@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { AppProvider, useApp } from './context/AppContext';
+import { AppProvider } from './context/AppContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Client/Home';
@@ -22,14 +22,13 @@ import './styles/App.css';
 import './styles/landing-premium.css';
 
 function AppContent() {
-  const { isAdminLoggedIn } = useApp();
   const location = useLocation();
+  const isHome = location.pathname === '/';
   const isLogin = location.pathname === '/login';
-  const isAdmin = location.pathname.startsWith('/admin');
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {!isLogin && !isAdmin && <Navbar />}
+      {!isLogin && <Navbar />}
       <div style={{ flex: 1 }}>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -53,7 +52,7 @@ function AppContent() {
           </Route>
         </Routes>
       </div>
-      {!isLogin && !isAdmin && <Footer />}
+      {isHome && <Footer />}
     </div>
   );
 }

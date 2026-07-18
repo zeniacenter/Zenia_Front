@@ -38,6 +38,8 @@ function toDateStr(d) {
 export default function Dashboard() {
   const { appointments, therapists, services, cabins } = useApp();
   const [selectedDay, setSelectedDay] = useState(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentView, setCurrentView] = useState('month');
 
   const events = useMemo(() =>
     appointments
@@ -163,6 +165,10 @@ export default function Dashboard() {
             onSelectEvent={handleSelectEvent}
             onSelectSlot={handleSelectSlot}
             selectable
+            date={currentDate}
+            view={currentView}
+            onNavigate={(date) => setCurrentDate(date)}
+            onView={(view) => setCurrentView(view)}
             views={['month', 'week', 'day']}
             messages={{
               today: 'Hoy',

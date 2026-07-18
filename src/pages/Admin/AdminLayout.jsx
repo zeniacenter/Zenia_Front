@@ -20,7 +20,7 @@ export default function AdminLayout() {
   const location = useLocation();
 
   if (!isAdminLoggedIn) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   const visibleLinks = SIDEBAR_LINKS.filter((link) => {
