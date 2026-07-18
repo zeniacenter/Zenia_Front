@@ -205,7 +205,7 @@ export default function Home() {
                       <span className="price-value">S/ {service.pricePerHour}</span>
                       <span className="price-unit">/ hora</span>
                     </div>
-                    <Link to="/agendar" className="service-cta">
+                    <Link to={`/agendar?service=${service.id}`} className="service-cta">
                       Reservar
                       <ArrowRight size={16} />
                     </Link>
@@ -256,7 +256,7 @@ export default function Home() {
                       <span className="package-original">S/ {pkg.originalPrice}</span>
                       <span className="package-price">S/ {pkg.packagePrice}</span>
                     </div>
-                    <Link to="/agendar" className="btn-package-cta">
+                    <Link to={`/agendar?package=${pkg.id}`} className="btn-package-cta">
                       Reservar Paquete
                       <ArrowRight size={16} />
                     </Link>

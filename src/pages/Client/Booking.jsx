@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { Sparkles, Gift, ArrowLeft, MapPin } from 'lucide-react';
 
@@ -16,6 +16,7 @@ const STEPS = [
 export default function Booking() {
   const { services, therapists, cabins, packages, branches, addAppointment, settings } = useApp();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const steps = STEPS.filter((s) => {
     if (!settings.cabinRequired && s.label === 'Cabina') return false;
@@ -36,6 +37,29 @@ export default function Booking() {
   const [hours, setHours] = useState(1);
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+
+  useEffect(() => {
+    const serviceId = searchParams.get('service');
+    const packageId = searchParams.get('package');
+    if (serviceId && services.length > 0) {
+      const svc = services.find((s) => String(s.id) === String(serviceId));
+      if (svc) {
+        setBookingType('services');
+        setSelectedServices([svc.id]);
+        setHours(1);
+        setStep(2);
+      }
+    } else if (packageId && packages.length > 0) {
+      const pkg = packages.find((p) => String(p.id) === String(packageId));
+      if (pkg) {
+        setBookingType('packages');
+        setSelectedPackage(pkg.id);
+        setHours(pkg.hours);
+        setSelectedServices(pkg.serviceIds || pkg.service_ids || []);
+        setStep(2);
+      }
+    }
+  }, [searchParams, services, packages]);
 
   const totalSteps = steps.length;
 
