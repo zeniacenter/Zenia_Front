@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { authAPI, usersAPI, servicesAPI, packagesAPI, therapistsAPI, cabinsAPI, appointmentsAPI } from '../services/api';
-import { BarChart3, Calendar, Users, Home, Sparkles, Package, TrendingUp, Plus, User } from 'lucide-react';
+import { authAPI, usersAPI, servicesAPI, packagesAPI, therapistsAPI, cabinsAPI, appointmentsAPI, branchesAPI } from '../services/api';
+import { BarChart3, Calendar, Users, Home, Sparkles, Package, TrendingUp, Plus, User, MapPin } from 'lucide-react';
 
 const AppContext = createContext(null);
 const API_URL = import.meta.env.VITE_API_URL;
@@ -15,6 +15,7 @@ export const AVAILABLE_VIEWS = [
   { id: 'reportes', label: 'Reportes', icon: TrendingUp },
   { id: 'agendar', label: 'Agendar Cita', icon: Plus },
   { id: 'usuarios', label: 'Usuarios', icon: User },
+  { id: 'sedas', label: 'Sedes', icon: MapPin },
 ];
 
 export function AppProvider({ children }) {
@@ -24,11 +25,12 @@ export function AppProvider({ children }) {
   const [packages, setPackages] = useState([]);
   const [cabins, setCabins] = useState([]);
   const [users, setUsers] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [user, setUser] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('zenia_user')); } catch { return null; }
   });
   const [token, setToken] = useState(() => sessionStorage.getItem('zenia_token'));
-  const [settings, setSettings] = useState({ priceVisible: true, cabinRequired: true });
+  const [settings, setSettings] = useState({ priceVisible: true, cabinRequired: true, branchRequired: true });
   const isAdminLoggedIn = !!token && !!user;
 
   const transformPackage = (pkg) => ({
@@ -62,11 +64,13 @@ export function AppProvider({ children }) {
       therapistsAPI.list(),
       cabinsAPI.list(),
       packagesAPI.list(),
-    ]).then(([s, t, c, p]) => {
+      branchesAPI.list(),
+    ]).then(([s, t, c, p, b]) => {
       setServices(s.data.map(transformService));
       setTherapists(t.data.map(transformTherapist));
       setCabins(c.data.map(transformCabin));
       setPackages(p.data.map(transformPackage));
+      setBranches(b.data);
     }).catch(() => {});
   }, []);
 
@@ -78,13 +82,15 @@ export function AppProvider({ children }) {
         therapistsAPI.list(),
         cabinsAPI.list(),
         packagesAPI.list(),
+        branchesAPI.listAll(),
         appointmentsAPI.list(),
-      ]).then(([u, s, t, c, p, a]) => {
+      ]).then(([u, s, t, c, p, b, a]) => {
         setUsers(u.data);
         setServices(s.data.map(transformService));
         setTherapists(t.data.map(transformTherapist));
         setCabins(c.data.map(transformCabin));
         setPackages(p.data.map(transformPackage));
+        setBranches(b.data);
         setAppointments(a.data);
       }).catch(() => {});
     }
@@ -365,6 +371,35 @@ export function AppProvider({ children }) {
     }
   }, []);
 
+  const addBranch = useCallback(async (branch) => {
+    try {
+      const res = await branchesAPI.create(branch);
+      setBranches((prev) => [...prev, res.data]);
+      return res.data;
+    } catch (err) {
+      console.error('Error creando sede:', err);
+      return null;
+    }
+  }, []);
+
+  const updateBranch = useCallback(async (id, updates) => {
+    try {
+      const res = await branchesAPI.update(id, updates);
+      setBranches((prev) => prev.map((b) => (b.id === id ? res.data : b)));
+    } catch (err) {
+      console.error('Error actualizando sede:', err);
+    }
+  }, []);
+
+  const deleteBranch = useCallback(async (id) => {
+    try {
+      await branchesAPI.delete(id);
+      setBranches((prev) => prev.filter((b) => b.id !== id));
+    } catch (err) {
+      console.error('Error eliminando sede:', err);
+    }
+  }, []);
+
   const updateSettings = useCallback((updates) => {
     setSettings((prev) => ({ ...prev, ...updates }));
   }, []);
@@ -387,7 +422,7 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider
       value={{
-        services, therapists, appointments, packages, cabins,
+        services, therapists, appointments, packages, cabins, branches,
         users, user, isAdminLoggedIn, settings,
         hasPermission,
         loginAdmin, logoutAdmin,
@@ -398,6 +433,7 @@ export function AppProvider({ children }) {
         addAppointment, updateAppointment, deleteAppointment,
         addCabin, updateCabin, deleteCabin,
         addPackage, updatePackage, deletePackage,
+        addBranch, updateBranch, deleteBranch,
       }}
     >
       {children}

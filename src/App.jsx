@@ -18,6 +18,7 @@ import AdminBooking from './pages/Admin/AdminBooking';
 import UsersAdmin from './pages/Admin/UsersAdmin';
 import SettingsAdmin from './pages/Admin/SettingsAdmin';
 import WhatsAppAdmin from './pages/Admin/WhatsAppAdmin';
+import SedesAdmin from './pages/Admin/SedesAdmin';
 import './styles/App.css';
 import './styles/landing-premium.css';
 
@@ -48,6 +49,7 @@ function AppContent() {
             <Route path="agendar" element={<AdminBooking />} />
             <Route path="usuarios" element={<UsersAdmin />} />
             <Route path="whatsapp" element={<WhatsAppAdmin />} />
+            <Route path="sedas" element={<SedesAdmin />} />
             <Route path="configuracion" element={<SettingsAdmin />} />
           </Route>
         </Routes>

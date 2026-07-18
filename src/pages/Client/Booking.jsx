@@ -1,24 +1,27 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { Sparkles, Gift, ArrowLeft } from 'lucide-react';
+import { Sparkles, Gift, ArrowLeft, MapPin } from 'lucide-react';
 
 const STEPS = [
   { number: 1, label: 'Tipo' },
   { number: 2, label: 'Servicio' },
   { number: 3, label: 'Terapeuta' },
   { number: 4, label: 'Cabina' },
-  { number: 5, label: 'Fecha' },
-  { number: 6, label: 'Confirmar' },
+  { number: 5, label: 'Sede' },
+  { number: 6, label: 'Fecha' },
+  { number: 7, label: 'Confirmar' },
 ];
 
 export default function Booking() {
-  const { services, therapists, cabins, packages, addAppointment, settings } = useApp();
+  const { services, therapists, cabins, packages, branches, addAppointment, settings } = useApp();
   const navigate = useNavigate();
 
-  const steps = settings.cabinRequired
-    ? STEPS
-    : STEPS.filter((s) => s.label !== 'Cabina');
+  const steps = STEPS.filter((s) => {
+    if (!settings.cabinRequired && s.label === 'Cabina') return false;
+    if (!settings.branchRequired && s.label === 'Sede') return false;
+    return true;
+  });
 
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState('forward');
@@ -27,6 +30,7 @@ export default function Booking() {
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [selectedTherapist, setSelectedTherapist] = useState('');
   const [selectedCabin, setSelectedCabin] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [hours, setHours] = useState(1);
@@ -100,6 +104,7 @@ export default function Booking() {
       case 'Servicio': return bookingType === 'packages' ? selectedPackage !== null : selectedServices.length > 0;
       case 'Terapeuta': return selectedTherapist !== '';
       case 'Cabina': return selectedCabin !== '';
+      case 'Sede': return selectedBranch !== '';
       case 'Fecha': return selectedDate !== '' && selectedTime !== '';
       case 'Confirmar': return clientName.trim() !== '' && clientPhone.trim() !== '';
       default: return false;
@@ -113,6 +118,7 @@ export default function Booking() {
       client_phone: clientPhone,
       therapist_id: selectedTherapist,
       cabin_id: selectedCabin,
+      branch_id: selectedBranch || null,
       service_ids: [...selectedServices],
       date: selectedDate,
       start_time: selectedTime,
@@ -311,7 +317,36 @@ export default function Booking() {
             </div>
           )}
 
-          {/* PASO 5 - Fecha y Hora */}
+          {steps[step - 1]?.label === 'Sede' && (
+            <div className="wizard-step">
+              <h2 className="wizard-step-title">Elige tu sede</h2>
+              <p className="wizard-step-subtitle">Selecciona la ubicación de tu cita</p>
+              <div className="wizard-therapist-grid">
+                {branches.filter((b) => b.is_active).map((branch) => (
+                  <div
+                    key={branch.id}
+                    className={`wizard-therapist ${selectedBranch === branch.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedBranch(branch.id)}
+                  >
+                    <div className="wizard-therapist-avatar">
+                      <MapPin size={32} />
+                    </div>
+                    <h4>{branch.name}</h4>
+                    {branch.address && <p className="specialty">{branch.address}</p>}
+                    {branch.phone && <p className="experience">{branch.phone}</p>}
+                    {selectedBranch === branch.id && (
+                      <div className="wizard-therapist-check">✓</div>
+                    )}
+                  </div>
+                ))}
+                {branches.filter((b) => b.is_active).length === 0 && (
+                  <div className="wizard-empty">No hay sedes disponibles</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* PASO 6 - Fecha y Hora */}
           {steps[step - 1]?.label === 'Fecha' && (
             <div className="wizard-step">
               <h2 className="wizard-step-title">Fecha y hora</h2>
@@ -401,6 +436,9 @@ export default function Booking() {
                   {settings.cabinRequired && (
                     <div className="confirm-row"><span>Cabina</span><span>{getSelectedCabinObj()?.name}</span></div>
                   )}
+                  {settings.branchRequired && selectedBranch && (
+                    <div className="confirm-row"><span>Sede</span><span>{branches.find((b) => b.id === selectedBranch)?.name}</span></div>
+                  )}
                   <div className="confirm-row"><span>Fecha</span><span>{selectedDate}</span></div>
                   <div className="confirm-row"><span>Hora</span><span>{selectedTime}</span></div>
                   {settings.priceVisible && (
@@ -450,6 +488,12 @@ export default function Booking() {
                 <div className="sidebar-row">
                   <span className="sidebar-label">Cabina</span>
                   <span className="sidebar-value">{getSelectedCabinObj()?.name}</span>
+                </div>
+              )}
+              {settings.branchRequired && selectedBranch && (
+                <div className="sidebar-row">
+                  <span className="sidebar-label">Sede</span>
+                  <span className="sidebar-value">{branches.find((b) => b.id === selectedBranch)?.name}</span>
                 </div>
               )}
               {step >= 3 && selectedDate && (

@@ -128,4 +128,12 @@ export const whatsappAPI = {
   }
 };
 
+export const branchesAPI = {
+  list: () => api.get('/branches'),
+  listAll: () => api.get('/admin/branches'),
+  create: (data) => api.post('/admin/branches', data),
+  update: (id, data) => api.put(`/admin/branches/${id}`, data),
+  delete: (id) => api.delete(`/admin/branches/${id}`),
+};
+
 export default api;

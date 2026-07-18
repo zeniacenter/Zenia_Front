@@ -9,12 +9,13 @@ function toDateStr(d) {
 }
 
 export default function AdminBooking() {
-  const { services, therapists, cabins, appointments, addAppointment, settings } = useApp();
+  const { services, therapists, cabins, branches, appointments, addAppointment, settings } = useApp();
   const navigate = useNavigate();
 
   const [selectedService, setSelectedService] = useState('');
   const [selectedTherapist, setSelectedTherapist] = useState('');
   const [selectedCabin, setSelectedCabin] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [hours, setHours] = useState(1);
@@ -74,6 +75,10 @@ export default function AdminBooking() {
       alert('Por favor selecciona una cabina');
       return;
     }
+    if (settings.branchRequired && !selectedBranch) {
+      alert('Por favor selecciona una sede');
+      return;
+    }
 
     try {
       await addAppointment({
@@ -81,6 +86,7 @@ export default function AdminBooking() {
         client_phone: clientPhone,
         therapist_id: selectedTherapist,
         cabin_id: selectedCabin || null,
+        branch_id: selectedBranch || null,
         service_ids: [selectedService],
         date: selectedDate,
         start_time: selectedTime,
@@ -152,6 +158,23 @@ export default function AdminBooking() {
                   <option value="">Seleccionar cabina</option>
                   {cabins.filter((c) => c.available).map((c) => (
                     <option key={c.id} value={c.id}>{c.name} (Cap: {c.capacity})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {settings.branchRequired && (
+              <div className="form-group">
+                <label>Sede</label>
+                <select
+                  className="form-control"
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  required
+                >
+                  <option value="">Seleccionar sede</option>
+                  {branches.filter((b) => b.is_active).map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}{b.address ? ` - ${b.address}` : ''}</option>
                   ))}
                 </select>
               </div>

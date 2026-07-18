@@ -42,6 +42,23 @@ export default function SettingsAdmin() {
               <span className="toggle-slider"></span>
             </label>
           </div>
+
+          <div className="settings-divider"></div>
+
+          <div className="settings-row">
+            <div className="settings-info">
+              <h3>Selección de Sede Obligatoria</h3>
+              <p>Si está activado, el cliente debe elegir una sede al agendar cita. Si está desactivado, la sede es opcional.</p>
+            </div>
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={settings.branchRequired}
+                onChange={(e) => updateSettings({ branchRequired: e.target.checked })}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+          </div>
         </div>
       </div>
     </div>
