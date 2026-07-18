@@ -231,7 +231,11 @@ export default function Booking() {
                         <div className="wizard-option-check">
                           {selectedServices.includes(service.id) && '✓'}
                         </div>
-                        <img src={service.image} alt={service.name} className="wizard-option-img" />
+                        {service.image ? (
+                          <img src={service.image} alt={service.name} className="wizard-option-img" loading="lazy" />
+                        ) : (
+                          <div className="wizard-option-img wizard-option-img-fallback">✦</div>
+                        )}
                         <div className="wizard-option-info">
                           <h4>{service.name}</h4>
                           <p>{service.description}</p>
@@ -270,7 +274,11 @@ export default function Booking() {
                         <div className="wizard-option-check">
                           {selectedPackage === pkg.id && '✓'}
                         </div>
-                        <img src={pkg.image} alt={pkg.name} className="wizard-option-img" />
+                        {pkg.image ? (
+                          <img src={pkg.image} alt={pkg.name} className="wizard-option-img" loading="lazy" />
+                        ) : (
+                          <div className="wizard-option-img wizard-option-img-fallback">🎁</div>
+                        )}
                         <div className="wizard-option-info">
                           <h4>{pkg.name}</h4>
                           <p>{pkg.description}</p>
@@ -301,7 +309,11 @@ export default function Booking() {
                     className={`wizard-therapist ${selectedTherapist === therapist.id ? 'selected' : ''}`}
                     onClick={() => setSelectedTherapist(therapist.id)}
                   >
-                    <img src={therapist.image} alt={therapist.name} />
+                    {therapist.image ? (
+                      <img src={therapist.image} alt={therapist.name} loading="lazy" />
+                    ) : (
+                      <div className="wizard-therapist-avatar-fallback">{therapist.name?.charAt(0)}</div>
+                    )}
                     <h4>{therapist.name}</h4>
                     <p className="specialty">{therapist.specialty}</p>
                     <p className="experience">{therapist.experience}</p>

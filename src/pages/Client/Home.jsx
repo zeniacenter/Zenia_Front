@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { motion, useInView } from 'framer-motion';
-import { Sparkles, Heart, Shield, Clock, Star, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Heart, Shield, Clock, Star, ArrowRight, CheckCircle2, ImageIcon } from 'lucide-react';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -193,7 +193,11 @@ export default function Home() {
                 custom={i}
               >
                 <div className="service-image-wrapper">
-                  <img src={service.image} alt={service.name} />
+                  {service.image ? (
+                    <img src={service.image} alt={service.name} loading="lazy" />
+                  ) : (
+                    <div className="service-image-fallback"><ImageIcon size={40} /></div>
+                  )}
                   <div className="service-image-overlay" />
                 </div>
                 <div className="service-content">
@@ -243,7 +247,11 @@ export default function Home() {
                     -{Math.round(((pkg.originalPrice - pkg.packagePrice) / pkg.originalPrice) * 100)}%
                   </div>
                   <div className="package-image-wrapper">
-                    <img src={pkg.image} alt={pkg.name} />
+                    {pkg.image ? (
+                      <img src={pkg.image} alt={pkg.name} loading="lazy" />
+                    ) : (
+                      <div className="service-image-fallback"><ImageIcon size={40} /></div>
+                    )}
                   </div>
                   <div className="package-content">
                     <h3>{pkg.name}</h3>
@@ -293,7 +301,11 @@ export default function Home() {
                   custom={i}
                 >
                   <div className="therapist-image-wrapper">
-                    <img src={therapist.image} alt={therapist.name} />
+                    {therapist.image ? (
+                      <img src={therapist.image} alt={therapist.name} loading="lazy" />
+                    ) : (
+                      <div className="therapist-image-fallback">{therapist.name?.charAt(0)}</div>
+                    )}
                     <div className="therapist-image-ring" />
                   </div>
                   <h3>{therapist.name}</h3>

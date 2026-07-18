@@ -59,6 +59,7 @@ export function AppProvider({ children }) {
   });
 
   useEffect(() => {
+    if (token) return;
     Promise.all([
       servicesAPI.list(),
       therapistsAPI.list(),
@@ -72,7 +73,7 @@ export function AppProvider({ children }) {
       setPackages(p.data.map(transformPackage));
       setBranches(b.data);
     }).catch(() => {});
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (token) {

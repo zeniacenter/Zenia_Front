@@ -352,6 +352,16 @@
   transition: transform var(--dur-slow) var(--ease);
 }
 
+.service-image-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--land-surface) 0%, var(--land-surface-2) 100%);
+  color: var(--land-text-muted);
+}
+
 .service-card-premium:hover .service-image-wrapper img {
   transform: scale(1.08);
 }
@@ -594,6 +604,22 @@
   object-fit: cover;
   border: 4px solid var(--dark-600);
   transition: all var(--dur-base) var(--ease);
+  position: relative;
+  z-index: 1;
+}
+
+.therapist-image-fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--r-full);
+  border: 4px solid var(--dark-600);
+  background: linear-gradient(135deg, var(--dark-500) 0%, var(--dark-600) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--amber);
   position: relative;
   z-index: 1;
 }
