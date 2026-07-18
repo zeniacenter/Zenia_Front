@@ -55,9 +55,6 @@ export default function Navbar() {
           <NavLink to="/agendar" className="nav-link-premium nav-link-cta">
             Agendar Cita
           </NavLink>
-          <NavLink to="/admin" className="nav-link-premium nav-link-admin">
-            Admin
-          </NavLink>
         </div>
 
         <button

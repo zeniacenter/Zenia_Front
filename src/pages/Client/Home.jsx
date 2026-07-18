@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
+import { useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { motion } from 'framer-motion';
+import { motion, useInView } from 'framer-motion';
 import { Sparkles, Heart, Shield, Clock, Star, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 const fadeUp = {
@@ -15,6 +16,23 @@ const fadeUp = {
 const stagger = {
   visible: { transition: { staggerChildren: 0.12 } },
 };
+
+function AnimatedSection({ children, className, viewportMargin = '-80px', ...props }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: viewportMargin });
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      initial="hidden"
+      animate={isInView ? 'visible' : 'hidden'}
+      variants={stagger}
+      {...props}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 const benefits = [
   {
@@ -127,13 +145,7 @@ export default function Home() {
       {/* ═══════════ BENEFITS ═══════════ */}
       <section id="beneficios" className="section-benefits">
         <div className="container-premium">
-          <motion.div
-            className="section-header"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={stagger}
-          >
+          <AnimatedSection className="section-header">
             <motion.span className="section-label" variants={fadeUp}>
               ¿Por qué elegirnos?
             </motion.span>
@@ -143,15 +155,9 @@ export default function Home() {
             <motion.p className="section-desc" variants={fadeUp}>
               Nos dedicamos a brindarte una experiencia excepcional en cada visita
             </motion.p>
-          </motion.div>
+          </AnimatedSection>
 
-          <motion.div
-            className="benefits-grid"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-60px' }}
-            variants={stagger}
-          >
+          <AnimatedSection className="benefits-grid" viewportMargin="-60px">
             {benefits.map((b, i) => (
               <motion.div className="benefit-card" key={i} variants={fadeUp} custom={i}>
                 <div className="benefit-icon">{b.icon}</div>
@@ -159,20 +165,14 @@ export default function Home() {
                 <p>{b.desc}</p>
               </motion.div>
             ))}
-          </motion.div>
+          </AnimatedSection>
         </div>
       </section>
 
       {/* ═══════════ SERVICES ═══════════ */}
       <section id="servicios" className="section-services">
         <div className="container-premium">
-          <motion.div
-            className="section-header"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={stagger}
-          >
+          <AnimatedSection className="section-header">
             <motion.span className="section-label" variants={fadeUp}>
               Nuestros Servicios
             </motion.span>
@@ -182,15 +182,9 @@ export default function Home() {
             <motion.p className="section-desc" variants={fadeUp}>
               Explora nuestra selección de servicios diseñados para tu bienestar integral
             </motion.p>
-          </motion.div>
+          </AnimatedSection>
 
-          <motion.div
-            className="services-showcase"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-60px' }}
-            variants={stagger}
-          >
+          <AnimatedSection className="services-showcase" viewportMargin="-60px">
             {services.map((service, i) => (
               <motion.div
                 className="service-card-premium"
@@ -219,21 +213,13 @@ export default function Home() {
                 </div>
               </motion.div>
             ))}
-          </motion.div>
+          </AnimatedSection>
         </div>
       </section>
-
-      {/* ═══════════ PACKAGES ═══════════ */}
       {activePackages.length > 0 && (
         <section id="paquetes" className="section-packages">
           <div className="container-premium">
-            <motion.div
-              className="section-header"
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-80px' }}
-              variants={stagger}
-            >
+            <AnimatedSection className="section-header">
               <motion.span className="section-label" variants={fadeUp}>
                 Ofertas Especiales
               </motion.span>
@@ -243,15 +229,9 @@ export default function Home() {
               <motion.p className="section-desc" variants={fadeUp}>
                 Combina servicios y ahorra con nuestros paquetes diseñados especialmente para ti
               </motion.p>
-            </motion.div>
+            </AnimatedSection>
 
-            <motion.div
-              className="packages-grid"
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-60px' }}
-              variants={stagger}
-            >
+            <AnimatedSection className="packages-grid" viewportMargin="-60px">
               {activePackages.map((pkg, i) => (
                 <motion.div
                   className="package-card-premium"
@@ -283,7 +263,7 @@ export default function Home() {
                   </div>
                 </motion.div>
               ))}
-            </motion.div>
+            </AnimatedSection>
           </div>
         </section>
       )}
@@ -292,13 +272,7 @@ export default function Home() {
       {featuredTherapists.length > 0 && (
         <section id="equipo" className="section-therapists">
           <div className="container-premium">
-            <motion.div
-              className="section-header"
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-80px' }}
-              variants={stagger}
-            >
+            <AnimatedSection className="section-header">
               <motion.span className="section-label" variants={fadeUp}>
                 Nuestro Equipo
               </motion.span>
@@ -308,15 +282,9 @@ export default function Home() {
               <motion.p className="section-desc" variants={fadeUp}>
                 Conoce a los profesionales que harán de tu experiencia algo inolvidable
               </motion.p>
-            </motion.div>
+            </AnimatedSection>
 
-            <motion.div
-              className="therapists-showcase"
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-60px' }}
-              variants={stagger}
-            >
+            <AnimatedSection className="therapists-showcase" viewportMargin="-60px">
               {featuredTherapists.map((therapist, i) => (
                 <motion.div
                   className="therapist-card-premium"
@@ -333,7 +301,7 @@ export default function Home() {
                   <p className="therapist-exp">{therapist.experience}</p>
                 </motion.div>
               ))}
-            </motion.div>
+            </AnimatedSection>
           </div>
         </section>
       )}
@@ -341,28 +309,16 @@ export default function Home() {
       {/* ═══════════ TESTIMONIALS ═══════════ */}
       <section id="testimonios" className="section-testimonials">
         <div className="container-premium">
-          <motion.div
-            className="section-header"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={stagger}
-          >
+          <AnimatedSection className="section-header">
             <motion.span className="section-label" variants={fadeUp}>
               Testimonios
             </motion.span>
             <motion.h2 className="section-title-lg" variants={fadeUp}>
               Lo que Dicen Nuestros <span className="text-accent">Clientes</span>
             </motion.h2>
-          </motion.div>
+          </AnimatedSection>
 
-          <motion.div
-            className="testimonials-grid"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-60px' }}
-            variants={stagger}
-          >
+          <AnimatedSection className="testimonials-grid" viewportMargin="-60px">
             {testimonials.map((t, i) => (
               <motion.div
                 className="testimonial-card"
@@ -387,7 +343,7 @@ export default function Home() {
                 </div>
               </motion.div>
             ))}
-          </motion.div>
+          </AnimatedSection>
         </div>
       </section>
 
@@ -395,13 +351,7 @@ export default function Home() {
       <section className="section-cta-final">
         <div className="cta-final-bg" />
         <div className="container-premium">
-          <motion.div
-            className="cta-final-content"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={stagger}
-          >
+          <AnimatedSection className="cta-final-content">
             <motion.h2 variants={fadeUp}>
               ¿Listo para Transformar tu Experiencia de Bienestar?
             </motion.h2>
@@ -419,7 +369,7 @@ export default function Home() {
               <span><CheckCircle2 size={16} /> Confirmación inmediata</span>
               <span><CheckCircle2 size={16} /> Soporte 24/7</span>
             </motion.div>
-          </motion.div>
+          </AnimatedSection>
         </div>
       </section>
     </div>
