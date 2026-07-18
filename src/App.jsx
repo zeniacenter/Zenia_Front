@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -23,15 +23,19 @@ import './styles/landing-premium.css';
 
 function AppContent() {
   const { isAdminLoggedIn } = useApp();
+  const location = useLocation();
+  const isLogin = location.pathname === '/login';
+  const isAdmin = location.pathname.startsWith('/admin');
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Navbar />
+      {!isLogin && !isAdmin && <Navbar />}
       <div style={{ flex: 1 }}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/agendar" element={<Booking />} />
           <Route path="/confirmacion" element={<Confirmation />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/admin/login" element={<Login />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
@@ -49,7 +53,7 @@ function AppContent() {
           </Route>
         </Routes>
       </div>
-      {!isAdminLoggedIn && <Footer />}
+      {!isLogin && !isAdmin && <Footer />}
     </div>
   );
 }

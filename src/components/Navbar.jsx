@@ -7,6 +7,7 @@ export default function Navbar() {
   const { isAdminLoggedIn, logoutAdmin, user } = useApp();
   const location = useLocation();
   const isAdminArea = location.pathname.startsWith('/admin');
+  const isHome = location.pathname === '/';
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -37,6 +38,8 @@ export default function Navbar() {
     );
   }
 
+  const anchor = (id) => isHome ? `#${id}` : `/#${id}`;
+
   return (
     <nav className={`navbar-premium ${scrolled ? 'scrolled' : ''}`}>
       <div className="navbar-premium-inner">
@@ -46,12 +49,12 @@ export default function Navbar() {
         </NavLink>
 
         <div className={`navbar-links-premium ${mobileOpen ? 'open' : ''}`}>
-          <a href="#inicio" className="nav-link-premium">Inicio</a>
-          <a href="#beneficios" className="nav-link-premium">Beneficios</a>
-          <a href="#servicios" className="nav-link-premium">Servicios</a>
-          <a href="#paquetes" className="nav-link-premium">Paquetes</a>
-          <a href="#equipo" className="nav-link-premium">Equipo</a>
-          <a href="#testimonios" className="nav-link-premium">Testimonios</a>
+          <a href={anchor('inicio')} className="nav-link-premium">Inicio</a>
+          <a href={anchor('beneficios')} className="nav-link-premium">Beneficios</a>
+          <a href={anchor('servicios')} className="nav-link-premium">Servicios</a>
+          <a href={anchor('paquetes')} className="nav-link-premium">Paquetes</a>
+          <a href={anchor('equipo')} className="nav-link-premium">Equipo</a>
+          <a href={anchor('testimonios')} className="nav-link-premium">Testimonios</a>
           <NavLink to="/agendar" className="nav-link-premium nav-link-cta">
             Agendar Cita
           </NavLink>
