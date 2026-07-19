@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -35,6 +35,10 @@ export default function AppointmentsAdmin() {
   const [postponeTarget, setPostponeTarget] = useState(null);
   const [postponeDate, setPostponeDate] = useState('');
   const [postponeTime, setPostponeTime] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  useEffect(() => { setPage(0); }, [filter]);
 
   const counts = useMemo(() => ({
     todas: appointments.filter((a) => a.status !== 'cancelada').length,
@@ -55,6 +59,9 @@ export default function AppointmentsAdmin() {
       return (a.start_time || '').localeCompare(b.start_time || '');
     });
   }, [appointments, filter]);
+
+  const totalPages = Math.ceil(filtered.length / rowsPerPage);
+  const paged = filtered.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
   const getName = (apt) => apt.person?.name || apt.clientName || 'N/A';
   const getPhone = (apt) => apt.person?.phone || apt.clientPhone || 'N/A';
@@ -155,7 +162,7 @@ export default function AppointmentsAdmin() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((apt) => {
+              {paged.map((apt) => {
                 const st = STATUS_CONFIG[apt.status] || STATUS_CONFIG.pendiente;
                 return (
                   <tr
@@ -267,6 +274,53 @@ export default function AppointmentsAdmin() {
             </tbody>
           </table>
         </div>
+
+        {filtered.length > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '0.75rem 1rem', borderTop: '1px solid #E8E0D6', flexWrap: 'wrap', gap: '0.5rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#6B5B4E' }}>
+              <span>Filas por página:</span>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
+                style={{
+                  padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #E8E0D6',
+                  background: '#FFFFFF', color: '#3D2E24', fontSize: '0.8rem', cursor: 'pointer',
+                }}
+              >
+                {[5, 10, 15, 20].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem', color: '#6B5B4E' }}>
+              <span>{page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, filtered.length)} de {filtered.length}</span>
+              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                <button
+                  disabled={page === 0}
+                  onClick={() => setPage((p) => p - 1)}
+                  style={{
+                    padding: '0.3rem 0.6rem', borderRadius: '6px', border: '1px solid #E8E0D6',
+                    background: page === 0 ? '#F5F0E8' : '#FFFFFF', color: page === 0 ? '#C8C0BA' : '#3D2E24',
+                    cursor: page === 0 ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 500,
+                  }}
+                >← Ant</button>
+                <button
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage((p) => p + 1)}
+                  style={{
+                    padding: '0.3rem 0.6rem', borderRadius: '6px', border: '1px solid #E8E0D6',
+                    background: page >= totalPages - 1 ? '#F5F0E8' : '#FFFFFF',
+                    color: page >= totalPages - 1 ? '#C8C0BA' : '#3D2E24',
+                    cursor: page >= totalPages - 1 ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 500,
+                  }}
+                >Sig →</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {filtered.length === 0 && (
           <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#A89888' }}>

@@ -53,7 +53,7 @@ export default function Navbar() {
           <a href={anchor('servicios')} className="nav-link-premium">Servicios</a>
           <a href={anchor('paquetes')} className="nav-link-premium">Paquetes</a>
           <a href={anchor('equipo')} className="nav-link-premium">Equipo</a>
-          <a href={anchor('testimonios')} className="nav-link-premium">Testimonios</a>
+          {/*   <a href={anchor('testimonios')} className="nav-link-premium">Testimonios</a> */}
           <NavLink to="/agendar" className="nav-link-premium nav-link-cta">
             Agendar Cita
           </NavLink>

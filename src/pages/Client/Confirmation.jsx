@@ -19,7 +19,7 @@ export default function Confirmation() {
       <div className="confirmation-container">
         <div className="confirmation-icon">✓</div>
         <h2>¡Reserva Confirmada!</h2>
-        <p style={{ color: 'var(--text-light)', marginTop: '0.5rem' }}>
+        <p style={{ color: 'var(--land-text-sec)', marginTop: '0.5rem' }}>
           Tu cita ha sido registrada exitosamente
         </p>
 
@@ -64,11 +64,11 @@ export default function Confirmation() {
           </div>
           {state.originalPrice > state.total && (
             <div className="detail-row">
-              <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}>Precio original</span>
-              <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}>S/ {state.originalPrice}</span>
+              <span style={{ textDecoration: 'line-through', color: 'var(--land-text-muted)' }}>Precio original</span>
+              <span style={{ textDecoration: 'line-through', color: 'var(--land-text-muted)' }}>S/ {state.originalPrice}</span>
             </div>
           )}
-          <div className="detail-row" style={{ borderBottom: 'none', fontSize: '1.2rem', fontWeight: '700', color: 'var(--primary)' }}>
+          <div className="detail-row" style={{ borderBottom: 'none', fontSize: '1.2rem', fontWeight: '700', color: 'var(--amber)' }}>
             <strong>Total:</strong>
             <span>S/ {state.total}</span>
           </div>

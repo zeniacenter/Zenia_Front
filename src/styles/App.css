@@ -179,8 +179,8 @@ a { text-decoration: none; color: inherit; }
 
 .btn-outline {
   background: transparent;
-  border: 1.5px solid var(--dark-500);
-  color: var(--dark-200);
+  border: 1.5px solid var(--land-border);
+  color: var(--land-text-sec);
 }
 .btn-outline:hover {
   border-color: var(--amber);
@@ -1116,7 +1116,7 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   gap: var(--sp-4);
   margin: var(--sp-4) 0;
   padding: var(--sp-4);
-  background: var(--dark-700);
+  background: transparent;
   border-radius: var(--r-md);
 }
 
@@ -1134,13 +1134,14 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   transition: all var(--dur-fast) var(--ease);
 }
 
-.hours-selector button:hover { background: var(--amber-light); color: var(--dark-900); }
+.hours-selector button:hover { background: var(--amber-light); color: var(--land-bg); }
 
 .hours-selector .hours-display {
   font-size: var(--fs-lg);
   font-weight: 700;
   min-width: 40px;
   text-align: center;
+  color: var(--land-text);
 }
 
 /* ============ FOOTER ============ */
@@ -1179,7 +1180,7 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
 
 .confirmation-details {
   text-align: left;
-  background: var(--dark-700);
+  background: var(--land-bg-warm);
   border-radius: var(--r-md);
   padding: var(--sp-5);
   margin: var(--sp-6) 0;
@@ -1234,7 +1235,7 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   min-height: calc(100vh - 68px);
   display: flex;
   flex-direction: column;
-  background: var(--dark-800);
+  background: var(--land-bg);
 }
 
 .wizard-stepper {
@@ -1253,8 +1254,8 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
 .stepper-circle {
   width: 42px; height: 42px;
   border-radius: var(--r-full);
-  background: var(--dark-700);
-  border: 2px solid var(--dark-500);
+  background: var(--land-bg-card);
+  border: 2px solid var(--land-border);
   color: var(--land-text-muted);
   display: flex;
   align-items: center;
@@ -1293,7 +1294,7 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
 
 .stepper-line {
   width: 56px; height: 2px;
-  background: var(--dark-500);
+  background: var(--land-border);
   border-radius: var(--r-full);
   margin: 0 var(--sp-1);
 }
@@ -1336,6 +1337,7 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   text-align: center;
   cursor: pointer;
   transition: all var(--dur-base) var(--ease);
+  box-shadow: 0 8px 24px rgba(39, 61, 44, 0.05);
 }
 
 .type-card:hover {
@@ -1344,7 +1346,7 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   transform: translateY(-4px);
 }
 
-.type-card-icon { font-size: 3rem; margin-bottom: var(--sp-4); }
+.type-card-icon { font-size: 3rem; margin-bottom: var(--sp-4); color: var(--amber); }
 
 .type-card h3 { font-size: var(--fs-xl); margin-bottom: var(--sp-2); }
 
@@ -1373,9 +1375,10 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease);
   background: var(--land-bg-card);
+  box-shadow: 0 8px 24px rgba(39, 61, 44, 0.05);
 }
 
-.wizard-option:hover { border-color: var(--amber); background: var(--dark-600); }
+.wizard-option:hover { border-color: var(--amber); background: var(--land-bg-card-hover); }
 
 .wizard-option.selected {
   border-color: var(--amber);
@@ -1384,7 +1387,7 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
 
 .wizard-option-check {
   width: 28px; height: 28px;
-  border: 2px solid var(--dark-400);
+  border: 2px solid var(--land-border);
   border-radius: var(--r-full);
   display: flex;
   align-items: center;
@@ -1403,8 +1406,8 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
 }
 
 .wizard-option-img { width: 64px; height: 64px; border-radius: var(--r-md); object-fit: cover; flex-shrink: 0; }
-.wizard-option-img-fallback { display: flex; align-items: center; justify-content: center; background: var(--dark-500); color: var(--text-muted); font-size: 1.5rem; }
-.wizard-therapist-avatar-fallback { width: 80px; height: 80px; border-radius: 50%; background: var(--dark-500); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 700; color: var(--amber); margin: 0 auto; }
+.wizard-option-img-fallback { display: flex; align-items: center; justify-content: center; background: var(--land-bg-warm); color: var(--land-text-muted); font-size: 1.5rem; }
+.wizard-therapist-avatar-fallback { width: 80px; height: 80px; border-radius: 50%; background: var(--land-bg-warm); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 700; color: var(--amber); margin: 0 auto; }
 
 .wizard-option-info { flex: 1; }
 
@@ -1430,6 +1433,7 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   background: var(--land-bg-card);
   border: 1px solid var(--land-border);
   border-radius: var(--r-lg);
+  box-shadow: 0 8px 24px rgba(39, 61, 44, 0.05);
 }
 
 .hours-section h3 { font-family: var(--font-body); font-size: var(--fs-base); font-weight: 600; margin-bottom: var(--sp-3); }
@@ -1446,6 +1450,7 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   cursor: pointer;
   transition: all var(--dur-base) var(--ease);
   position: relative;
+  box-shadow: 0 8px 24px rgba(39, 61, 44, 0.05);
 }
 
 .wizard-therapist:hover { border-color: var(--amber); box-shadow: var(--sh-md); }
@@ -1459,7 +1464,7 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   width: 88px; height: 88px;
   border-radius: var(--r-full);
   object-fit: cover;
-  border: 3px solid var(--dark-500);
+  border: 3px solid var(--land-border);
   margin-bottom: var(--sp-3);
   transition: all var(--dur-base) var(--ease);
 }
@@ -1528,8 +1533,8 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
 
 .wizard-time-placeholder {
   padding: var(--sp-8);
-  background: var(--dark-700);
-  border: 1.5px dashed var(--dark-500);
+  background: var(--land-bg-card);
+  border: 1.5px dashed var(--land-border);
   border-radius: var(--r-lg);
   text-align: center;
   color: var(--land-text-muted);
@@ -1543,6 +1548,7 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   border: 1px solid var(--land-border);
   border-radius: var(--r-lg);
   padding: var(--sp-5);
+  box-shadow: 0 8px 24px rgba(39, 61, 44, 0.05);
 }
 
 .wizard-confirm-summary h3 {
@@ -1596,6 +1602,7 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   height: fit-content;
   max-height: calc(100vh - 120px);
   overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(39, 61, 44, 0.05);
 }
 
 .wizard-sidebar h3 {
@@ -1645,7 +1652,7 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   justify-content: space-between;
   align-items: center;
   padding: var(--sp-4) var(--sp-8);
-  background: var(--dark-700);
+  background: var(--land-bg-card);
   border-top: 1px solid var(--land-border);
   position: sticky;
   bottom: 0;
@@ -1657,6 +1664,17 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   cursor: not-allowed;
   transform: none !important;
   box-shadow: none !important;
+}
+
+.wizard-nav .btn-secondary {
+  background: var(--land-bg-card);
+  border: 1.5px solid var(--land-border);
+  color: var(--land-text-sec);
+}
+.wizard-nav .btn-secondary:hover {
+  border-color: var(--amber);
+  background: var(--land-bg-card-hover);
+  color: var(--amber);
 }
 
 /* ============ SETTINGS ============ */
@@ -1692,6 +1710,44 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
 .settings-divider {
   height: 1px;
   background: var(--adm-border);
+}
+
+/* ============ ADMIN CHECKBOXES ============ */
+.form-group input[type="checkbox"],
+.modal input[type="checkbox"],
+.admin-layout input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--adm-border);
+  border-radius: 4px;
+  background: var(--adm-bg-card);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--dur-fast) var(--ease);
+  position: relative;
+}
+
+.form-group input[type="checkbox"]:checked,
+.modal input[type="checkbox"]:checked,
+.admin-layout input[type="checkbox"]:checked {
+  background: var(--amber);
+  border-color: var(--amber);
+}
+
+.form-group input[type="checkbox"]:checked::after,
+.modal input[type="checkbox"]:checked::after,
+.admin-layout input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: white;
+  line-height: 1;
 }
 
 .toggle-switch {

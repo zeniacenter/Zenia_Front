@@ -123,7 +123,7 @@ export default function Home() {
             </a>
           </motion.div>
 
-          <motion.div className="hero-stats" variants={fadeUp} custom={4}>
+          {/* <motion.div className="hero-stats" variants={fadeUp} custom={4}>
             <div className="hero-stat">
               <span className="hero-stat-number">15+</span>
               <span className="hero-stat-label">Años de Experiencia</span>
@@ -138,7 +138,7 @@ export default function Home() {
               <span className="hero-stat-number">4.9</span>
               <span className="hero-stat-label">Calificación Promedio</span>
             </div>
-          </motion.div>
+          </motion.div> */}
         </motion.div>
       </section>
 
@@ -319,7 +319,7 @@ export default function Home() {
       )}
 
       {/* ═══════════ TESTIMONIALS ═══════════ */}
-      <section id="testimonios" className="section-testimonials">
+      {/* <section id="testimonios" className="section-testimonials">
         <div className="container-premium">
           <AnimatedSection className="section-header">
             <motion.span className="section-label" variants={fadeUp}>
@@ -357,7 +357,7 @@ export default function Home() {
             ))}
           </AnimatedSection>
         </div>
-      </section>
+      </section> */}
 
       {/* ═══════════ CTA FINAL ═══════════ */}
       <section className="section-cta-final">

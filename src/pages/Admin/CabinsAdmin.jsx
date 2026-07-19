@@ -99,11 +99,11 @@ export default function CabinsAdmin() {
                 </span>
               </div>
               <p className="card-text">{cabin.description || 'Sin descripción'}</p>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--land-text-muted)', marginBottom: '0.5rem' }}>
                 Capacidad: {cabin.capacity} {cabin.capacity === 1 ? 'persona' : 'personas'}
               </p>
               {cabin.serviceIds && cabin.serviceIds.length > 0 && (
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '1rem' }}>
                   Servicios: {getServiceNames(cabin.serviceIds)}
                 </p>
               )}
@@ -122,7 +122,7 @@ export default function CabinsAdmin() {
 
       {cabins.length === 0 && (
         <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
-          <p style={{ color: 'var(--text-muted)' }}>No hay cabinas registradas</p>
+          <p style={{ color: 'var(--land-text-muted)' }}>No hay cabinas registradas</p>
         </div>
       )}
 
@@ -177,11 +177,11 @@ export default function CabinsAdmin() {
                         alignItems: 'center',
                         gap: '0.5rem',
                         padding: '0.5rem 0.75rem',
-                        border: '1px solid #5a4a40',
+                        border: '1px solid var(--land-border)',
                         borderRadius: '8px',
                         cursor: 'pointer',
-                        background: form.serviceIds.includes(svc.id) ? 'rgba(197,160,89,0.1)' : '#3a302c',
-                        borderColor: form.serviceIds.includes(svc.id) ? '#C5A059' : '#5a4a40',
+                        background: form.serviceIds.includes(svc.id) ? 'rgba(201,148,74,0.1)' : 'var(--land-bg-card)',
+                        borderColor: form.serviceIds.includes(svc.id) ? '#C9944A' : 'var(--land-border)',
                       }}
                     >
                       <input
@@ -190,7 +190,7 @@ export default function CabinsAdmin() {
                         onChange={() => toggleService(svc.id)}
                       />
                       <span style={{ flex: 1 }}>{svc.name}</span>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>S/ {svc.pricePerHour}/h</span>
+                      <span style={{ color: 'var(--land-text-muted)', fontSize: '0.82rem' }}>S/ {svc.pricePerHour}/h</span>
                     </label>
                   ))}
                 </div>

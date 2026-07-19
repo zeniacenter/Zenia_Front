@@ -117,7 +117,16 @@ export default function Booking() {
     const dateObj = new Date(selectedDate + 'T12:00:00');
     const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const dayName = dayNames[dateObj.getDay()];
-    return therapist.schedule[dayName] || [];
+    const slots = therapist.schedule[dayName] || [];
+    if (selectedDate === today) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      return slots.filter((slot) => {
+        const [h, m] = slot.split(':').map(Number);
+        return h * 60 + m > currentMinutes;
+      });
+    }
+    return slots;
   };
 
   const canProceed = () => {

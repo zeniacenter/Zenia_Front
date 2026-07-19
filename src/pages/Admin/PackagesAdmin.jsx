@@ -141,14 +141,14 @@ export default function PackagesAdmin() {
                 )}
               </div>
               <p className="card-text">{pkg.description}</p>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+              <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.5rem' }}>
                 Servicios: {getServiceNames(pkg.serviceIds)}
               </p>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+              <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.75rem' }}>
                 Duración: {pkg.hours} {pkg.hours === 1 ? 'hora' : 'horas'}
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}>
+                <span style={{ textDecoration: 'line-through', color: 'var(--land-text-muted)' }}>
                   S/ {pkg.originalPrice}
                 </span>
                 <span className="card-price">S/ {pkg.packagePrice}</span>
@@ -171,7 +171,7 @@ export default function PackagesAdmin() {
 
       {packages.length === 0 && (
         <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
-          <p style={{ color: 'var(--text-muted)' }}>No hay paquetes creados</p>
+          <p style={{ color: 'var(--land-text-muted)' }}>No hay paquetes creados</p>
         </div>
       )}
 
@@ -215,11 +215,11 @@ export default function PackagesAdmin() {
                         alignItems: 'center',
                         gap: '0.5rem',
                         padding: '0.5rem 0.75rem',
-                        border: '1px solid #5a4a40',
+                        border: '1px solid var(--land-border)',
                         borderRadius: '8px',
                         cursor: 'pointer',
-                        background: form.serviceIds.includes(svc.id) ? 'rgba(197,160,89,0.1)' : '#3a302c',
-                        borderColor: form.serviceIds.includes(svc.id) ? '#C5A059' : '#5a4a40',
+                        background: form.serviceIds.includes(svc.id) ? 'rgba(201,148,74,0.1)' : 'var(--land-bg-card)',
+                        borderColor: form.serviceIds.includes(svc.id) ? '#C9944A' : 'var(--land-border)',
                       }}
                     >
                       <input
@@ -228,7 +228,7 @@ export default function PackagesAdmin() {
                         onChange={() => toggleServiceInForm(svc.id)}
                       />
                       <span style={{ flex: 1 }}>{svc.name}</span>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>S/ {svc.pricePerHour}/h</span>
+                      <span style={{ color: 'var(--land-text-muted)', fontSize: '0.82rem' }}>S/ {svc.pricePerHour}/h</span>
                     </label>
                   ))}
                 </div>
@@ -258,7 +258,7 @@ export default function PackagesAdmin() {
                     onChange={(e) => setForm({ ...form, originalPrice: Number(e.target.value) })}
                     required
                   />
-                  <small style={{ color: 'var(--text-muted)' }}>Se calcula auto</small>
+                  <small style={{ color: 'var(--land-text-muted)' }}>Se calcula auto</small>
                 </div>
                 <div className="form-group">
                   <label>Precio del paquete (S/)</label>
