@@ -1075,6 +1075,18 @@
   transition: transform var(--dur-base) var(--ease);
 }
 
+.brand-logo-premium {
+  height: 40px;
+  width: auto;
+  border-radius: var(--r-md);
+  object-fit: contain;
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.navbar-brand-premium:hover .brand-logo-premium {
+  transform: scale(1.05) rotate(-5deg);
+}
+
 .navbar-brand-premium:hover .brand-icon-premium {
   transform: scale(1.05) rotate(-5deg);
 }

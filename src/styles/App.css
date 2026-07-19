@@ -110,6 +110,13 @@ a { text-decoration: none; color: inherit; }
   font-size: 0.9rem;
 }
 
+.brand-logo-admin {
+  height: 32px;
+  width: auto;
+  border-radius: var(--r-sm);
+  object-fit: contain;
+}
+
 .navbar-admin-right {
   display: flex;
   align-items: center;

@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Flower2, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Navbar() {
@@ -25,8 +25,7 @@ export default function Navbar() {
     return (
       <nav className="navbar navbar-admin-top">
         <NavLink to="/admin/dashboard" className="navbar-brand">
-          <span className="brand-icon"><Flower2 size={22} /></span>
-          Zenia Admin
+          <img src="/logo_zenia.jpeg" alt="Zenia" className="brand-logo-admin" />
         </NavLink>
         <div className="navbar-admin-right">
           <button className="btn btn-sm btn-admin-logout" onClick={logoutAdmin}>
@@ -43,8 +42,7 @@ export default function Navbar() {
     <nav className={`navbar-premium ${scrolled ? 'scrolled' : ''}`}>
       <div className="navbar-premium-inner">
         <NavLink to="/" className="navbar-brand-premium">
-          <span className="brand-icon-premium"><Flower2 size={20} /></span>
-          <span className="brand-text">Zenia</span>
+          <img src="/logo_zenia.jpeg" alt="Zenia" className="brand-logo-premium" />
         </NavLink>
 
         <div className={`navbar-links-premium ${mobileOpen ? 'open' : ''}`}>
