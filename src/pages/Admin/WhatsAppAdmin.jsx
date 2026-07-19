@@ -160,8 +160,8 @@ export default function WhatsAppAdmin() {
             padding: '0.75rem 1rem',
             borderRadius: '8px',
             fontWeight: 600,
-            background: sendResult.ok ? '#DCFCE7' : '#FEE2E2',
-            color: sendResult.ok ? '#166534' : '#991B1B'
+            background: sendResult.ok ? '#F5EDE5' : '#FEE2E2',
+            color: sendResult.ok ? '#6A4A3A' : '#991B1B'
           }}>
             {sendResult.message}
           </p>

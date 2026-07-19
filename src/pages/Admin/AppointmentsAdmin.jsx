@@ -6,9 +6,9 @@ import { Inbox } from 'lucide-react';
 
 const STATUS_CONFIG = {
   pendiente: { label: 'Pendiente', color: '#8B6520', bg: '#FDF6E9' },
-  confirmada: { label: 'Confirmada', color: '#5C8A60', bg: '#EDF5EE' },
+  confirmada: { label: 'Confirmada', color: '#8B6A50', bg: '#F5EDE5' },
   cancelada: { label: 'Cancelada', color: '#B85C4C', bg: '#FCEEED' },
-  realizada: { label: 'Realizada', color: '#3D7A42', bg: '#E4F2E6' },
+  realizada: { label: 'Realizada', color: '#6A4A3A', bg: '#F0EBE3' },
   postergada: { label: 'Postergada', color: '#4A7A9A', bg: '#EBF3F8' },
 };
 
@@ -216,7 +216,7 @@ export default function AppointmentsAdmin() {
                               onClick={() => updateAppointment(apt.id, { status: 'confirmada' })}
                               style={{
                                 fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px',
-                                border: 'none', background: '#5C8A60', color: '#fff',
+                                border: 'none', background: '#8B6A50', color: '#fff',
                                 cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap',
                               }}
                             >Confirmar</button>

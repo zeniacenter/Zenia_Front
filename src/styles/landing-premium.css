@@ -99,7 +99,7 @@
   left: -10%;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(122, 154, 126, 0.08) 0%, transparent 60%);
+  background: radial-gradient(circle, rgba(139, 106, 80, 0.08) 0%, transparent 60%);
   animation-delay: -4s;
 }
 
@@ -751,7 +751,7 @@
   inset: 0;
   background:
     radial-gradient(circle at 30% 50%, rgba(201, 148, 74, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 70% 50%, rgba(122, 154, 126, 0.08) 0%, transparent 50%);
+    radial-gradient(circle at 70% 50%, rgba(139, 106, 80, 0.08) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -1137,7 +1137,7 @@
   padding: var(--sp-2);
 }
 
-/* Light landing palette: calm, airy surfaces with green reserved for emphasis. */
+/* Warm landing palette: calm, airy surfaces with brown reserved for emphasis. */
 .landing-page {
   background: var(--land-bg);
 }
@@ -1150,7 +1150,7 @@
 
 .section-services .section-label,
 .section-therapists .section-label {
-  background: #e0eadc;
+  background: #EDE6DA;
   color: var(--land-accent-text);
 }
 
@@ -1165,11 +1165,11 @@
 .testimonial-card,
 .package-card-premium,
 .benefit-card {
-  box-shadow: 0 8px 24px rgba(39, 61, 44, 0.05);
+  box-shadow: 0 8px 24px rgba(61, 46, 36, 0.05);
 }
 
 .therapist-image-wrapper img {
-  border-color: #dfeadb;
+  border-color: #E8E0D6;
 }
 
 .section-cta-final {
@@ -1180,17 +1180,17 @@
   padding: clamp(2rem, 5vw, 4rem);
   border: 1px solid var(--land-border);
   border-radius: var(--r-xl);
-  box-shadow: 0 14px 40px rgba(39, 61, 44, 0.07);
+  box-shadow: 0 14px 40px rgba(61, 46, 36, 0.07);
 }
 
 .cta-final-bg {
   background:
-    radial-gradient(circle at 20% 20%, rgba(100, 134, 108, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 20% 20%, rgba(139, 106, 80, 0.12) 0%, transparent 40%),
     radial-gradient(circle at 80% 80%, rgba(210, 182, 139, 0.16) 0%, transparent 42%);
 }
 
 .footer-premium {
-  background: #f3f6ef;
+  background: #F3F0EB;
   border-top-color: var(--land-border);
 }
 
@@ -1205,13 +1205,13 @@
 }
 
 .navbar-premium.scrolled {
-  background: rgba(251, 252, 248, 0.9);
-  border-bottom-color: rgba(82, 116, 91, 0.15);
+  background: rgba(250, 248, 244, 0.9);
+  border-bottom-color: rgba(106, 74, 58, 0.15);
 }
 
 .navbar-links-premium {
   background: rgba(255, 255, 255, 0.76);
-  border-color: rgba(82, 116, 91, 0.14);
+  border-color: rgba(106, 74, 58, 0.14);
 }
 
 .nav-link-premium {
@@ -1221,7 +1221,7 @@
 .nav-link-premium:hover,
 .nav-link-premium.active {
   color: var(--land-accent-text);
-  background: #e8f0e5;
+  background: #F0EBE3;
 }
 
 /* ═══════════════════════════════════════════════

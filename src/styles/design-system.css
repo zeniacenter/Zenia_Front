@@ -32,26 +32,26 @@
   --amber-pale:  #F5E6C8;
 
   /* ============ SEMANTIC ============ */
-  --sage:        #5C8A60;
-  --sage-light:  #B5D4B8;
+  --sage:        #8B6A50;
+  --sage-light:  #D4BFA8;
   --rose:        #B85C4C;
   --rose-light:  #E8ADA3;
   --sky:         #4A7A9A;
 
-  /* ============ LANDING TOKENS (Light - Inverted) ============ */
-  --land-bg:           #FBFCF8;
+  /* ============ LANDING TOKENS (Warm Brown Palette) ============ */
+  --land-bg:           #FAF8F4;
   --land-bg-elevated:  #FFFFFF;
   --land-bg-card:      #FFFFFF;
-  --land-bg-card-hover:#F7FAF4;
-  --land-bg-warm:      #EFF4EB;
-  --land-text:         #26352A;
-  --land-text-sec:     #526257;
-  --land-text-muted:   #78867C;
-  --land-border:       #DCE6D8;
-  --land-border-light: #EAF0E7;
-  --land-accent:       #52745B;
-  --land-accent-hover: #385842;
-  --land-accent-text:  #385842;
+  --land-bg-card-hover:#F5F0E8;
+  --land-bg-warm:      #EDE6DA;
+  --land-text:         #3D2E24;
+  --land-text-sec:     #6B5B4E;
+  --land-text-muted:   #A89888;
+  --land-border:       #E8E0D6;
+  --land-border-light: #F0EBE3;
+  --land-accent:       #6A4A3A;
+  --land-accent-hover: #5A3A2A;
+  --land-accent-text:  #5A3A2A;
 
   /* ============ ADMIN TOKENS (Light) ============ */
   --adm-bg:            #FAF8F4;
@@ -65,16 +65,16 @@
   --adm-border-light:  #F0EBE3;
   --adm-accent:        #C9944A;
   --adm-accent-text:   #8B6520;
-  --adm-success:       #5C8A60;
-  --adm-success-bg:    #EDF5EE;
+  --adm-success:       #8B6A50;
+  --adm-success-bg:    #F5EDE5;
   --adm-danger:        #B85C4C;
   --adm-danger-bg:     #FCEEED;
 
-  /* ============ GRADIENTS (Light) ============ */
-  --grad-land:     linear-gradient(160deg, #FBFCF8 0%, #EFF4EB 52%, #F4EFE6 100%);
-  --grad-land-card:linear-gradient(180deg, #FFFFFF 0%, #F7FAF4 100%);
-  --grad-land-hero:linear-gradient(150deg, #F1F6EE 0%, #FBFCF8 48%, #F6F0E6 100%);
-  --grad-accent:   linear-gradient(135deg, #385842 0%, #64866C 100%);
+  /* ============ GRADIENTS (Warm) ============ */
+  --grad-land:     linear-gradient(160deg, #FAF8F4 0%, #EDE6DA 52%, #F4EFE6 100%);
+  --grad-land-card:linear-gradient(180deg, #FFFFFF 0%, #F5F0E8 100%);
+  --grad-land-hero:linear-gradient(150deg, #F0EBE3 0%, #FAF8F4 48%, #F6F0E6 100%);
+  --grad-accent:   linear-gradient(135deg, #6A4A3A 0%, #9A7A6A 100%);
   --grad-adm:      linear-gradient(135deg, #FAF8F4 0%, #F5F0E8 100%);
   --grad-adm-card: linear-gradient(180deg, #FFFFFF 0%, #FDFCFA 100%);
 

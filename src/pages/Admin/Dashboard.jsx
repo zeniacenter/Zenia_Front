@@ -16,10 +16,10 @@ const localizer = dateFnsLocalizer({
 });
 
 const STATUSES_COLORS = {
-  confirmada: '#5C8A60',
+  confirmada: '#8B6A50',
   pendiente: '#C9944A',
   cancelada: '#B85C4C',
-  realizada: '#3D7A42',
+  realizada: '#6A4A3A',
   postergada: '#4A7A9A',
 };
 
@@ -225,8 +225,8 @@ export default function Dashboard() {
                     <span style={{
                       fontSize: '0.7rem', fontWeight: 600,
                       padding: '0.2rem 0.6rem', borderRadius: '12px',
-                      background: apt.status === 'confirmada' ? '#EDF5EE' : '#FDF6E9',
-                      color: apt.status === 'confirmada' ? '#5C8A60' : '#8B6520',
+                      background: apt.status === 'confirmada' ? '#F5EDE5' : '#FDF6E9',
+                      color: apt.status === 'confirmada' ? '#8B6A50' : '#8B6520',
                     }}>
                       {apt.status}
                     </span>
