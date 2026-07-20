@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { therapistsAPI } from '../../services/api';
 import { Sparkles, Gift, ArrowLeft, MapPin } from 'lucide-react';
 
 const STEPS = [
@@ -108,8 +109,35 @@ export default function Booking() {
     return getTotalPrice();
   };
 
+  const busySlotsCache = useRef({});
+  const loadingSlots = useRef(false);
+
   const getSelectedTherapistObj = () => therapists.find((t) => t.id === selectedTherapist);
   const getSelectedCabinObj = () => cabins.find((c) => c.id === selectedCabin);
+
+  const [busySlots, setBusySlots] = useState([]);
+
+  useEffect(() => {
+    if (!selectedTherapist || !selectedDate) {
+      setBusySlots([]);
+      return;
+    }
+    const cacheKey = `${selectedTherapist}_${selectedDate}`;
+    if (busySlotsCache.current[cacheKey]) {
+      setBusySlots(busySlotsCache.current[cacheKey]);
+      return;
+    }
+    if (loadingSlots.current) return;
+    loadingSlots.current = true;
+    therapistsAPI.busySlots(selectedTherapist, selectedDate)
+      .then((res) => {
+        const slots = res.data.busy_slots || [];
+        busySlotsCache.current[cacheKey] = slots;
+        setBusySlots(slots);
+      })
+      .catch(() => setBusySlots([]))
+      .finally(() => { loadingSlots.current = false; });
+  }, [selectedTherapist, selectedDate]);
 
   const getAvailableTimeSlots = () => {
     const therapist = getSelectedTherapistObj();
@@ -118,15 +146,18 @@ export default function Booking() {
     const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const dayName = dayNames[dateObj.getDay()];
     const slots = therapist.schedule[dayName] || [];
+
+    let available = slots.filter((slot) => !busySlots.includes(slot));
+
     if (selectedDate === today) {
       const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      return slots.filter((slot) => {
+      available = available.filter((slot) => {
         const [h, m] = slot.split(':').map(Number);
         return h * 60 + m > currentMinutes;
       });
     }
-    return slots;
+    return available;
   };
 
   const canProceed = () => {

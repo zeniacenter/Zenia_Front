@@ -64,6 +64,7 @@ export const therapistsAPI = {
   update: (id, data) => api.put(`/admin/therapists/${id}`, data),
   delete: (id) => api.delete(`/admin/therapists/${id}`),
   availability: (id, date) => api.get(`/therapists/${id}/availability`, { params: { date } }),
+  busySlots: (id, date) => api.get(`/therapists/${id}/busy-slots`, { params: { date } }),
 };
 
 export const cabinsAPI = {
@@ -83,13 +84,30 @@ export const appointmentsAPI = {
   calendar: (params) => api.get('/admin/appointments/calendar', { params }),
 };
 
+const buildReportsUrl = (params, path) => {
+  const query = new URLSearchParams();
+  if (params.date_from) query.set('date_from', params.date_from);
+  if (params.date_to) query.set('date_to', params.date_to);
+  if (params.branch_id) query.set('branch_id', params.branch_id);
+  if (params.therapist_id) query.set('therapist_id', params.therapist_id);
+  if (params.status) query.set('status', params.status);
+  const qs = query.toString();
+  return qs ? `${path}?${qs}` : path;
+};
+
 export const reportsAPI = {
   dashboard: () => api.get('/admin/reports/dashboard'),
+  dashboardData: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/dashboard-data')),
   weeklyRevenue: () => api.get('/admin/reports/weekly-revenue'),
   occupancy: () => api.get('/admin/reports/occupancy'),
   peakHours: () => api.get('/admin/reports/peak-hours'),
   revenueByHour: () => api.get('/admin/reports/revenue-by-hour'),
   revenueByCategory: () => api.get('/admin/reports/revenue-by-category'),
+  filtered: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/filtered')),
+  exportPdf: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/pdf'), { responseType: 'blob' }),
+  exportExcel: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/excel'), { responseType: 'blob' }),
+  exportSummaryPdf: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/summary-pdf'), { responseType: 'blob' }),
+  exportSummaryExcel: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/summary-excel'), { responseType: 'blob' }),
 };
 
 export const uploadAPI = {

@@ -1,15 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-
-function toDateStr(d) {
-  if (!d) return '';
-  const s = typeof d === 'string' ? d : String(d);
-  return s.split('T')[0];
-}
+import { therapistsAPI } from '../../services/api';
 
 export default function AdminBooking() {
-  const { services, therapists, cabins, branches, appointments, addAppointment, settings } = useApp();
+  const { services, therapists, cabins, branches, addAppointment, settings } = useApp();
   const navigate = useNavigate();
 
   const [selectedService, setSelectedService] = useState('');
@@ -21,9 +16,34 @@ export default function AdminBooking() {
   const [hours, setHours] = useState(1);
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [busySlots, setBusySlots] = useState([]);
+  const busySlotsCache = useRef({});
+  const loadingSlots = useRef(false);
 
   const getSelectedTherapistObj = () => therapists.find((t) => String(t.id) === String(selectedTherapist));
   const getSelectedServiceObj = () => services.find((s) => String(s.id) === String(selectedService));
+
+  useEffect(() => {
+    if (!selectedTherapist || !selectedDate) {
+      setBusySlots([]);
+      return;
+    }
+    const cacheKey = `${selectedTherapist}_${selectedDate}`;
+    if (busySlotsCache.current[cacheKey]) {
+      setBusySlots(busySlotsCache.current[cacheKey]);
+      return;
+    }
+    if (loadingSlots.current) return;
+    loadingSlots.current = true;
+    therapistsAPI.busySlots(selectedTherapist, selectedDate)
+      .then((res) => {
+        const slots = res.data.busy_slots || [];
+        busySlotsCache.current[cacheKey] = slots;
+        setBusySlots(slots);
+      })
+      .catch(() => setBusySlots([]))
+      .finally(() => { loadingSlots.current = false; });
+  }, [selectedTherapist, selectedDate]);
 
   const getAvailableTimeSlots = () => {
     const therapist = getSelectedTherapistObj();
@@ -33,29 +53,17 @@ export default function AdminBooking() {
     const dayName = dayNames[dateObj.getDay()];
     const scheduleSlots = therapist.schedule[dayName] || [];
 
-    const bookedSlots = appointments
-      .filter((a) => {
-        const aptTherapistId = a.therapistId || a.therapist_id;
-        return String(aptTherapistId) === String(selectedTherapist)
-          && toDateStr(a.date) === selectedDate
-          && ['pendiente', 'confirmada'].includes(a.status);
-      })
-      .flatMap((a) => {
-        const start = a.start_time || a.time;
-        const end = a.end_time;
-        if (!start || !end) return [];
-        const booked = [];
-        let [sh, sm] = start.split(':').map(Number);
-        const [eh, em] = end.split(':').map(Number);
-        while (sh < eh || (sh === eh && sm < em)) {
-          booked.push(`${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`);
-          sm += 30;
-          if (sm >= 60) { sh++; sm = 0; }
-        }
-        return booked;
-      });
+    let available = scheduleSlots.filter((slot) => !busySlots.includes(slot));
 
-    return scheduleSlots.filter((slot) => !bookedSlots.includes(slot));
+    if (selectedDate === today) {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      available = available.filter((slot) => {
+        const [h, m] = slot.split(':').map(Number);
+        return h * 60 + m > currentMinutes;
+      });
+    }
+    return available;
   };
 
   const getTotal = () => {
@@ -215,26 +223,16 @@ export default function AdminBooking() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <button
                   type="button"
+                  className="hours-btn"
                   onClick={() => setHours((h) => Math.max(0.5, h - 0.5))}
-                  style={{
-                    width: '36px', height: '36px', borderRadius: '50%',
-                    border: '1.5px solid var(--land-border)', background: 'var(--dark-700)',
-                    color: 'var(--land-text)', fontSize: '1.1rem', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
                 >−</button>
                 <span style={{ fontSize: '1rem', fontWeight: 600, minWidth: '60px', textAlign: 'center' }}>
                   {hours} {hours === 1 ? 'hora' : 'horas'}
                 </span>
                 <button
                   type="button"
+                  className="hours-btn"
                   onClick={() => setHours((h) => Math.min(8, h + 0.5))}
-                  style={{
-                    width: '36px', height: '36px', borderRadius: '50%',
-                    border: '1.5px solid var(--land-border)', background: 'var(--dark-700)',
-                    color: 'var(--land-text)', fontSize: '1.1rem', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
                 >+</button>
                 <span style={{ color: 'var(--land-text-muted)', fontSize: '0.85rem' }}>
                   — S/ {getTotal()}

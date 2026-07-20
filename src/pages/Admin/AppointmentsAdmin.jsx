@@ -186,7 +186,7 @@ export default function AppointmentsAdmin() {
                       </span>
                     </td>
                     <td style={{ padding: '0.7rem 1rem', fontSize: '0.8rem', color: '#3D2E24', whiteSpace: 'nowrap' }}>
-                      {apt.date}
+                      {apt.date ? new Date(apt.date).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
                     </td>
                     <td style={{ padding: '0.7rem 1rem', fontSize: '0.8rem', color: '#3D2E24', whiteSpace: 'nowrap' }}>
                       {getTime(apt)} - {getEndTime(apt)}
