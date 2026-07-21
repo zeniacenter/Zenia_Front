@@ -19,6 +19,7 @@ import UsersAdmin from './pages/Admin/UsersAdmin';
 import SettingsAdmin from './pages/Admin/SettingsAdmin';
 import WhatsAppAdmin from './pages/Admin/WhatsAppAdmin';
 import SedesAdmin from './pages/Admin/SedesAdmin';
+import BoletasPlaceholder from './pages/Admin/BoletasPlaceholder';
 import './styles/App.css';
 import './styles/landing-premium.css';
 
@@ -51,6 +52,7 @@ function AppContent() {
             <Route path="whatsapp" element={<WhatsAppAdmin />} />
             <Route path="sedas" element={<SedesAdmin />} />
             <Route path="configuracion" element={<SettingsAdmin />} />
+            <Route path="boletas/:id" element={<BoletasPlaceholder />} />
           </Route>
         </Routes>
       </div>

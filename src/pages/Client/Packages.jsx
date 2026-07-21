@@ -5,8 +5,11 @@ export default function Packages() {
   const { packages, services, settings } = useApp();
   const activePackages = packages.filter((p) => p.active);
 
-  const getServiceNames = (ids) =>
-    ids.map((id) => services.find((s) => s.id === id)?.name || 'N/A').join(', ');
+  const getServiceNames = (sessions) =>
+    (sessions || []).map((s) => {
+      const svc = services.find((sv) => sv.id === s.id);
+      return svc ? `${svc.name} (${s.hours}h)` : 'N/A';
+    }).join(', ');
 
   return (
     <div>
@@ -31,10 +34,9 @@ export default function Packages() {
                 </div>
                 <p className="card-text">{pkg.description}</p>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                  Servicios: {getServiceNames(pkg.serviceIds)}
-                </p>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                  Duración: {pkg.hours} {pkg.hours === 1 ? 'hora' : 'horas'}
+                  {(pkg.sessions || []).length > 0
+                    ? `${pkg.sessions.length} sesiones incluidas`
+                    : `${pkg.hours}h de duración`}
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   {settings.priceVisible && (
@@ -45,7 +47,7 @@ export default function Packages() {
                       <span className="card-price">S/ {pkg.packagePrice}</span>
                     </div>
                   )}
-                  <Link to="/agendar" className="btn btn-primary btn-sm">
+                  <Link to={`/agendar?package=${pkg.id}`} className="btn btn-primary btn-sm">
                     Agendar
                   </Link>
                 </div>

@@ -25,7 +25,7 @@ export default function Services() {
                       S/ {service.pricePerHour} <span>/ hora</span>
                     </div>
                   )}
-                  <Link to="/agendar" className="btn btn-primary btn-sm">
+                  <Link to={`/agendar?service=${service.id}`} className="btn btn-primary btn-sm">
                     Agendar
                   </Link>
                 </div>

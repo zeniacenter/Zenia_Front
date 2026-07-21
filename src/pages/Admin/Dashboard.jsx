@@ -36,13 +36,31 @@ function toDateStr(d) {
 }
 
 export default function Dashboard() {
-  const { appointments, therapists, services, cabins } = useApp();
+  const { appointments, therapists, services, cabins, branches } = useApp();
   const [selectedDay, setSelectedDay] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState('month');
+  const [filterBranch, setFilterBranch] = useState('');
+
+  const filteredAppointments = useMemo(() => {
+    if (!filterBranch) return appointments;
+    return appointments.filter((a) => {
+      const cabinId = a.cabinId || a.cabin_id;
+      if (cabinId) {
+        const cabin = cabins.find((c) => c.id === cabinId);
+        if (cabin && String(c.branchId || c.branch_id) === String(filterBranch)) return true;
+      }
+      const therapistId = a.therapistId || a.therapist_id;
+      if (therapistId) {
+        const therapist = therapists.find((t) => t.id === therapistId);
+        if (therapist && therapist.branchIds?.includes(Number(filterBranch))) return true;
+      }
+      return false;
+    });
+  }, [appointments, filterBranch, cabins, therapists]);
 
   const events = useMemo(() =>
-    appointments
+    filteredAppointments
       .filter((a) => a.status !== 'cancelada')
       .map((apt) => {
         const therapistId = apt.therapistId || apt.therapist_id;
@@ -65,27 +83,27 @@ export default function Dashboard() {
         };
       })
       .filter(Boolean),
-    [appointments, therapists]
+    [filteredAppointments, therapists]
   );
 
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const totalRev = appointments.reduce((sum, a) => sum + Number(a.total || a.total_price || 0), 0);
+    const totalRev = filteredAppointments.reduce((sum, a) => sum + Number(a.total || a.total_price || 0), 0);
     return {
-      totalAppointments: appointments.length,
-      todayCount: appointments.filter((a) => toDateStr(a.date) === today).length,
+      totalAppointments: filteredAppointments.length,
+      todayCount: filteredAppointments.filter((a) => toDateStr(a.date) === today).length,
       totalRevenue: totalRev >= 1000 ? `${(totalRev / 1000).toFixed(1)}k` : Math.round(totalRev).toString(),
-      pendingCount: appointments.filter((a) => a.status === 'pendiente').length,
+      pendingCount: filteredAppointments.filter((a) => a.status === 'pendiente').length,
       cabinCount: cabins.length,
     };
-  }, [appointments, cabins]);
+  }, [filteredAppointments, cabins]);
 
   const selectedAppointments = useMemo(() => {
     if (!selectedDay) return [];
-    return appointments.filter((a) => {
+    return filteredAppointments.filter((a) => {
       return toDateStr(a.date) === selectedDay && a.status !== 'cancelada';
     });
-  }, [appointments, selectedDay]);
+  }, [filteredAppointments, selectedDay]);
 
   const eventStyleGetter = (event) => ({
     style: {
@@ -113,6 +131,20 @@ export default function Dashboard() {
         <span style={{ color: '#A89888', fontSize: '0.85rem' }}>
           {new Date().toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </span>
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
+        <span style={{ fontSize: '0.82rem', color: '#A89888' }}>Filtrar por sede:</span>
+        <select
+          value={filterBranch}
+          onChange={(e) => setFilterBranch(e.target.value)}
+          style={{ padding: '0.4rem 0.75rem', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#fff', color: '#3D2E24', fontSize: '0.85rem', outline: 'none' }}
+        >
+          <option value="">Todas</option>
+          {branches.filter((b) => b.is_active).map((b) => (
+            <option key={b.id} value={b.id}>{b.name}</option>
+          ))}
+        </select>
       </div>
 
       <div className="stats-grid">

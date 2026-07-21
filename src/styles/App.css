@@ -1608,6 +1608,8 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   padding: var(--sp-5);
   position: sticky;
   top: 88px;
+  align-self: start;
+  margin-top: 4.5rem;
   height: fit-content;
   max-height: calc(100vh - 120px);
   overflow-y: auto;
@@ -1641,6 +1643,22 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
 }
 
 .sidebar-value { font-size: var(--fs-sm); font-weight: 500; }
+
+.sidebar-service-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-1) 0;
+}
+
+.sidebar-service-item span:first-child { font-size: var(--fs-sm); }
+
+.sidebar-duration-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
 
 .sidebar-total {
   display: flex;

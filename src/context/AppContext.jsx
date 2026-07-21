@@ -33,29 +33,47 @@ export function AppProvider({ children }) {
   const [settings, setSettings] = useState({ priceVisible: true, cabinRequired: true, branchRequired: true });
   const isAdminLoggedIn = !!token && !!user;
 
-  const transformPackage = (pkg) => ({
-    ...pkg,
-    serviceIds: pkg.services ? pkg.services.map((s) => s.id) : [],
-    originalPrice: parseFloat(pkg.original_price) || 0,
-    packagePrice: parseFloat(pkg.package_price) || 0,
-    active: pkg.is_active ?? true,
-  });
+  const transformPackage = (pkg) => {
+    const sessions = pkg.services
+      ? pkg.services.map((s) => ({ id: s.id, name: s.name, hours: parseFloat(s.pivot?.hours) || 1 }))
+      : [];
+    return {
+      ...pkg,
+      sessions,
+      serviceIds: sessions.map((s) => s.id),
+      originalPrice: parseFloat(pkg.original_price) || 0,
+      packagePrice: parseFloat(pkg.package_price) || 0,
+      active: pkg.is_active ?? true,
+      branchId: pkg.branch_id ?? pkg.branch?.id ?? null,
+    };
+  };
 
   const transformService = (svc) => ({
     ...svc,
     pricePerHour: parseFloat(svc.price_per_hour) || 0,
     pricePerHalfHour: parseFloat(svc.price_per_half_hour) || 0,
+    branchIds: svc.branches ? svc.branches.map((b) => b.id) : [],
   });
 
   const transformTherapist = (th) => ({
     ...th,
     available: th.is_available ?? true,
+    serviceIds: th.services ? th.services.map((s) => s.id) : [],
+    branchIds: th.branches ? th.branches.map((b) => b.id) : [],
   });
 
   const transformCabin = (cab) => ({
     ...cab,
     available: cab.is_available ?? true,
     serviceIds: cab.services ? cab.services.map((s) => s.id) : [],
+    branchId: cab.branch_id ?? cab.branch?.id ?? null,
+  });
+
+  const transformBranch = (br) => ({
+    ...br,
+    therapistIds: br.therapists ? br.therapists.map((t) => t.id) : [],
+    serviceIds: br.services ? br.services.map((s) => s.id) : [],
+    cabinCount: br.cabins ? br.cabins.length : 0,
   });
 
   useEffect(() => {
@@ -71,7 +89,7 @@ export function AppProvider({ children }) {
       setTherapists(t.data.map(transformTherapist));
       setCabins(c.data.map(transformCabin));
       setPackages(p.data.map(transformPackage));
-      setBranches(b.data);
+      setBranches(b.data.map(transformBranch));
     }).catch(() => {});
   }, [token]);
 
@@ -91,7 +109,7 @@ export function AppProvider({ children }) {
         setTherapists(t.data.map(transformTherapist));
         setCabins(c.data.map(transformCabin));
         setPackages(p.data.map(transformPackage));
-        setBranches(b.data);
+        setBranches(b.data.map(transformBranch));
         setAppointments(a.data);
       }).catch(() => {});
     }
@@ -166,6 +184,7 @@ export function AppProvider({ children }) {
       category: service.category,
       image: service.image || '',
       is_active: service.is_active ?? true,
+      branch_ids: service.branchIds || [],
     };
     try {
       const res = await servicesAPI.create(payload);
@@ -186,6 +205,7 @@ export function AppProvider({ children }) {
       category: updates.category,
       image: updates.image || '',
       is_active: updates.is_active ?? true,
+      branch_ids: updates.branchIds || [],
     };
     try {
       const res = await servicesAPI.update(id, payload);
@@ -212,6 +232,8 @@ export function AppProvider({ children }) {
       image: therapist.image || '',
       is_available: therapist.available ?? true,
       schedule: therapist.schedule,
+      service_ids: therapist.serviceIds || [],
+      branch_ids: therapist.branchIds || [],
     };
     try {
       const res = await therapistsAPI.create(payload);
@@ -231,6 +253,8 @@ export function AppProvider({ children }) {
       image: updates.image || '',
       is_available: updates.available ?? true,
       schedule: updates.schedule,
+      service_ids: updates.serviceIds || [],
+      branch_ids: updates.branchIds || [],
     };
     try {
       const res = await therapistsAPI.update(id, payload);
@@ -285,6 +309,7 @@ export function AppProvider({ children }) {
       capacity: cabin.capacity,
       image: cabin.image,
       is_available: cabin.available ?? cabin.is_available ?? true,
+      branch_id: cabin.branchId || cabin.branch_id,
       service_ids: cabin.serviceIds || [],
     };
     try {
@@ -304,6 +329,7 @@ export function AppProvider({ children }) {
       capacity: updates.capacity,
       image: updates.image,
       is_available: updates.available ?? updates.is_available ?? true,
+      branch_id: updates.branchId || updates.branch_id,
       service_ids: updates.serviceIds || [],
     };
     try {
@@ -324,6 +350,16 @@ export function AppProvider({ children }) {
   }, []);
 
   const addPackage = useCallback(async (pkg) => {
+    const sessions = pkg.sessions || [];
+    const expandedIds = [];
+    const expandedHours = {};
+    sessions.forEach((s) => {
+      const qty = s.qty || 1;
+      for (let i = 0; i < qty; i++) {
+        expandedIds.push(s.id);
+        expandedHours[s.id] = s.hours || 1;
+      }
+    });
     const payload = {
       name: pkg.name,
       description: pkg.description,
@@ -332,7 +368,9 @@ export function AppProvider({ children }) {
       package_price: pkg.packagePrice,
       image: pkg.image || '',
       is_active: pkg.active ?? true,
-      service_ids: pkg.serviceIds || [],
+      branch_id: pkg.branchId || null,
+      service_ids: expandedIds,
+      service_hours: expandedHours,
     };
     try {
       const res = await packagesAPI.create(payload);
@@ -345,6 +383,16 @@ export function AppProvider({ children }) {
   }, []);
 
   const updatePackage = useCallback(async (id, updates) => {
+    const sessions = updates.sessions || [];
+    const expandedIds = [];
+    const expandedHours = {};
+    sessions.forEach((s) => {
+      const qty = s.qty || 1;
+      for (let i = 0; i < qty; i++) {
+        expandedIds.push(s.id);
+        expandedHours[s.id] = s.hours || 1;
+      }
+    });
     const payload = {
       name: updates.name,
       description: updates.description,
@@ -353,7 +401,9 @@ export function AppProvider({ children }) {
       package_price: updates.packagePrice,
       image: updates.image || '',
       is_active: updates.active ?? true,
-      service_ids: updates.serviceIds || [],
+      branch_id: updates.branchId || null,
+      service_ids: expandedIds,
+      service_hours: expandedHours,
     };
     try {
       const res = await packagesAPI.update(id, payload);
@@ -373,9 +423,17 @@ export function AppProvider({ children }) {
   }, []);
 
   const addBranch = useCallback(async (branch) => {
+    const payload = {
+      name: branch.name,
+      address: branch.address,
+      phone: branch.phone,
+      is_active: branch.is_active ?? true,
+      therapist_ids: branch.therapistIds || [],
+      service_ids: branch.serviceIds || [],
+    };
     try {
-      const res = await branchesAPI.create(branch);
-      setBranches((prev) => [...prev, res.data]);
+      const res = await branchesAPI.create(payload);
+      setBranches((prev) => [...prev, transformBranch(res.data)]);
       return res.data;
     } catch (err) {
       console.error('Error creando sede:', err);
@@ -384,9 +442,17 @@ export function AppProvider({ children }) {
   }, []);
 
   const updateBranch = useCallback(async (id, updates) => {
+    const payload = {
+      name: updates.name,
+      address: updates.address,
+      phone: updates.phone,
+      is_active: updates.is_active ?? true,
+      therapist_ids: updates.therapistIds || [],
+      service_ids: updates.serviceIds || [],
+    };
     try {
-      const res = await branchesAPI.update(id, updates);
-      setBranches((prev) => prev.map((b) => (b.id === id ? res.data : b)));
+      const res = await branchesAPI.update(id, payload);
+      setBranches((prev) => prev.map((b) => (b.id === id ? transformBranch(res.data) : b)));
     } catch (err) {
       console.error('Error actualizando sede:', err);
     }

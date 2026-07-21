@@ -7,10 +7,10 @@ export default function AdminBooking() {
   const { services, therapists, cabins, branches, addAppointment, settings } = useApp();
   const navigate = useNavigate();
 
+  const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedService, setSelectedService] = useState('');
   const [selectedTherapist, setSelectedTherapist] = useState('');
   const [selectedCabin, setSelectedCabin] = useState('');
-  const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [hours, setHours] = useState(1);
@@ -19,6 +19,29 @@ export default function AdminBooking() {
   const [busySlots, setBusySlots] = useState([]);
   const busySlotsCache = useRef({});
   const loadingSlots = useRef(false);
+
+  const filteredServices = selectedBranch
+    ? services.filter((s) => {
+        const branch = branches.find((b) => b.id === Number(selectedBranch));
+        if (!branch || !branch.serviceIds || branch.serviceIds.length === 0) return true;
+        return branch.serviceIds.includes(s.id);
+      })
+    : services;
+
+  const filteredCabins = selectedBranch
+    ? cabins.filter((c) => {
+        if (String(c.branchId || c.branch_id) !== String(selectedBranch)) return false;
+        return c.is_available ?? c.available;
+      })
+    : cabins.filter((c) => c.is_available ?? c.available);
+
+  const filteredTherapists = selectedBranch
+    ? therapists.filter((t) => {
+        if (!(t.is_available ?? t.available)) return false;
+        if (!t.branchIds || t.branchIds.length === 0) return true;
+        return t.branchIds.includes(Number(selectedBranch));
+      })
+    : therapists.filter((t) => t.is_available ?? t.available);
 
   const getSelectedTherapistObj = () => therapists.find((t) => String(t.id) === String(selectedTherapist));
   const getSelectedServiceObj = () => services.find((s) => String(s.id) === String(selectedService));
@@ -51,7 +74,8 @@ export default function AdminBooking() {
     const dateObj = new Date(selectedDate + 'T12:00:00');
     const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const dayName = dayNames[dateObj.getDay()];
-    const scheduleSlots = therapist.schedule[dayName] || [];
+    const schedule = therapist.schedule || {};
+    const scheduleSlots = schedule[dayName] || [];
 
     let available = scheduleSlots.filter((slot) => !busySlots.includes(slot));
 
@@ -71,6 +95,14 @@ export default function AdminBooking() {
     if (!service) return 0;
     const basePrice = hours <= 0.5 ? service.pricePerHalfHour : service.pricePerHour;
     return basePrice * hours;
+  };
+
+  const handleBranchChange = (branchId) => {
+    setSelectedBranch(branchId);
+    setSelectedService('');
+    setSelectedTherapist('');
+    setSelectedCabin('');
+    setSelectedTime('');
   };
 
   const handleSubmit = async (e) => {
@@ -120,6 +152,23 @@ export default function AdminBooking() {
 
         <div className="card" style={{ padding: '2rem' }}>
           <form onSubmit={handleSubmit}>
+            {settings.branchRequired && (
+              <div className="form-group">
+                <label>Sede</label>
+                <select
+                  className="form-control"
+                  value={selectedBranch}
+                  onChange={(e) => handleBranchChange(e.target.value)}
+                  required
+                >
+                  <option value="">Seleccionar sede</option>
+                  {branches.filter((b) => b.is_active).map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}{b.address ? ` - ${b.address}` : ''}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group">
                 <label>Servicio</label>
@@ -130,7 +179,7 @@ export default function AdminBooking() {
                   required
                 >
                   <option value="">Seleccionar servicio</option>
-                  {services.map((s) => (
+                  {filteredServices.map((s) => (
                     <option key={s.id} value={s.id}>{s.name} - S/ {s.pricePerHour}/h</option>
                   ))}
                 </select>
@@ -147,7 +196,7 @@ export default function AdminBooking() {
                   required
                 >
                   <option value="">Seleccionar terapeuta</option>
-                  {therapists.filter((t) => t.available).map((t) => (
+                  {filteredTherapists.map((t) => (
                     <option key={t.id} value={t.id}>{t.name} - {t.specialty}</option>
                   ))}
                 </select>
@@ -164,25 +213,8 @@ export default function AdminBooking() {
                   required
                 >
                   <option value="">Seleccionar cabina</option>
-                  {cabins.filter((c) => c.available).map((c) => (
+                  {filteredCabins.map((c) => (
                     <option key={c.id} value={c.id}>{c.name} (Cap: {c.capacity})</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {settings.branchRequired && (
-              <div className="form-group">
-                <label>Sede</label>
-                <select
-                  className="form-control"
-                  value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
-                  required
-                >
-                  <option value="">Seleccionar sede</option>
-                  {branches.filter((b) => b.is_active).map((b) => (
-                    <option key={b.id} value={b.id}>{b.name}{b.address ? ` - ${b.address}` : ''}</option>
                   ))}
                 </select>
               </div>
@@ -268,6 +300,67 @@ export default function AdminBooking() {
               Agendar Cita
             </button>
           </form>
+
+          {(selectedBranch || selectedService || selectedTherapist || selectedDate || selectedTime) && (
+            <div style={{
+              marginTop: '1.5rem', padding: '1rem 1.25rem', background: '#FDFBF7',
+              border: '1px solid #E8E0D6', borderRadius: '12px',
+            }}>
+              <h4 style={{ fontSize: '0.85rem', color: '#A89888', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Resumen</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem 1.5rem', fontSize: '0.85rem' }}>
+                {selectedBranch && (
+                  <>
+                    <span style={{ color: '#A89888' }}>Sede</span>
+                    <span style={{ color: '#3D2E24', fontWeight: 600 }}>
+                      {branches.find((b) => String(b.id) === String(selectedBranch))?.name || 'N/A'}
+                    </span>
+                  </>
+                )}
+                {selectedService && (
+                  <>
+                    <span style={{ color: '#A89888' }}>Servicio</span>
+                    <span style={{ color: '#3D2E24', fontWeight: 600 }}>
+                      {services.find((s) => String(s.id) === String(selectedService))?.name || 'N/A'}
+                    </span>
+                  </>
+                )}
+                {selectedTherapist && (
+                  <>
+                    <span style={{ color: '#A89888' }}>Terapeuta</span>
+                    <span style={{ color: '#3D2E24', fontWeight: 600 }}>
+                      {therapists.find((t) => String(t.id) === String(selectedTherapist))?.name || 'N/A'}
+                    </span>
+                  </>
+                )}
+                {selectedCabin && (
+                  <>
+                    <span style={{ color: '#A89888' }}>Cabina</span>
+                    <span style={{ color: '#3D2E24', fontWeight: 600 }}>
+                      {cabins.find((c) => String(c.id) === String(selectedCabin))?.name || 'N/A'}
+                    </span>
+                  </>
+                )}
+                {selectedDate && (
+                  <>
+                    <span style={{ color: '#A89888' }}>Fecha</span>
+                    <span style={{ color: '#3D2E24', fontWeight: 600 }}>
+                      {new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>
+                  </>
+                )}
+                {selectedTime && (
+                  <>
+                    <span style={{ color: '#A89888' }}>Hora</span>
+                    <span style={{ color: '#3D2E24', fontWeight: 600 }}>{selectedTime}</span>
+                  </>
+                )}
+                <span style={{ color: '#A89888' }}>Duración</span>
+                <span style={{ color: '#3D2E24', fontWeight: 600 }}>{hours} {hours === 1 ? 'hora' : 'horas'}</span>
+                <span style={{ color: '#A89888' }}>Total</span>
+                <span style={{ color: '#3D2E24', fontWeight: 600 }}>S/ {getTotal()}</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

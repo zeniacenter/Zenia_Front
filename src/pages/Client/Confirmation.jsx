@@ -40,6 +40,12 @@ export default function Confirmation() {
             <strong>Cabina:</strong>
             <span>{state.cabin}</span>
           </div>
+          {state.branch && (
+            <div className="detail-row">
+              <strong>Sede:</strong>
+              <span>{state.branch}</span>
+            </div>
+          )}
           <div className="detail-row">
             <strong>Servicios:</strong>
             <span>{state.services?.join(', ')}</span>
@@ -50,14 +56,25 @@ export default function Confirmation() {
               <span>{state.packageName}</span>
             </div>
           )}
-          <div className="detail-row">
-            <strong>Fecha:</strong>
-            <span>{state.date}</span>
-          </div>
-          <div className="detail-row">
-            <strong>Hora:</strong>
-            <span>{state.time}</span>
-          </div>
+          {state.sessions && state.sessions.length > 1 ? (
+            state.sessions.map((s, i) => (
+              <div key={i} className="detail-row">
+                <strong>Sesión {i + 1}:</strong>
+                <span>{s.name} — {s.date} {s.time} ({s.hours}h)</span>
+              </div>
+            ))
+          ) : (
+            <>
+              <div className="detail-row">
+                <strong>Fecha:</strong>
+                <span>{state.date}</span>
+              </div>
+              <div className="detail-row">
+                <strong>Hora:</strong>
+                <span>{state.time}</span>
+              </div>
+            </>
+          )}
           <div className="detail-row">
             <strong>Duración:</strong>
             <span>{state.hours} {state.hours === 1 ? 'hora' : 'horas'}</span>
