@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { AppProvider } from './context/AppContext';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AppProvider, useApp } from './context/AppContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Client/Home';
@@ -23,6 +23,15 @@ import BoletasPlaceholder from './pages/Admin/BoletasPlaceholder';
 import './styles/App.css';
 import './styles/landing-premium.css';
 
+function ModuleRoute({ module, children }) {
+  const { hasModulePermission, user } = useApp();
+  if (user?.role === 'admin') return children;
+  if (!hasModulePermission(module, 'can_view')) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+  return children;
+}
+
 function AppContent() {
   const location = useLocation();
   const isHome = location.pathname === '/';
@@ -41,16 +50,16 @@ function AppContent() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="citas" element={<AppointmentsAdmin />} />
-            <Route path="terapeutas" element={<TherapistsAdmin />} />
-            <Route path="cabinas" element={<CabinsAdmin />} />
-            <Route path="servicios" element={<ServicesAdmin />} />
-            <Route path="paquetes" element={<PackagesAdmin />} />
-            <Route path="reportes" element={<Reports />} />
-            <Route path="agendar" element={<AdminBooking />} />
-            <Route path="usuarios" element={<UsersAdmin />} />
-            <Route path="whatsapp" element={<WhatsAppAdmin />} />
-            <Route path="sedas" element={<SedesAdmin />} />
+            <Route path="citas" element={<ModuleRoute module="citas"><AppointmentsAdmin /></ModuleRoute>} />
+            <Route path="terapeutas" element={<ModuleRoute module="terapeutas"><TherapistsAdmin /></ModuleRoute>} />
+            <Route path="cabinas" element={<ModuleRoute module="cabinas"><CabinsAdmin /></ModuleRoute>} />
+            <Route path="servicios" element={<ModuleRoute module="servicios"><ServicesAdmin /></ModuleRoute>} />
+            <Route path="paquetes" element={<ModuleRoute module="paquetes"><PackagesAdmin /></ModuleRoute>} />
+            <Route path="reportes" element={<ModuleRoute module="reportes"><Reports /></ModuleRoute>} />
+            <Route path="agendar" element={<ModuleRoute module="citas"><AdminBooking /></ModuleRoute>} />
+            <Route path="usuarios" element={<ModuleRoute module="usuarios"><UsersAdmin /></ModuleRoute>} />
+            <Route path="whatsapp" element={<ModuleRoute module="usuarios"><WhatsAppAdmin /></ModuleRoute>} />
+            <Route path="sedas" element={<ModuleRoute module="sedas"><SedesAdmin /></ModuleRoute>} />
             <Route path="configuracion" element={<SettingsAdmin />} />
             <Route path="boletas/:id" element={<BoletasPlaceholder />} />
           </Route>

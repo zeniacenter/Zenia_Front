@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { authAPI, usersAPI, servicesAPI, packagesAPI, therapistsAPI, cabinsAPI, appointmentsAPI, branchesAPI } from '../services/api';
+import { authAPI, usersAPI, servicesAPI, packagesAPI, therapistsAPI, cabinsAPI, appointmentsAPI, branchesAPI, setBranchId } from '../services/api';
 import { BarChart3, Calendar, Users, Home, Sparkles, Package, TrendingUp, Plus, User, MapPin } from 'lucide-react';
 
 const AppContext = createContext(null);
@@ -31,6 +31,8 @@ export function AppProvider({ children }) {
   });
   const [token, setToken] = useState(() => sessionStorage.getItem('zenia_token'));
   const [settings, setSettings] = useState({ priceVisible: true, cabinRequired: true, branchRequired: true });
+  const [userPermissions, setUserPermissions] = useState(null);
+  const [selectedBranchId, setSelectedBranchId] = useState(null);
   const isAdminLoggedIn = !!token && !!user;
 
   const transformPackage = (pkg) => {
@@ -95,7 +97,9 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (token) {
-      Promise.all([
+      const ok = (r) => r.status === 'fulfilled' ? r.value.data : null;
+
+      Promise.allSettled([
         usersAPI.list(),
         servicesAPI.list(),
         therapistsAPI.list(),
@@ -103,23 +107,63 @@ export function AppProvider({ children }) {
         packagesAPI.list(),
         branchesAPI.listAll(),
         appointmentsAPI.list(),
-      ]).then(([u, s, t, c, p, b, a]) => {
-        setUsers(u.data);
-        setServices(s.data.map(transformService));
-        setTherapists(t.data.map(transformTherapist));
-        setCabins(c.data.map(transformCabin));
-        setPackages(p.data.map(transformPackage));
-        setBranches(b.data.map(transformBranch));
-        setAppointments(a.data);
-      }).catch(() => {});
+        usersAPI.myPermissions(),
+      ]).then(([u, s, t, c, p, b, a, perms]) => {
+        const uData = ok(u);
+        const sData = ok(s);
+        const tData = ok(t);
+        const cData = ok(c);
+        const pData = ok(p);
+        const bData = ok(b);
+        const aData = ok(a);
+        const permsData = ok(perms);
+
+        if (uData) setUsers(uData);
+        if (sData) setServices(sData.map(transformService));
+        if (tData) setTherapists(tData.map(transformTherapist));
+        if (cData) setCabins(cData.map(transformCabin));
+        if (pData) setPackages(pData.map(transformPackage));
+        if (bData) setBranches(bData.map(transformBranch));
+        if (aData) setAppointments(aData);
+        if (permsData) {
+          setUserPermissions(permsData);
+
+          if (!permsData?.is_admin && permsData?.branches?.length > 0) {
+            const firstBranchId = permsData.branches[0].id;
+            setSelectedBranchId(firstBranchId);
+            setBranchId(firstBranchId);
+          }
+        }
+      });
     }
   }, [token]);
 
   const hasPermission = useCallback((permission) => {
     if (!user) return false;
     if (user.role === 'admin') return true;
+    if (userPermissions?.is_admin) return true;
     return user.permissions?.includes(permission) ?? false;
-  }, [user]);
+  }, [user, userPermissions]);
+
+  const hasModulePermission = useCallback((module, action = 'can_view', branchId = null) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    if (userPermissions?.is_admin) return true;
+
+    if (!userPermissions?.modules) return false;
+
+    const checkBranch = (branchModules) => {
+      const mod = branchModules.find((m) => m.module === module);
+      return mod ? mod[action] : false;
+    };
+
+    if (branchId) {
+      const branchData = userPermissions.modules.find((m) => m.branch_id === branchId);
+      return branchData ? checkBranch(branchData.modules) : false;
+    }
+
+    return userPermissions.modules.some((branchData) => checkBranch(branchData.modules));
+  }, [user, userPermissions]);
 
   const loginAdmin = useCallback(async (email, password) => {
     try {
@@ -140,9 +184,16 @@ export function AppProvider({ children }) {
     }
     setUser(null);
     setToken(null);
+    setSelectedBranchId(null);
+    setBranchId(null);
     sessionStorage.removeItem('zenia_user');
     sessionStorage.removeItem('zenia_token');
   }, [token]);
+
+  const selectBranch = useCallback((branchId) => {
+    setSelectedBranchId(branchId);
+    setBranchId(branchId);
+  }, []);
 
   const addUser = useCallback(async (userData) => {
     try {
@@ -276,8 +327,13 @@ export function AppProvider({ children }) {
   const addAppointment = useCallback(async (appointment) => {
     try {
       const res = await appointmentsAPI.create(appointment);
-      setAppointments((prev) => [...prev, res.data]);
-      return res.data;
+      const data = res.data;
+      if (Array.isArray(data)) {
+        setAppointments((prev) => [...prev, ...data]);
+      } else {
+        setAppointments((prev) => [...prev, data]);
+      }
+      return data;
     } catch (err) {
       console.error('Error creando cita:', err);
       throw err;
@@ -490,8 +546,9 @@ export function AppProvider({ children }) {
     <AppContext.Provider
       value={{
         services, therapists, appointments, packages, cabins, branches,
-        users, user, isAdminLoggedIn, settings,
-        hasPermission,
+        users, user, isAdminLoggedIn, settings, userPermissions,
+        selectedBranchId, selectBranch,
+        hasPermission, hasModulePermission,
         loginAdmin, logoutAdmin,
         updateSettings, updateEntityImage,
         addUser, updateUser, deleteUser,

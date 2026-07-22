@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { therapistsAPI } from '../../services/api';
 import { Sparkles, Gift, ArrowLeft, MapPin } from 'lucide-react';
+import { personAPI } from '../../services/api';
+import TimeSlotPicker from '../../components/TimeSlotPicker';
 
 const BASE_STEPS = [
   { number: 1, label: 'Sede' },
@@ -48,12 +49,34 @@ export default function Booking() {
   const [selectedTime, setSelectedTime] = useState('');
   const [serviceDurations, setServiceDurations] = useState({});
   const [sessionSchedules, setSessionSchedules] = useState([]);
-  const [busySlotsPerSession, setBusySlotsPerSession] = useState({});
   const [clientName, setClientName] = useState('');
+  const [clientLastName, setClientLastName] = useState('');
   const [clientDni, setClientDni] = useState('');
   const [clientAddress, setClientAddress] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
+  const [sessionCount, setSessionCount] = useState(1);
+  const [dniLoading, setDniLoading] = useState(false);
+
+  const handleDniBlur = useCallback(async () => {
+    const dni = clientDni.trim();
+    if (!dni || dni.length < 8) return;
+    setDniLoading(true);
+    try {
+      const res = await personAPI.searchByDni(dni);
+      if (res.data) {
+        const p = res.data;
+        setClientName(p.name || '');
+        setClientLastName(p.last_name || '');
+        setClientPhone(p.phone || '');
+        setClientEmail(p.email || '');
+        setClientAddress(p.address || '');
+      }
+    } catch {
+    } finally {
+      setDniLoading(false);
+    }
+  }, [clientDni]);
 
   const steps = buildSteps(settings, bookingType);
   const totalSteps = steps.length;
@@ -94,8 +117,8 @@ export default function Booking() {
   const cabinTherapists = selectedCabin
     ? branchTherapists.filter((t) => {
         const cabin = cabins.find((c) => c.id === selectedCabin);
-        if (!cabin || !cabin.serviceIds || cabin.serviceIds.length === 0) return true;
-        if (!t.serviceIds || t.serviceIds.length === 0) return true;
+        if (!cabin || !cabin.serviceIds || cabin.serviceIds.length === 0) return false;
+        if (!t.serviceIds || t.serviceIds.length === 0) return false;
         return t.serviceIds.some((sid) => cabin.serviceIds.includes(sid));
       })
     : branchTherapists;
@@ -131,6 +154,21 @@ export default function Booking() {
     }
   }, [searchParams, services, packages, settings]);
 
+  useEffect(() => {
+    if (bookingType === 'services' && sessionCount > 1) {
+      setSessionSchedules((prev) => {
+        if (prev.length === sessionCount) return prev;
+        const next = [];
+        for (let i = 0; i < sessionCount; i++) {
+          next.push(prev[i] || { date: '', time: '' });
+        }
+        return next;
+      });
+    } else if (bookingType === 'services' && sessionCount === 1) {
+      setSessionSchedules([]);
+    }
+  }, [sessionCount, bookingType]);
+
   const goNext = () => { setDirection('forward'); setStep((s) => Math.min(totalSteps, s + 1)); };
   const goBack = () => { setDirection('backward'); setStep((s) => Math.max(1, s - 1)); };
 
@@ -155,6 +193,7 @@ export default function Booking() {
     setSelectedServices([]);
     setSelectedPackage(null);
     setServiceDurations({});
+    setSessionCount(1);
     setDirection('forward');
     setStep(3);
   };
@@ -168,6 +207,9 @@ export default function Booking() {
         else if (!nd[serviceId]) nd[serviceId] = 1;
         return nd;
       });
+      if (next.length > 0 && !prev.includes(serviceId)) {
+        setTimeout(() => goNext(), 300);
+      }
       return next;
     });
   };
@@ -178,6 +220,7 @@ export default function Booking() {
     setSelectedServices(sessions.map((s) => s.id));
     setServiceDurations(Object.fromEntries(sessions.map((s) => [s.id, s.hours])));
     setSessionSchedules(sessions.map(() => ({ date: '', time: '' })));
+    setTimeout(() => goNext(), 300);
   };
 
   const selectCabin = (cabinId) => {
@@ -194,7 +237,7 @@ export default function Booking() {
       return pkg ? pkg.packagePrice || pkg.package_price : 0;
     }
     if (selectedServices.length === 0) return 0;
-    return selectedServices.reduce((sum, id) => {
+    const base = selectedServices.reduce((sum, id) => {
       const svc = services.find((s) => s.id === id);
       if (!svc) return sum;
       const dur = serviceDurations[id] || 1;
@@ -202,13 +245,15 @@ export default function Booking() {
       const price = svc[priceKey] || svc.price_per_hour || 30;
       return sum + price * dur;
     }, 0);
+    return bookingType === 'services' ? base * sessionCount : base;
   };
 
   const getTotalHours = () => {
     if (bookingType === 'packages' && selectedPackage) {
       return selectedServices.reduce((sum, id) => sum + (serviceDurations[id] || 1), 0);
     }
-    return selectedServices.reduce((sum, id) => sum + (serviceDurations[id] || 1), 0);
+    const base = selectedServices.reduce((sum, id) => sum + (serviceDurations[id] || 1), 0);
+    return bookingType === 'services' ? base * sessionCount : base;
   };
 
   const getOriginalPrice = () => {
@@ -219,82 +264,11 @@ export default function Booking() {
     return getTotalPrice();
   };
 
-  const busySlotsCache = useRef({});
-  const loadingSlots = useRef(false);
-
   const getSelectedTherapistObj = () => therapists.find((t) => t.id === selectedTherapist);
   const getSelectedCabinObj = () => cabins.find((c) => c.id === selectedCabin);
   const getSelectedBranchObj = () => branches.find((b) => b.id === selectedBranch);
 
-  const [busySlots, setBusySlots] = useState([]);
-
-  useEffect(() => {
-    if (!selectedTherapist || !selectedDate) {
-      setBusySlots([]);
-      return;
-    }
-    const cacheKey = `${selectedTherapist}_${selectedDate}`;
-    if (busySlotsCache.current[cacheKey]) {
-      setBusySlots(busySlotsCache.current[cacheKey]);
-      return;
-    }
-    if (loadingSlots.current) return;
-    loadingSlots.current = true;
-    therapistsAPI.busySlots(selectedTherapist, selectedDate)
-      .then((res) => {
-        const slots = res.data.busy_slots || [];
-        busySlotsCache.current[cacheKey] = slots;
-        setBusySlots(slots);
-      })
-      .catch(() => setBusySlots([]))
-      .finally(() => { loadingSlots.current = false; });
-  }, [selectedTherapist, selectedDate]);
-
   const today = new Date().toISOString().split('T')[0];
-
-  const getAvailableTimeSlotsForDate = (date, sessionBusySlots = []) => {
-    const therapist = getSelectedTherapistObj();
-    if (!therapist || !date) return [];
-    const dateObj = new Date(date + 'T12:00:00');
-    const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-    const dayName = dayNames[dateObj.getDay()];
-    const schedule = therapist.schedule || {};
-    const slots = schedule[dayName] || [];
-
-    let available = slots.filter((slot) => !sessionBusySlots.includes(slot));
-
-    if (date === today) {
-      const now = new Date();
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      available = available.filter((slot) => {
-        const [h, m] = slot.split(':').map(Number);
-        return h * 60 + m > currentMinutes;
-      });
-    }
-    return available;
-  };
-
-  const getAvailableTimeSlots = () => getAvailableTimeSlotsForDate(selectedDate, busySlots);
-
-  const fetchBusySlotsForSession = async (sessionIdx, date) => {
-    if (!selectedTherapist || !date) {
-      setBusySlotsPerSession((prev) => ({ ...prev, [sessionIdx]: [] }));
-      return;
-    }
-    const cacheKey = `${selectedTherapist}_${date}`;
-    if (busySlotsCache.current[cacheKey]) {
-      setBusySlotsPerSession((prev) => ({ ...prev, [sessionIdx]: busySlotsCache.current[cacheKey] }));
-      return;
-    }
-    try {
-      const res = await therapistsAPI.busySlots(selectedTherapist, date);
-      const slots = res.data.busy_slots || [];
-      busySlotsCache.current[cacheKey] = slots;
-      setBusySlotsPerSession((prev) => ({ ...prev, [sessionIdx]: slots }));
-    } catch {
-      setBusySlotsPerSession((prev) => ({ ...prev, [sessionIdx]: [] }));
-    }
-  };
 
   const canProceed = () => {
     const currentStep = steps[step - 1];
@@ -307,11 +281,11 @@ export default function Booking() {
       case 'Cabina': return selectedCabin !== '';
       case 'Terapeuta': return selectedTherapist !== '';
       case 'Fecha':
-        if (bookingType === 'packages' && sessionSchedules.length > 0) {
+        if ((bookingType === 'packages' && sessionSchedules.length > 0) || (bookingType === 'services' && sessionCount > 1 && sessionSchedules.length > 0)) {
           return sessionSchedules.every((s) => s.date && s.time);
         }
         return selectedDate !== '' && selectedTime !== '';
-      case 'Confirmar': return clientName.trim() !== '' && clientPhone.trim() !== '';
+      case 'Confirmar': return clientName.trim() !== '' && clientLastName.trim() !== '' && clientPhone.trim() !== '';
       default: return false;
     }
   };
@@ -337,6 +311,7 @@ export default function Booking() {
           const price = svc ? (svc.pricePerHour || svc.price_per_hour || 0) * hours : 0;
           await addAppointment({
             client_name: clientName,
+            client_last_name: clientLastName,
             client_dni: clientDni,
             client_address: clientAddress,
             client_phone: clientPhone,
@@ -357,6 +332,7 @@ export default function Booking() {
         navigate('/confirmacion', {
           state: {
             clientName,
+            clientLastName,
             clientDni,
             clientAddress,
             clientPhone,
@@ -386,8 +362,75 @@ export default function Booking() {
       return;
     }
 
+    if (bookingType === 'services' && sessionCount > 1 && sessionSchedules.length > 0) {
+      const svcId = selectedServices[0];
+      const svc = services.find((s) => s.id === svcId);
+      const dur = serviceDurations[svcId] || 1;
+      const pricePerSession = svc ? (dur <= 0.5 ? (svc.pricePerHalfHour || svc.price_per_half_hour || 0) : (svc.pricePerHour || svc.price_per_hour || 0) * dur) : 0;
+      try {
+        for (let i = 0; i < sessionCount; i++) {
+          const sched = sessionSchedules[i];
+          const startMinutes = parseInt(sched.time.split(':')[0]) * 60 + parseInt(sched.time.split(':')[1]);
+          const endMinutes = startMinutes + dur * 60;
+          const endH = Math.floor(endMinutes / 60);
+          const endM = endMinutes % 60;
+          const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+          await addAppointment({
+            client_name: clientName,
+            client_last_name: clientLastName,
+            client_dni: clientDni,
+            client_address: clientAddress,
+            client_phone: clientPhone,
+            client_email: clientEmail,
+            therapist_id: selectedTherapist,
+            cabin_id: selectedCabin || null,
+            branch_id: selectedBranch || null,
+            service_ids: [svcId],
+            date: sched.date,
+            start_time: sched.time,
+            end_time: endTime,
+            hours: dur,
+            total_price: pricePerSession,
+            session_count: sessionCount,
+            session_number: i + 1,
+            status: 'confirmada',
+          });
+        }
+        navigate('/confirmacion', {
+          state: {
+            clientName,
+            clientLastName,
+            clientDni,
+            clientAddress,
+            clientPhone,
+            clientEmail,
+            therapist: getSelectedTherapistObj()?.name,
+            cabin: getSelectedCabinObj()?.name,
+            branch: getSelectedBranchObj()?.name,
+            services: [svc?.name],
+            sessions: sessionSchedules.map((sched, i) => ({
+              name: svc?.name,
+              date: sched.date,
+              time: sched.time,
+              hours: dur,
+            })),
+            date: sessionSchedules.map((s) => s.date).join(', '),
+            time: sessionSchedules.map((s) => s.time).join(', '),
+            hours: getTotalHours(),
+            total: getTotalPrice(),
+            originalPrice: getOriginalPrice(),
+          },
+        });
+      } catch (err) {
+        console.error('Error al agendar:', err);
+        alert('Error al agendar cita: ' + (err.response?.data?.message || err.message || 'Error desconocido'));
+      }
+      return;
+    }
+
     const payload = {
       client_name: clientName,
+      client_last_name: clientLastName,
       client_dni: clientDni,
       client_address: clientAddress,
       client_phone: clientPhone,
@@ -402,6 +445,7 @@ export default function Booking() {
       hours: getTotalHours(),
       service_durations: { ...serviceDurations },
       total_price: getTotalPrice(),
+      session_count: bookingType === 'services' ? sessionCount : 1,
       status: 'confirmada',
     };
     try {
@@ -409,6 +453,7 @@ export default function Booking() {
       navigate('/confirmacion', {
         state: {
           clientName,
+          clientLastName,
           clientDni,
           clientAddress,
           clientPhone,
@@ -618,7 +663,7 @@ export default function Booking() {
                   <div
                     key={therapist.id}
                     className={`wizard-therapist ${selectedTherapist === therapist.id ? 'selected' : ''}`}
-                    onClick={() => setSelectedTherapist(therapist.id)}
+                    onClick={() => { setSelectedTherapist(therapist.id); setTimeout(() => goNext(), 300); }}
                   >
                     {therapist.image ? (
                       <img src={therapist.image} alt={therapist.name} loading="lazy" />
@@ -644,19 +689,20 @@ export default function Booking() {
             <div className="wizard-step">
               <h2 className="wizard-step-title">Fecha y hora</h2>
               <p className="wizard-step-subtitle">
-                {bookingType === 'packages' && sessionSchedules.length > 1
+                {(bookingType === 'packages' && sessionSchedules.length > 1) || (bookingType === 'services' && sessionCount > 1)
                   ? 'Selecciona la fecha y hora para cada sesión'
                   : 'Selecciona cuándo quieres tu cita'}
               </p>
-              {bookingType === 'packages' && sessionSchedules.length > 1 ? (
+              {(bookingType === 'packages' && sessionSchedules.length > 1) || (bookingType === 'services' && sessionCount > 1) ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {sessionSchedules.map((sched, idx) => {
-                    const pkg = packages.find((p) => p.id === selectedPackage);
-                    const sessions = pkg?.sessions || [];
-                    const sessionSvc = services.find((s) => s.id === sessions[idx]?.id);
-                    const sessionName = sessionSvc?.name || `Sesión ${idx + 1}`;
-                    const sessionBusy = busySlotsPerSession[idx] || [];
-                    const sessionSlots = getAvailableTimeSlotsForDate(sched.date, sessionBusy);
+                    const sessionName = bookingType === 'packages'
+                      ? (() => { const pkg = packages.find((p) => p.id === selectedPackage); const sessions = pkg?.sessions || []; return services.find((s) => s.id === sessions[idx]?.id)?.name || `Sesión ${idx + 1}`; })()
+                      : selectedServices.map((id) => services.find((s) => s.id === id)?.name)[0] || `Sesión ${idx + 1}`;
+                    const sessionHours = bookingType === 'packages'
+                      ? (() => { const pkg = packages.find((p) => p.id === selectedPackage); const sessions = pkg?.sessions || []; return sessions[idx]?.hours || 1; })()
+                      : (() => { const svcId = selectedServices[0]; return serviceDurations[svcId] || 1; })();
+                    const therapist = getSelectedTherapistObj();
                     return (
                       <div key={idx} style={{
                         padding: '1rem', borderRadius: '12px',
@@ -664,7 +710,7 @@ export default function Booking() {
                       }}>
                         <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#3D2E24', marginBottom: '0.75rem' }}>
                           Sesión {idx + 1}: {sessionName}
-                          {sessions[idx]?.hours && <span style={{ fontWeight: 400, color: '#A89888', marginLeft: '0.5rem' }}>({sessions[idx].hours}h)</span>}
+                          <span style={{ fontWeight: 400, color: '#A89888', marginLeft: '0.5rem' }}>({sessionHours}h)</span>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                           <div>
@@ -681,7 +727,6 @@ export default function Booking() {
                                   next[idx] = { date: newDate, time: '' };
                                   return next;
                                 });
-                                fetchBusySlotsForSession(idx, newDate);
                               }}
                             />
                           </div>
@@ -690,27 +735,21 @@ export default function Booking() {
                               Hora {sched.date ? '' : '(Selecciona fecha primero)'}
                             </label>
                             {sched.date ? (
-                              <div className="wizard-time-grid" style={{ maxHeight: '120px', overflowY: 'auto' }}>
-                                {sessionSlots.map((slot) => (
-                                  <button
-                                    key={slot}
-                                    type="button"
-                                    className={`wizard-time-slot ${sched.time === slot ? 'selected' : ''}`}
-                                    onClick={() => {
-                                      setSessionSchedules((prev) => {
-                                        const next = [...prev];
-                                        next[idx] = { ...next[idx], time: slot };
-                                        return next;
-                                      });
-                                    }}
-                                  >
-                                    {slot}
-                                  </button>
-                                ))}
-                                {sessionSlots.length === 0 && (
-                                  <p className="wizard-empty" style={{ fontSize: '0.75rem' }}>Sin horarios</p>
-                                )}
-                              </div>
+                              <TimeSlotPicker
+                                therapistId={selectedTherapist}
+                                schedule={therapist?.schedule}
+                                date={sched.date}
+                                value={sched.time}
+                                hours={sessionHours}
+                                compact
+                                onChange={(slot) => {
+                                  setSessionSchedules((prev) => {
+                                    const next = [...prev];
+                                    next[idx] = { ...next[idx], time: slot };
+                                    return next;
+                                  });
+                                }}
+                              />
                             ) : (
                               <div className="wizard-time-placeholder">
                                 <p style={{ fontSize: '0.75rem' }}>Selecciona fecha</p>
@@ -739,21 +778,14 @@ export default function Booking() {
                       Hora {selectedTherapist && selectedDate ? '' : '(Selecciona terapeuta y fecha primero)'}
                     </label>
                     {selectedTherapist && selectedDate ? (
-                      <div className="wizard-time-grid">
-                        {getAvailableTimeSlots().map((slot) => (
-                          <button
-                            key={slot}
-                            type="button"
-                            className={`wizard-time-slot ${selectedTime === slot ? 'selected' : ''}`}
-                            onClick={() => setSelectedTime(slot)}
-                          >
-                            {slot}
-                          </button>
-                        ))}
-                        {getAvailableTimeSlots().length === 0 && (
-                          <p className="wizard-empty">No hay horarios disponibles para este día</p>
-                        )}
-                      </div>
+                      <TimeSlotPicker
+                        therapistId={selectedTherapist}
+                        schedule={getSelectedTherapistObj()?.schedule}
+                        date={selectedDate}
+                        value={selectedTime}
+                        hours={getTotalHours()}
+                        onChange={setSelectedTime}
+                      />
                     ) : (
                       <div className="wizard-time-placeholder">
                         <p>Primero selecciona un terapeuta y una fecha</p>
@@ -771,24 +803,28 @@ export default function Booking() {
               <p className="wizard-step-subtitle">Completa tu información para confirmar la reserva</p>
               <div className="wizard-form-grid">
                 <div className="form-group">
-                  <label>Nombre completo</label>
-                  <input type="text" className="form-control" placeholder="Ej: María García" value={clientName} onChange={(e) => setClientName(e.target.value)} />
+                  <label>Nombre *</label>
+                  <input type="text" className="form-control" placeholder="María" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label>DNI</label>
-                  <input type="text" className="form-control" placeholder="Ej: 45678912" value={clientDni} onChange={(e) => setClientDni(e.target.value)} />
+                  <label>Apellido *</label>
+                  <input type="text" className="form-control" placeholder="García" value={clientLastName} onChange={(e) => setClientLastName(e.target.value)} required />
+                </div>
+                <div className="form-group">
+                  <label>DNI {dniLoading && <span style={{ fontSize: '0.75rem', color: '#8B6520' }}>Buscando...</span>}</label>
+                  <input type="text" className="form-control" placeholder="45678912" maxLength={15} value={clientDni} onChange={(e) => setClientDni(e.target.value)} onBlur={handleDniBlur} />
                 </div>
                 <div className="form-group">
                   <label>Dirección</label>
-                  <input type="text" className="form-control" placeholder="Ej: Av. Principal 123" value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} />
+                  <input type="text" className="form-control" placeholder="Av. Principal 123" value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label>Teléfono</label>
-                  <input type="tel" className="form-control" placeholder="999 888 777" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} />
+                  <label>Teléfono *</label>
+                  <input type="tel" className="form-control" placeholder="999 888 777" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} required />
                 </div>
                 <div className="form-group">
                   <label>Correo electrónico</label>
-                  <input type="email" className="form-control" placeholder="Ej: maria@email.com" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} />
+                  <input type="email" className="form-control" placeholder="maria@email.com" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} />
                 </div>
               </div>
 
@@ -830,6 +866,12 @@ export default function Booking() {
                       </div>
                     );
                   })}
+                  {bookingType === 'services' && sessionCount > 1 && (
+                    <div className="confirm-row">
+                      <span>Sesiones</span>
+                      <span>{sessionCount} × {sessionCount === 1 ? 'sesión' : 'sesiones'}</span>
+                    </div>
+                  )}
                   {!settings.priceVisible && selectedServices.length > 0 && (
                     <div className="confirm-row">
                       <span>Servicios seleccionados</span>
@@ -841,7 +883,7 @@ export default function Booking() {
                     <div className="confirm-row"><span>Cabina</span><span>{getSelectedCabinObj()?.name}</span></div>
                   )}
                   <div className="confirm-row"><span>Terapeuta</span><span>{getSelectedTherapistObj()?.name}</span></div>
-                  {bookingType === 'packages' && sessionSchedules.length > 1 ? (
+                  {(bookingType === 'packages' || (bookingType === 'services' && sessionCount > 1)) && sessionSchedules.length > 1 ? (
                     sessionSchedules.map((sched, idx) => (
                       <div key={idx} className="confirm-row">
                         <span>Sesión {idx + 1}</span>
@@ -901,43 +943,72 @@ export default function Booking() {
                 </div>
               )}
               {bookingType === 'services' && selectedServices.length > 0 && (
-                <div className="sidebar-row">
-                  <span className="sidebar-label">Servicios</span>
-                  <div className="sidebar-value">
-                    {selectedServices.map((id) => {
-                      const svc = services.find((s) => s.id === id);
-                      const dur = serviceDurations[id] || 1;
-                      return (
-                        <div key={id} className="sidebar-service-item">
-                          <span>{svc?.name}</span>
-                          <div className="sidebar-duration-controls">
-                            <button
-                              type="button"
-                              onClick={() => setServiceDurations((d) => ({ ...d, [id]: Math.max(0.5, (d[id] || 1) - 0.5) }))}
-                              style={{
-                                width: '22px', height: '22px', borderRadius: '50%', border: '1px solid #E8E0D6',
-                                background: '#fff', color: '#3D2E24', cursor: 'pointer', display: 'flex',
-                                alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 600, padding: 0,
-                              }}
-                            >−</button>
-                            <span style={{ fontWeight: 600, fontSize: '0.85rem', minWidth: '40px', textAlign: 'center' }}>
-                              {dur}h
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setServiceDurations((d) => ({ ...d, [id]: Math.min(8, (d[id] || 1) + 0.5) }))}
-                              style={{
-                                width: '22px', height: '22px', borderRadius: '50%', border: '1px solid #E8E0D6',
-                                background: '#fff', color: '#3D2E24', cursor: 'pointer', display: 'flex',
-                                alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 600, padding: 0,
-                              }}
-                            >+</button>
+                <>
+                  <div className="sidebar-row">
+                    <span className="sidebar-label">Servicios</span>
+                    <div className="sidebar-value">
+                      {selectedServices.map((id) => {
+                        const svc = services.find((s) => s.id === id);
+                        const dur = serviceDurations[id] || 1;
+                        return (
+                          <div key={id} className="sidebar-service-item">
+                            <span>{svc?.name}</span>
+                            <div className="sidebar-duration-controls">
+                              <button
+                                type="button"
+                                onClick={() => setServiceDurations((d) => ({ ...d, [id]: Math.max(0.5, (d[id] || 1) - 0.5) }))}
+                                style={{
+                                  width: '22px', height: '22px', borderRadius: '50%', border: '1px solid #E8E0D6',
+                                  background: '#fff', color: '#3D2E24', cursor: 'pointer', display: 'flex',
+                                  alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 600, padding: 0,
+                                }}
+                              >−</button>
+                              <span style={{ fontWeight: 600, fontSize: '0.85rem', minWidth: '40px', textAlign: 'center' }}>
+                                {dur}h
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setServiceDurations((d) => ({ ...d, [id]: Math.min(8, (d[id] || 1) + 0.5) }))}
+                                style={{
+                                  width: '22px', height: '22px', borderRadius: '50%', border: '1px solid #E8E0D6',
+                                  background: '#fff', color: '#3D2E24', cursor: 'pointer', display: 'flex',
+                                  alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 600, padding: 0,
+                                }}
+                              >+</button>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                  <div className="sidebar-row">
+                    <span className="sidebar-label">Sesiones</span>
+                    <div className="sidebar-value">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => setSessionCount((c) => Math.max(1, c - 1))}
+                          style={{
+                            width: '22px', height: '22px', borderRadius: '50%', border: '1px solid #E8E0D6',
+                            background: '#fff', color: '#3D2E24', cursor: 'pointer', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 600, padding: 0,
+                          }}
+                        >−</button>
+                        <span style={{ fontWeight: 600, fontSize: '0.85rem', minWidth: '30px', textAlign: 'center' }}>{sessionCount}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSessionCount((c) => Math.min(50, c + 1))}
+                          style={{
+                            width: '22px', height: '22px', borderRadius: '50%', border: '1px solid #E8E0D6',
+                            background: '#fff', color: '#3D2E24', cursor: 'pointer', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 600, padding: 0,
+                          }}
+                        >+</button>
+                        {sessionCount > 1 && <span style={{ color: '#8B6520', fontSize: '0.78rem', fontWeight: 500 }}>Multi-sesión</span>}
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
               {selectedCabin && (
                 <div className="sidebar-row">
@@ -951,17 +1022,17 @@ export default function Booking() {
                   <span className="sidebar-value">{getSelectedTherapistObj()?.name}</span>
                 </div>
               )}
-              {bookingType === 'packages' && sessionSchedules.length > 1 && sessionSchedules.some((s) => s.date) ? (
+              {((bookingType === 'packages' || (bookingType === 'services' && sessionCount > 1)) && sessionSchedules.length > 1 && sessionSchedules.some((s) => s.date)) ? (
                 sessionSchedules.map((sched, idx) => {
                   if (!sched.date) return null;
-                  const pkg = packages.find((p) => p.id === selectedPackage);
-                  const sessions = pkg?.sessions || [];
-                  const svc = services.find((s) => s.id === sessions[idx]?.id);
+                  const svcName = bookingType === 'packages'
+                    ? (() => { const pkg = packages.find((p) => p.id === selectedPackage); const sessions = pkg?.sessions || []; return services.find((s) => s.id === sessions[idx]?.id)?.name; })()
+                    : services.find((s) => s.id === selectedServices[0])?.name;
                   return (
                     <div key={idx} className="sidebar-row">
                       <span className="sidebar-label">Sesión {idx + 1}</span>
                       <span className="sidebar-value" style={{ fontSize: '0.78rem', textAlign: 'right' }}>
-                        {svc?.name && <div style={{ fontWeight: 600 }}>{svc.name}</div>}
+                        {svcName && <div style={{ fontWeight: 600 }}>{svcName}</div>}
                         {sched.date} {sched.time}
                       </span>
                     </div>

@@ -1,8 +1,12 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { therapistsAPI } from '../../services/api';
-import { Inbox } from 'lucide-react';
+import { Inbox, Info } from 'lucide-react';
+import TimeSlotPicker from '../../components/TimeSlotPicker';
+import CancelAppointmentModal from '../../components/CancelAppointmentModal';
+import AppointmentDetailModal from '../../components/AppointmentDetailModal';
+import PaymentScopeModal from '../../components/PaymentScopeModal';
+import { appointmentsAPI } from '../../services/api';
 
 const STATUS_CONFIG = {
   pendiente: { label: 'Pendiente', color: '#8B6520', bg: '#FDF6E9' },
@@ -41,8 +45,11 @@ export default function AppointmentsAdmin() {
   const [postponeDate, setPostponeDate] = useState('');
   const [postponeTime, setPostponeTime] = useState('');
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [filterBranch, setFilterBranch] = useState('');
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [detailTarget, setDetailTarget] = useState(null);
+  const [paymentScopeTarget, setPaymentScopeTarget] = useState(null);
 
   useEffect(() => { setPage(0); }, [filter]);
 
@@ -78,11 +85,8 @@ export default function AppointmentsAdmin() {
   const paged = filtered.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
   const getName = (apt) => apt.person?.name || apt.clientName || 'N/A';
-  const getPhone = (apt) => apt.person?.phone || apt.clientPhone || 'N/A';
-  const getTherapist = (apt) => apt.therapist?.name || 'N/A';
-  const getTime = (apt) => apt.start_time || apt.time || 'N/A';
+  const getTime = (apt) => apt.start_time || 'N/A';
   const getEndTime = (apt) => apt.end_time || '';
-  const getTotal = (apt) => apt.total_price || apt.total || 0;
   const getServices = (apt) => {
     if (apt.services?.length) return apt.services.map((s) => s.name).join(', ');
     const ids = apt.service_ids || apt.serviceIds;
@@ -90,60 +94,18 @@ export default function AppointmentsAdmin() {
     return 'N/A';
   };
 
-  const getPackageName = (apt) => apt.package?.name || null;
-
-  const getPackageDetail = (apt) => {
-    const pkg = apt.package;
-    if (!pkg) return null;
-    const totalSessions = pkg.services?.length || 0;
-    if (!totalSessions) return null;
-    const completed = appointments.filter(
-      (a) => a.package_id === apt.package_id && a.person_id === apt.person_id && a.status === 'realizada'
-    ).length;
-    const remaining = totalSessions - completed;
-    return { name: pkg.name, totalSessions, completed, remaining };
-  };
-
-  const getPaymentLabel = (apt) => {
-    const ps = apt.payment_status || 'pendiente';
-    return PAYMENT_CONFIG[ps] || PAYMENT_CONFIG.pendiente;
-  };
-
-  const cyclePayment = async (apt) => {
-    const order = ['pendiente', 'parcial', 'pagado'];
-    const current = apt.payment_status || 'pendiente';
-    const next = order[(order.indexOf(current) + 1) % order.length];
-    const updates = {
-      payment_status: next,
-      paid_amount: next === 'pagado' ? apt.total_price : next === 'parcial' ? (apt.total_price / 2) : 0,
-    };
-    await updateAppointment(apt.id, updates);
-    if (next === 'pagado' && apt.package_id && apt.person_id) {
-      const siblings = appointments.filter(
-        (a) => a.id !== apt.id && a.package_id === apt.package_id && a.person_id === apt.person_id && a.payment_status !== 'pagado'
-      );
-      for (const sib of siblings) {
-        await updateAppointment(sib.id, { payment_status: 'pagado', paid_amount: sib.total_price });
-      }
+  const getServiceLabel = (apt) => {
+    if (apt.group_id && apt.session_number) {
+      return {
+        type: 'MULTI-SESIÓN',
+        name: apt.services?.length ? apt.services.map((s) => s.name).join(', ') : getServices(apt),
+        detail: `Sesión ${apt.session_number}/${apt.total_sessions}`,
+      };
     }
-  };
-
-  const markPaidForPackage = async (apt) => {
-    await updateAppointment(apt.id, { payment_status: 'pagado', paid_amount: apt.total_price });
-    if (apt.package_id && apt.person_id) {
-      const siblings = appointments.filter(
-        (a) => a.id !== apt.id && a.package_id === apt.package_id && a.person_id === apt.person_id && a.payment_status !== 'pagado'
-      );
-      for (const sib of siblings) {
-        await updateAppointment(sib.id, { payment_status: 'pagado', paid_amount: sib.total_price });
-      }
-    }
-  };
-
-  const getBranchName = (apt) => {
-    const branchId = apt.branch_id || apt.branchId;
-    if (!branchId) return 'N/A';
-    return branches.find((b) => b.id === branchId)?.name || 'N/A';
+    const pkgName = apt.package?.name;
+    const svcName = getServices(apt);
+    if (pkgName) return { type: 'PAQUETE', name: pkgName, detail: svcName };
+    return { type: 'SERVICIO', name: svcName, detail: null };
   };
 
   const openPostpone = (apt) => {
@@ -172,7 +134,63 @@ export default function AppointmentsAdmin() {
     setPostponeTarget(null);
   };
 
+  const handleCancelConfirm = async (reason) => {
+    if (!cancelTarget) return;
+    await updateAppointment(cancelTarget.id, {
+      status: 'cancelada',
+      cancellation_reason: reason,
+    });
+    setCancelTarget(null);
+  };
+
+  const handlePaymentPropagate = async (apt) => {
+    const isGroup = !!apt.group_id;
+
+    if (isGroup) {
+      const siblings = appointments.filter(
+        (a) => a.group_id === apt.group_id && a.person_id === apt.person_id && a.payment_status !== 'pagado'
+      );
+      try {
+        await appointmentsAPI.propagatePaymentGroup(apt.group_id, apt.person_id);
+      } catch {}
+      for (const sib of [...siblings, apt]) {
+        if (sib.payment_status !== 'pagado') {
+          await updateAppointment(sib.id, { payment_status: 'pagado', paid_amount: sib.total_price });
+        }
+      }
+    } else if (apt.package_id) {
+      const siblings = appointments.filter(
+        (a) => a.package_id === apt.package_id && a.person_id === apt.person_id && a.payment_status !== 'pagado'
+      );
+      try {
+        await appointmentsAPI.propagatePayment(apt.package_id, apt.person_id);
+      } catch {}
+      for (const sib of [...siblings, apt]) {
+        if (sib.payment_status !== 'pagado') {
+          await updateAppointment(sib.id, { payment_status: 'pagado', paid_amount: sib.total_price });
+        }
+      }
+    }
+  };
+
+  const handlePaySession = async (apt) => {
+    await updateAppointment(apt.id, {
+      payment_status: 'pagado',
+      paid_amount: apt.total_price,
+    });
+  };
+
+  const handlePayAllSessions = async (apt) => {
+    await handlePaymentPropagate(apt);
+  };
+
   const today = new Date().toISOString().split('T')[0];
+
+  const thStyle = {
+    padding: '0.7rem 1rem', fontSize: '0.7rem', fontWeight: 600,
+    textTransform: 'uppercase', letterSpacing: '0.05em',
+    color: '#A89888', textAlign: 'left', whiteSpace: 'nowrap',
+  };
 
   return (
     <div>
@@ -184,7 +202,7 @@ export default function AppointmentsAdmin() {
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
-        <span style={{ fontSize: '0.82rem', color: '#A89888' }}>Filtrar por sede:</span>
+        <span style={{ fontSize: '0.82rem', color: '#A89888' }}>Sede:</span>
         <select
           value={filterBranch}
           onChange={(e) => setFilterBranch(e.target.value)}
@@ -203,15 +221,12 @@ export default function AppointmentsAdmin() {
             key={f.key}
             onClick={() => setFilter(f.key)}
             style={{
-              padding: '0.4rem 0.9rem',
-              borderRadius: '20px',
+              padding: '0.4rem 0.9rem', borderRadius: '20px',
               border: filter === f.key ? '1.5px solid #C9944A' : '1px solid #E8E0D6',
               background: filter === f.key ? '#FDF6E9' : '#FFFFFF',
               color: filter === f.key ? '#8B6520' : '#A89888',
-              fontSize: '0.8rem',
-              fontWeight: filter === f.key ? 600 : 400,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
+              fontSize: '0.8rem', fontWeight: filter === f.key ? 600 : 400,
+              cursor: 'pointer', transition: 'all 0.2s ease',
             }}
           >
             {f.label} ({counts[f.key]})
@@ -219,33 +234,20 @@ export default function AppointmentsAdmin() {
         ))}
       </div>
 
-      <div style={{
-        background: '#FFFFFF',
-        border: '1px solid #E8E0D6',
-        borderRadius: '14px',
-        overflow: 'hidden',
-      }}>
+      <div style={{ background: '#FFFFFF', border: '1px solid #E8E0D6', borderRadius: '14px', overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #E8E0D6' }}>
-                {['Cliente', 'Teléfono', 'Terapeuta', 'Servicio', 'Detalle', 'Sede', 'Fecha', 'Hora', 'Dur.', 'Total', 'Estado', 'Acciones'].map((h) => (
-                  <th key={h} style={{
-                    padding: '0.75rem 1rem',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    color: '#A89888',
-                    textAlign: 'left',
-                    whiteSpace: 'nowrap',
-                  }}>{h}</th>
+                {['Cliente', 'Servicio / Paquete', 'Fecha', 'Hora', 'Estado', 'Estado de pago', 'Acciones'].map((h) => (
+                  <th key={h} style={thStyle}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {paged.map((apt) => {
                 const st = STATUS_CONFIG[apt.status] || STATUS_CONFIG.pendiente;
+                const svc = getServiceLabel(apt);
                 return (
                   <tr
                     key={apt.id}
@@ -253,120 +255,94 @@ export default function AppointmentsAdmin() {
                     onMouseEnter={(e) => e.currentTarget.style.background = '#FDFCFA'}
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
-                    <td style={{ padding: '0.7rem 1rem', fontWeight: 600, fontSize: '0.85rem', color: '#3D2E24' }}>
+                    <td style={{ padding: '0.65rem 1rem', fontWeight: 600, fontSize: '0.85rem', color: '#3D2E24' }}>
                       {getName(apt)}
                     </td>
-                    <td style={{ padding: '0.7rem 1rem', fontSize: '0.8rem', color: '#6B5B4E' }}>
-                      {getPhone(apt)}
+                    <td style={{ padding: '0.65rem 1rem', fontSize: '0.8rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{
+                          display: 'inline-block', fontSize: '0.55rem', fontWeight: 700, padding: '1px 5px',
+                          borderRadius: '4px', width: 'fit-content',
+                          background: svc.type === 'PAQUETE' ? '#F5EDE5' : svc.type === 'MULTI-SESIÓN' ? '#E8F5E9' : '#EBF3F8',
+                          color: svc.type === 'PAQUETE' ? '#8B6A50' : svc.type === 'MULTI-SESIÓN' ? '#2D7A3A' : '#4A7A9A',
+                        }}>{svc.type}</span>
+                        <span style={{ fontWeight: 600, color: '#3D2E24', fontSize: '0.82rem' }}>{svc.name}</span>
+                        {svc.detail && <span style={{ fontSize: '0.7rem', color: '#A89888' }}>{svc.detail}</span>}
+                      </div>
                     </td>
-                    <td style={{ padding: '0.7rem 1rem', fontSize: '0.8rem', color: '#3D2E24' }}>
-                      {getTherapist(apt)}
-                    </td>
-                    <td style={{ padding: '0.7rem 1rem', fontSize: '0.8rem', color: '#3D2E24', maxWidth: '180px' }}>
-                      <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {getServices(apt)}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.7rem 1rem', fontSize: '0.75rem', color: '#6B5B4E', minWidth: '150px' }}>
-                      {(() => {
-                        const detail = getPackageDetail(apt);
-                        const pLabel = getPaymentLabel(apt);
-                        const svcNames = getServices(apt);
-                        return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            {detail ? (
-                              <>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <span style={{
-                                    fontSize: '0.6rem', fontWeight: 600, padding: '0px 4px', borderRadius: '4px',
-                                    background: '#F5EDE5', color: '#8B6A50',
-                                  }}>PAQUETE</span>
-                                </div>
-                                <span style={{ fontWeight: 600, color: '#3D2E24', fontSize: '0.78rem' }}>Promoción: {detail.name}</span>
-                                <span>Sesiones: {detail.completed}/{detail.totalSessions} ({detail.remaining} faltan)</span>
-                              </>
-                            ) : (
-                              <>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <span style={{
-                                    fontSize: '0.6rem', fontWeight: 600, padding: '0px 4px', borderRadius: '4px',
-                                    background: '#EBF3F8', color: '#4A7A9A',
-                                  }}>SERVICIO</span>
-                                </div>
-                                <span style={{ fontSize: '0.73rem', color: '#3D2E24' }}>{svcNames}</span>
-                              </>
-                            )}
-                            <span
-                              onClick={() => cyclePayment(apt)}
-                              style={{
-                                display: 'inline-block', fontSize: '0.65rem', fontWeight: 600,
-                                padding: '1px 6px', borderRadius: '8px',
-                                background: pLabel.bg, color: pLabel.color,
-                                cursor: 'pointer', width: 'fit-content',
-                              }}
-                              title="Clic para cambiar estado de pago"
-                            >{pLabel.label}</span>
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td style={{ padding: '0.7rem 1rem', fontSize: '0.8rem', color: '#6B5B4E', whiteSpace: 'nowrap' }}>
-                      {getBranchName(apt)}
-                    </td>
-                    <td style={{ padding: '0.7rem 1rem', fontSize: '0.8rem', color: '#3D2E24', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '0.65rem 1rem', fontSize: '0.8rem', color: '#3D2E24', whiteSpace: 'nowrap' }}>
                       {apt.date ? new Date(apt.date).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
                     </td>
-                    <td style={{ padding: '0.7rem 1rem', fontSize: '0.8rem', color: '#3D2E24', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '0.65rem 1rem', fontSize: '0.8rem', color: '#3D2E24', whiteSpace: 'nowrap' }}>
                       {getTime(apt)} - {getEndTime(apt)}
                     </td>
-                    <td style={{ padding: '0.7rem 1rem', fontSize: '0.8rem', color: '#A89888', textAlign: 'center' }}>
-                      {apt.hours}h
-                    </td>
-                    <td style={{ padding: '0.7rem 1rem', fontWeight: 600, fontSize: '0.85rem', color: '#3D2E24', whiteSpace: 'nowrap' }}>
-                      S/ {getTotal(apt)}
-                    </td>
-                    <td style={{ padding: '0.7rem 1rem' }}>
+                    <td style={{ padding: '0.65rem 1rem' }}>
                       <span style={{
-                        display: 'inline-block',
-                        fontSize: '0.7rem', fontWeight: 600,
+                        display: 'inline-block', fontSize: '0.7rem', fontWeight: 600,
                         padding: '0.2rem 0.6rem', borderRadius: '12px',
-                        background: st.bg, color: st.color,
-                        whiteSpace: 'nowrap',
+                        background: st.bg, color: st.color, whiteSpace: 'nowrap',
                       }}>
                         {st.label}
                       </span>
                     </td>
-                    <td style={{ padding: '0.7rem 1rem' }}>
-                      <select
-                        value=""
-                        onChange={(e) => {
-                          const action = e.target.value;
-                          if (!action) return;
-                          if (action === 'confirmar') updateAppointment(apt.id, { status: 'confirmada' });
-                          else if (action === 'realizado') updateAppointment(apt.id, { status: 'realizada' });
-                          else if (action === 'postergar') openPostpone(apt);
-                          else if (action === 'cancelar') updateAppointment(apt.id, { status: 'cancelada' });
-                          else if (action === 'pagado') markPaidForPackage(apt);
-                          else if (action === 'emitir_boleta') navigate(`/admin/boletas/${apt.id}`);
-                          e.target.value = '';
-                        }}
-                        style={{
-                          fontSize: '0.7rem', padding: '4px 6px', borderRadius: '6px',
-                          border: '1px solid #E8E0D6', background: '#FFFFFF',
-                          color: '#3D2E24', cursor: 'pointer', fontWeight: 500,
-                          minWidth: '120px',
-                        }}
-                      >
-                        <option value="">Acciones...</option>
-                        {apt.status === 'pendiente' && <option value="confirmar">Confirmar</option>}
-                        {(apt.status === 'pendiente' || apt.status === 'confirmada') && <option value="realizado">Marcar realizado</option>}
-                        {(apt.status === 'pendiente' || apt.status === 'confirmada') && <option value="postergar">Postergar</option>}
-                        {(apt.status === 'pendiente' || apt.status === 'confirmada') && <option value="cancelar">Cancelar</option>}
-                        {apt.status === 'postergada' && <option value="postergar">Reprogramar</option>}
-                        {apt.status === 'postergada' && <option value="cancelar">Cancelar</option>}
-                        {apt.payment_status !== 'pagado' && <option value="pagado">Marcar pagado</option>}
-                        <option value="emitir_boleta">Emitir boleta</option>
-                      </select>
+                    <td style={{ padding: '0.65rem 1rem' }}>
+                      {(() => {
+                        const ps = PAYMENT_CONFIG[apt.payment_status] || PAYMENT_CONFIG.pendiente;
+                        return (
+                          <span style={{
+                            display: 'inline-block', fontSize: '0.7rem', fontWeight: 600,
+                            padding: '0.2rem 0.6rem', borderRadius: '12px',
+                            background: ps.bg, color: ps.color, whiteSpace: 'nowrap', cursor: 'pointer',
+                          }} onClick={() => setPaymentScopeTarget(apt)}>
+                            {ps.label}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td style={{ padding: '0.65rem 0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <button
+                          title="Ver detalle"
+                          onClick={() => setDetailTarget(apt)}
+                          style={{
+                            background: 'none', border: '1px solid #E8E0D6', borderRadius: '6px',
+                            cursor: 'pointer', padding: '0.3rem 0.4rem', color: '#6B5B4E',
+                            display: 'flex', alignItems: 'center', transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#C9944A'; e.currentTarget.style.color = '#8B6520'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E8E0D6'; e.currentTarget.style.color = '#6B5B4E'; }}
+                        >
+                          <Info size={14} />
+                        </button>
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const action = e.target.value;
+                            if (!action) return;
+                            if (action === 'confirmar') updateAppointment(apt.id, { status: 'confirmada' });
+                            else if (action === 'realizado') updateAppointment(apt.id, { status: 'realizada' });
+                            else if (action === 'postergar') openPostpone(apt);
+                            else if (action === 'cancelar') setCancelTarget(apt);
+                            else if (action === 'pagar') setPaymentScopeTarget(apt);
+                            else if (action === 'emitir_boleta') navigate(`/admin/boletas/${apt.id}`);
+                            e.target.value = '';
+                          }}
+                          style={{
+                            fontSize: '0.7rem', padding: '0.3rem 0.4rem', borderRadius: '6px',
+                            border: '1px solid #E8E0D6', background: '#FFFFFF',
+                            color: '#3D2E24', cursor: 'pointer', fontWeight: 500, minWidth: '100px',
+                          }}
+                        >
+                          <option value="">Acciones...</option>
+                          {apt.status === 'pendiente' && <option value="confirmar">Confirmar</option>}
+                          {(apt.status === 'pendiente' || apt.status === 'confirmada') && <option value="realizado">Realizado</option>}
+                          {(apt.status === 'pendiente' || apt.status === 'confirmada') && <option value="postergar">Postergar</option>}
+                          {(apt.status === 'pendiente' || apt.status === 'confirmada' || apt.status === 'postergada') && <option value="cancelar">Cancelar</option>}
+                          {apt.status === 'postergada' && <option value="postergar">Reprogramar</option>}
+                          {apt.payment_status !== 'pagado' && <option value="pagar">Pagar</option>}
+                          <option value="emitir_boleta">Boleta</option>
+                        </select>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -381,18 +357,13 @@ export default function AppointmentsAdmin() {
             padding: '0.75rem 1rem', borderTop: '1px solid #E8E0D6', flexWrap: 'wrap', gap: '0.5rem',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#6B5B4E' }}>
-              <span>Filas por página:</span>
+              <span>Filas:</span>
               <select
                 value={rowsPerPage}
                 onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
-                style={{
-                  padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #E8E0D6',
-                  background: '#FFFFFF', color: '#3D2E24', fontSize: '0.8rem', cursor: 'pointer',
-                }}
+                style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #E8E0D6', background: '#FFFFFF', color: '#3D2E24', fontSize: '0.8rem', cursor: 'pointer' }}
               >
-                {[5, 10, 15, 20].map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
+                {[5, 10, 15, 20].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem', color: '#6B5B4E' }}>
@@ -401,21 +372,12 @@ export default function AppointmentsAdmin() {
                 <button
                   disabled={page === 0}
                   onClick={() => setPage((p) => p - 1)}
-                  style={{
-                    padding: '0.3rem 0.6rem', borderRadius: '6px', border: '1px solid #E8E0D6',
-                    background: page === 0 ? '#F5F0E8' : '#FFFFFF', color: page === 0 ? '#C8C0BA' : '#3D2E24',
-                    cursor: page === 0 ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 500,
-                  }}
+                  style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: '1px solid #E8E0D6', background: page === 0 ? '#F5F0E8' : '#FFFFFF', color: page === 0 ? '#C8C0BA' : '#3D2E24', cursor: page === 0 ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 500 }}
                 >← Ant</button>
                 <button
                   disabled={page >= totalPages - 1}
                   onClick={() => setPage((p) => p + 1)}
-                  style={{
-                    padding: '0.3rem 0.6rem', borderRadius: '6px', border: '1px solid #E8E0D6',
-                    background: page >= totalPages - 1 ? '#F5F0E8' : '#FFFFFF',
-                    color: page >= totalPages - 1 ? '#C8C0BA' : '#3D2E24',
-                    cursor: page >= totalPages - 1 ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 500,
-                  }}
+                  style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: '1px solid #E8E0D6', background: page >= totalPages - 1 ? '#F5F0E8' : '#FFFFFF', color: page >= totalPages - 1 ? '#C8C0BA' : '#3D2E24', cursor: page >= totalPages - 1 ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 500 }}
                 >Sig →</button>
               </div>
             </div>
@@ -424,7 +386,7 @@ export default function AppointmentsAdmin() {
 
         {filtered.length === 0 && (
           <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#A89888' }}>
-            <div style={{ marginBottom: '0.5rem', color: '#A89888' }}><Inbox size={40} /></div>
+            <div style={{ marginBottom: '0.5rem' }}><Inbox size={40} /></div>
             <p>No hay citas {filter !== 'todas' ? 'con este estado' : 'activas'}</p>
           </div>
         )}
@@ -432,17 +394,11 @@ export default function AppointmentsAdmin() {
 
       {postponeTarget && (
         <div
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-          }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
           onClick={() => setPostponeTarget(null)}
         >
           <div
-            style={{
-              background: '#FFFFFF', borderRadius: '14px', padding: '1.5rem',
-              width: '100%', maxWidth: '400px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-            }}
+            style={{ background: '#FFFFFF', borderRadius: '14px', padding: '1.5rem', width: '100%', maxWidth: '440px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{ margin: '0 0 0.25rem', fontSize: '1.1rem', color: '#3D2E24' }}>
@@ -452,50 +408,61 @@ export default function AppointmentsAdmin() {
               {getName(postponeTarget)} — {getServices(postponeTarget)}
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>
-                  Nueva fecha
-                </label>
-                <input
-                  type="date"
-                  value={postponeDate}
-                  min={today}
-                  onChange={(e) => setPostponeDate(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>
-                  Nueva hora
-                </label>
-                <input
-                  type="time"
+            <div style={{ marginBottom: '0.75rem' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>Nueva fecha</label>
+              <input type="date" value={postponeDate} min={today} onChange={(e) => { setPostponeDate(e.target.value); setPostponeTime(''); }} style={inputStyle} />
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>Nueva hora</label>
+              {postponeTarget.therapist_id && postponeDate ? (
+                <TimeSlotPicker
+                  therapistId={postponeTarget.therapist_id}
+                  date={postponeDate}
                   value={postponeTime}
-                  onChange={(e) => setPostponeTime(e.target.value)}
-                  style={inputStyle}
+                  onChange={setPostponeTime}
+                  excludeAppointmentId={postponeTarget.id}
+                  hours={postponeTarget.hours || 1}
+                  compact
                 />
-              </div>
+              ) : (
+                <div className="wizard-time-placeholder" style={{ padding: '0.5rem', textAlign: 'center', color: '#A89888', fontSize: '0.8rem' }}>
+                  Selecciona una fecha primero
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setPostponeTarget(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                className="btn btn-primary"
-                disabled={!postponeDate || !postponeTime}
-                onClick={confirmPostpone}
-              >
-                Confirmar Reprogramación
-              </button>
+              <button className="btn btn-secondary" onClick={() => setPostponeTarget(null)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={!postponeDate || !postponeTime} onClick={confirmPostpone}>Confirmar</button>
             </div>
           </div>
         </div>
       )}
+
+      <CancelAppointmentModal
+        open={!!cancelTarget}
+        appointment={cancelTarget}
+        onConfirm={handleCancelConfirm}
+        onCancel={() => setCancelTarget(null)}
+      />
+
+      <AppointmentDetailModal
+        open={!!detailTarget}
+        appointment={detailTarget}
+        allAppointments={appointments}
+        onClose={() => setDetailTarget(null)}
+        onPaymentPropagate={handlePaymentPropagate}
+        onSelectSession={(session) => setDetailTarget(session)}
+      />
+
+      <PaymentScopeModal
+        open={!!paymentScopeTarget}
+        appointment={paymentScopeTarget}
+        onClose={() => setPaymentScopeTarget(null)}
+        onPaySession={handlePaySession}
+        onPayAllSessions={handlePayAllSessions}
+      />
     </div>
   );
 }

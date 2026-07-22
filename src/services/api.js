@@ -7,10 +7,18 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+let currentBranchId = null;
+
+export const setBranchId = (id) => { currentBranchId = id; };
+export const getBranchId = () => currentBranchId;
+
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('zenia_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (currentBranchId) {
+    config.headers['X-Branch-Id'] = currentBranchId;
   }
   return config;
 });
@@ -39,6 +47,7 @@ export const usersAPI = {
   create: (data) => api.post('/admin/users', data),
   update: (id, data) => api.put(`/admin/users/${id}`, data),
   delete: (id) => api.delete(`/admin/users/${id}`),
+  myPermissions: () => api.get('/admin/my-permissions'),
 };
 
 export const servicesAPI = {
@@ -64,7 +73,11 @@ export const therapistsAPI = {
   update: (id, data) => api.put(`/admin/therapists/${id}`, data),
   delete: (id) => api.delete(`/admin/therapists/${id}`),
   availability: (id, date) => api.get(`/therapists/${id}/availability`, { params: { date } }),
-  busySlots: (id, date) => api.get(`/therapists/${id}/busy-slots`, { params: { date } }),
+  busySlots: (id, date, excludeAppointmentId) => {
+    const params = { date };
+    if (excludeAppointmentId) params.exclude_appointment_id = excludeAppointmentId;
+    return api.get(`/therapists/${id}/busy-slots`, { params });
+  },
 };
 
 export const cabinsAPI = {
@@ -82,6 +95,12 @@ export const appointmentsAPI = {
   update: (id, data) => api.put(`/admin/appointments/${id}`, data),
   delete: (id) => api.delete(`/admin/appointments/${id}`),
   calendar: (params) => api.get('/admin/appointments/calendar', { params }),
+  propagatePayment: (packageId, personId) => api.post('/admin/appointments/propagate-payment', { package_id: packageId, person_id: personId }),
+  propagatePaymentGroup: (groupId, personId) => api.post('/admin/appointments/propagate-payment-group', { group_id: groupId, person_id: personId }),
+};
+
+export const personAPI = {
+  searchByDni: (dni) => api.get('/persons/search-by-dni', { params: { dni } }),
 };
 
 const buildReportsUrl = (params, path) => {
