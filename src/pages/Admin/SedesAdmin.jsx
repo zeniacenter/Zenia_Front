@@ -4,7 +4,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
 
 export default function SedesAdmin() {
-  const { branches, therapists, services, addBranch, updateBranch, deleteBranch } = useApp();
+  const { branches, therapists, services, addBranch, updateBranch, deleteBranch, hasModulePermission } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -57,7 +57,9 @@ export default function SedesAdmin() {
     <div>
       <div className="admin-header">
         <h2>Gestión de Sedes</h2>
-        <button className="btn btn-primary" onClick={openNew}>+ Nueva Sede</button>
+        {hasModulePermission('sedas', 'can_create') && (
+          <button className="btn btn-primary" onClick={openNew}>+ Nueva Sede</button>
+        )}
       </div>
 
       <div className="table-container">
@@ -96,8 +98,12 @@ export default function SedesAdmin() {
                 </td>
                 <td>
                   <div style={{ display: 'flex', gap: '0.4rem' }}>
-                    <button className="btn btn-sm btn-outline" onClick={() => openEdit(branch)}>Editar</button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(branch.id)}>Eliminar</button>
+                    {hasModulePermission('sedas', 'can_edit') && (
+                      <button className="btn btn-sm btn-outline" onClick={() => openEdit(branch)}>Editar</button>
+                    )}
+                    {hasModulePermission('sedas', 'can_delete') && (
+                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(branch.id)}>Eliminar</button>
+                    )}
                   </div>
                 </td>
               </tr>

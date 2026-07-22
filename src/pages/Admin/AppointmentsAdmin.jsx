@@ -38,7 +38,7 @@ const inputStyle = {
 };
 
 export default function AppointmentsAdmin() {
-  const { appointments, therapists, services, cabins, branches, updateAppointment } = useApp();
+  const { appointments, therapists, services, cabins, branches, updateAppointment, hasModulePermission } = useApp();
   const navigate = useNavigate();
   const [filter, setFilter] = useState('todas');
   const [postponeTarget, setPostponeTarget] = useState(null);
@@ -196,9 +196,11 @@ export default function AppointmentsAdmin() {
     <div>
       <div className="admin-header">
         <h2>Gestión de Citas</h2>
-        <button className="btn btn-primary" onClick={() => navigate('/admin/agendar')}>
-          + Agendar Cita
-        </button>
+        {hasModulePermission('citas', 'can_create') && (
+          <button className="btn btn-primary" onClick={() => navigate('/admin/agendar')}>
+            + Agendar Cita
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
@@ -314,6 +316,7 @@ export default function AppointmentsAdmin() {
                         >
                           <Info size={14} />
                         </button>
+                        {hasModulePermission('citas', 'can_edit') && (
                         <select
                           value=""
                           onChange={(e) => {
@@ -342,6 +345,7 @@ export default function AppointmentsAdmin() {
                           {apt.payment_status !== 'pagado' && <option value="pagar">Pagar</option>}
                           <option value="emitir_boleta">Boleta</option>
                         </select>
+                        )}
                       </div>
                     </td>
                   </tr>

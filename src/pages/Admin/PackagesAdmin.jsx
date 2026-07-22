@@ -4,7 +4,7 @@ import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 
 export default function PackagesAdmin() {
-  const { packages, services, branches, addPackage, updatePackage, deletePackage, updateEntityImage } = useApp();
+  const { packages, services, branches, addPackage, updatePackage, deletePackage, updateEntityImage, hasModulePermission } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -149,9 +149,11 @@ export default function PackagesAdmin() {
     <div>
       <div className="admin-header">
         <h2>Gestión de Paquetes</h2>
-        <button className="btn btn-primary" onClick={openNew}>
-          + Nuevo Paquete
-        </button>
+        {hasModulePermission('paquetes', 'can_create') && (
+          <button className="btn btn-primary" onClick={openNew}>
+            + Nuevo Paquete
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
@@ -201,12 +203,16 @@ export default function PackagesAdmin() {
                 </span>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button className="btn btn-sm btn-outline" onClick={() => openEdit(pkg)}>
-                  Editar
-                </button>
-                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(pkg.id)}>
-                  Eliminar
-                </button>
+                {hasModulePermission('paquetes', 'can_edit') && (
+                  <button className="btn btn-sm btn-outline" onClick={() => openEdit(pkg)}>
+                    Editar
+                  </button>
+                )}
+                {hasModulePermission('paquetes', 'can_delete') && (
+                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(pkg.id)}>
+                    Eliminar
+                  </button>
+                )}
               </div>
             </div>
           </div>

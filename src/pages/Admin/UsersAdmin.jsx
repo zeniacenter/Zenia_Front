@@ -22,7 +22,7 @@ const PERMISSION_LABELS = {
 };
 
 export default function UsersAdmin() {
-  const { users, addUser, updateUser, deleteUser, branches } = useApp();
+  const { users, addUser, updateUser, deleteUser, branches, hasModulePermission } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -179,9 +179,11 @@ export default function UsersAdmin() {
     <div>
       <div className="admin-header">
         <h2>Gestión de Usuarios</h2>
-        <button className="btn btn-primary" onClick={openNew}>
-          + Nuevo Usuario
-        </button>
+        {hasModulePermission('usuarios', 'can_create') && (
+          <button className="btn btn-primary" onClick={openNew}>
+            + Nuevo Usuario
+          </button>
+        )}
       </div>
 
       <div className="table-container">
@@ -241,12 +243,16 @@ export default function UsersAdmin() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>
-                        Editar
-                      </button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u.id)}>
-                        Eliminar
-                      </button>
+                      {hasModulePermission('usuarios', 'can_edit') && (
+                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>
+                          Editar
+                        </button>
+                      )}
+                      {hasModulePermission('usuarios', 'can_delete') && (
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u.id)}>
+                          Eliminar
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

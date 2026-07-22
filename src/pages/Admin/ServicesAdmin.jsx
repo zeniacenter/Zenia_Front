@@ -6,7 +6,7 @@ import MultiSelect from '../../components/MultiSelect';
 import { Camera } from 'lucide-react';
 
 export default function ServicesAdmin() {
-  const { services, branches, addService, updateService, deleteService, updateEntityImage } = useApp();
+  const { services, branches, addService, updateService, deleteService, updateEntityImage, hasModulePermission } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -68,7 +68,9 @@ export default function ServicesAdmin() {
     <div>
       <div className="admin-header">
         <h2>Gestión de Servicios</h2>
-        <button className="btn btn-primary" onClick={openNew}>+ Nuevo Servicio</button>
+        {hasModulePermission('servicios', 'can_create') && (
+          <button className="btn btn-primary" onClick={openNew}>+ Nuevo Servicio</button>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
@@ -123,8 +125,12 @@ export default function ServicesAdmin() {
                 </td>
                 <td>
                   <div style={{ display: 'flex', gap: '0.4rem' }}>
-                    <button className="btn btn-sm btn-outline" onClick={() => openEdit(service)}>Editar</button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(service.id)}>Eliminar</button>
+                    {hasModulePermission('servicios', 'can_edit') && (
+                      <button className="btn btn-sm btn-outline" onClick={() => openEdit(service)}>Editar</button>
+                    )}
+                    {hasModulePermission('servicios', 'can_delete') && (
+                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(service.id)}>Eliminar</button>
+                    )}
                   </div>
                 </td>
               </tr>

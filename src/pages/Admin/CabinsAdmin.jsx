@@ -5,7 +5,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
 
 export default function CabinsAdmin() {
-  const { cabins, services, branches, addCabin, updateCabin, deleteCabin, updateEntityImage } = useApp();
+  const { cabins, services, branches, addCabin, updateCabin, deleteCabin, updateEntityImage, hasModulePermission } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -92,7 +92,9 @@ export default function CabinsAdmin() {
     <div>
       <div className="admin-header">
         <h2>Gestión de Cabinas</h2>
-        <button className="btn btn-primary" onClick={openNew}>+ Nueva Cabina</button>
+        {hasModulePermission('cabinas', 'can_create') && (
+          <button className="btn btn-primary" onClick={openNew}>+ Nueva Cabina</button>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
@@ -133,8 +135,12 @@ export default function CabinsAdmin() {
                 </p>
               )}
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button className="btn btn-sm btn-outline" onClick={() => openEdit(cabin)}>Editar</button>
-                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(cabin.id)}>Eliminar</button>
+                {hasModulePermission('cabinas', 'can_edit') && (
+                  <button className="btn btn-sm btn-outline" onClick={() => openEdit(cabin)}>Editar</button>
+                )}
+                {hasModulePermission('cabinas', 'can_delete') && (
+                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(cabin.id)}>Eliminar</button>
+                )}
               </div>
             </div>
           </div>

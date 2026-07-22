@@ -30,7 +30,7 @@ const timeOptions = [
 ];
 
 export default function TherapistsAdmin() {
-  const { therapists, services, branches, addTherapist, updateTherapist, deleteTherapist, updateEntityImage } = useApp();
+  const { therapists, services, branches, addTherapist, updateTherapist, deleteTherapist, updateEntityImage, hasModulePermission } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -139,7 +139,9 @@ export default function TherapistsAdmin() {
     <div>
       <div className="admin-header">
         <h2>Gestión de Terapeutas</h2>
-        <button className="btn btn-primary" onClick={openNew}>+ Nuevo Terapeuta</button>
+        {hasModulePermission('terapeutas', 'can_create') && (
+          <button className="btn btn-primary" onClick={openNew}>+ Nuevo Terapeuta</button>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
@@ -177,8 +179,12 @@ export default function TherapistsAdmin() {
               </p>
             )}
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-              <button className="btn btn-sm btn-outline" onClick={() => openEdit(therapist)}>Editar</button>
-              <button className="btn btn-sm btn-danger" onClick={() => handleDelete(therapist.id)}>Eliminar</button>
+              {hasModulePermission('terapeutas', 'can_edit') && (
+                <button className="btn btn-sm btn-outline" onClick={() => openEdit(therapist)}>Editar</button>
+              )}
+              {hasModulePermission('terapeutas', 'can_delete') && (
+                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(therapist.id)}>Eliminar</button>
+              )}
             </div>
           </div>
         ))}
