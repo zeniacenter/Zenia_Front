@@ -138,6 +138,22 @@ export function AppProvider({ children }) {
     }
   }, [token]);
 
+  useEffect(() => {
+    if (!token || !selectedBranchId) return;
+
+    const ok = (r) => r.status === 'fulfilled' ? r.value.data : null;
+
+    Promise.allSettled([
+      appointmentsAPI.list(),
+      usersAPI.list(),
+    ]).then(([a, u]) => {
+      const aData = ok(a);
+      const uData = ok(u);
+      if (aData) setAppointments(aData);
+      if (uData) setUsers(uData);
+    });
+  }, [token, selectedBranchId]);
+
   const hasPermission = useCallback((permission) => {
     if (!user) return false;
     if (user.role === 'admin') return true;

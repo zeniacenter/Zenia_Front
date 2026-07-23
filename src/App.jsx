@@ -24,9 +24,9 @@ import './styles/App.css';
 import './styles/landing-premium.css';
 
 function ModuleRoute({ module, children }) {
-  const { hasModulePermission, user } = useApp();
+  const { hasModulePermission, user, selectedBranchId } = useApp();
   if (user?.role === 'admin') return children;
-  if (!hasModulePermission(module, 'can_view')) {
+  if (!hasModulePermission(module, 'can_view', selectedBranchId)) {
     return <Navigate to="/admin/dashboard" replace />;
   }
   return children;

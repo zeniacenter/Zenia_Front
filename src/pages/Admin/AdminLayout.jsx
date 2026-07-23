@@ -29,31 +29,31 @@ export default function AdminLayout() {
   const visibleLinks = SIDEBAR_LINKS.filter((link) => {
     if (link.adminOnly) return user?.role === 'admin';
     if (!link.module) return true;
-    return hasModulePermission(link.module, 'can_view');
+    return hasModulePermission(link.module, 'can_view', selectedBranchId);
   });
 
   return (
     <div className="admin-layout">
       <aside className="admin-sidebar">
         {authorizedBranches.length > 0 && (
-          <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--adm-border)' }}>
-            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--adm-text-sec)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.4rem', fontWeight: 600 }}>Sucursal</label>
-            <div style={{ position: 'relative' }}>
+          <div style={{ padding: '0 0.75rem', marginBottom: '4px' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <span style={{ width: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--adm-text-sec)' }}><MapPin size={18} /></span>
               <select
                 value={selectedBranchId || ''}
                 onChange={(e) => selectBranch(Number(e.target.value))}
                 style={{
-                  width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px',
-                  border: '1px solid var(--adm-border)', background: '#fff',
-                  color: 'var(--adm-text)', fontSize: '0.85rem', fontWeight: 500, appearance: 'none', cursor: 'pointer',
-                  outline: 'none',
+                  flex: 1, padding: '0.6rem 1.75rem 0.6rem 0.5rem', borderRadius: 'var(--r-md)',
+                  border: 'none', background: 'transparent',
+                  color: 'var(--adm-text-sec)', fontSize: 'var(--fs-sm)', fontWeight: 500,
+                  appearance: 'none', cursor: 'pointer', outline: 'none',
                 }}
               >
                 {authorizedBranches.map((b) => (
                   <option key={b.id} value={b.id} style={{ background: '#fff', color: 'var(--adm-text)' }}>{b.name}</option>
                 ))}
               </select>
-              <ChevronDown size={16} color="var(--adm-text-sec)" style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+              <ChevronDown size={14} color="var(--adm-text-sec)" style={{ position: 'absolute', right: '0.4rem', pointerEvents: 'none' }} />
             </div>
           </div>
         )}
