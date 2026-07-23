@@ -36,24 +36,24 @@ export default function AdminLayout() {
     <div className="admin-layout">
       <aside className="admin-sidebar">
         {authorizedBranches.length > 0 && (
-          <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)' }}>
-            <label style={{ display: 'block', fontSize: '0.7rem', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.4rem', fontWeight: 600 }}>Sucursal</label>
+          <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--adm-border)' }}>
+            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--adm-text-sec)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.4rem', fontWeight: 600 }}>Sucursal</label>
             <div style={{ position: 'relative' }}>
               <select
                 value={selectedBranchId || ''}
                 onChange={(e) => selectBranch(Number(e.target.value))}
                 style={{
                   width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px',
-                  border: '1.5px solid rgba(201,148,74,0.5)', background: 'rgba(201,148,74,0.12)',
-                  color: '#fff', fontSize: '0.85rem', fontWeight: 600, appearance: 'none', cursor: 'pointer',
+                  border: '1px solid var(--adm-border)', background: '#fff',
+                  color: 'var(--adm-text)', fontSize: '0.85rem', fontWeight: 500, appearance: 'none', cursor: 'pointer',
                   outline: 'none',
                 }}
               >
                 {authorizedBranches.map((b) => (
-                  <option key={b.id} value={b.id} style={{ background: '#2D2218', color: '#fff' }}>{b.name}</option>
+                  <option key={b.id} value={b.id} style={{ background: '#fff', color: 'var(--adm-text)' }}>{b.name}</option>
                 ))}
               </select>
-              <ChevronDown size={16} color="rgba(201,148,74,0.8)" style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+              <ChevronDown size={16} color="var(--adm-text-sec)" style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
             </div>
           </div>
         )}
