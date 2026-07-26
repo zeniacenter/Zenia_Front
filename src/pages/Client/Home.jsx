@@ -80,7 +80,7 @@ const testimonials = [
 ];
 
 export default function Home() {
-  const { services, packages, therapists } = useApp();
+  const { services, packages, therapists, settings } = useApp();
   const activePackages = packages.filter((p) => p.active);
   const featuredTherapists = therapists;
 
@@ -202,11 +202,13 @@ export default function Home() {
                     <h3>{service.name}</h3>
                     <p>{service.description}</p>
                     <div className="service-footer">
-                      <div className="service-price">
-                        <span className="price-from">Desde</span>
-                        <span className="price-value">S/ {service.pricePerHour}</span>
-                        <span className="price-unit">/ hora</span>
-                      </div>
+                      {settings.priceVisible && (
+                        <div className="service-price">
+                          <span className="price-from">Desde</span>
+                          <span className="price-value">S/ {service.pricePerHour}</span>
+                          <span className="price-unit">/ hora</span>
+                        </div>
+                      )}
                       <Link to={`/agendar?service=${service.id}`} className="service-cta">
                         Reservar
                         <ArrowRight size={16} />
@@ -260,8 +262,14 @@ export default function Home() {
                           {totalSessions > 0 && <span>{totalSessions} sesiones incluidas</span>}
                         </div>
                         <div className="package-pricing">
-                          <span className="package-original">S/ {pkg.originalPrice}</span>
-                          <span className="package-price">S/ {pkg.packagePrice}</span>
+                          {settings.priceVisible ? (
+                            <>
+                              <span className="package-original">S/ {pkg.originalPrice}</span>
+                              <span className="package-price">S/ {pkg.packagePrice}</span>
+                            </>
+                          ) : (
+                            <span className="package-price">Ver detalle</span>
+                          )}
                         </div>
                         <Link to={`/agendar?package=${pkg.id}`} className="btn-package-cta">
                           Reservar Paquete
