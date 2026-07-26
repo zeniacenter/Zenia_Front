@@ -19,6 +19,7 @@ export default function AdminBooking() {
   const [hours, setHours] = useState(1);
   const [sessionCount, setSessionCount] = useState(1);
   const [dniLoading, setDniLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [clientName, setClientName] = useState('');
   const [clientLastName, setClientLastName] = useState('');
@@ -50,13 +51,30 @@ export default function AdminBooking() {
       })
     : cabins.filter((c) => c.is_available ?? c.available);
 
-  const filteredTherapists = selectedBranch
-    ? therapists.filter((t) => {
-        if (!(t.is_available ?? t.available)) return false;
-        if (!t.branchIds || t.branchIds.length === 0) return true;
-        return t.branchIds.includes(Number(selectedBranch));
-      })
-    : therapists.filter((t) => t.is_available ?? t.available);
+  const filteredTherapists = (() => {
+    let list = selectedBranch
+      ? therapists.filter((t) => {
+          if (!(t.is_available ?? t.available)) return false;
+          if (!t.branchIds || t.branchIds.length === 0) return true;
+          return t.branchIds.includes(Number(selectedBranch));
+        })
+      : therapists.filter((t) => t.is_available ?? t.available);
+
+    const activeServiceIds = bookingType === 'service' && selectedService
+      ? [Number(selectedService)]
+      : bookingType === 'package' && selectedPackage
+        ? (getSelectedPackageObj()?.serviceIds || [])
+        : [];
+
+    if (activeServiceIds.length > 0) {
+      list = list.filter((t) => {
+        if (!t.serviceIds || t.serviceIds.length === 0) return false;
+        return t.serviceIds.some((sid) => activeServiceIds.includes(sid));
+      });
+    }
+
+    return list;
+  })();
 
   const getSelectedTherapistObj = () => therapists.find((t) => String(t.id) === String(selectedTherapist));
   const getSelectedServiceObj = () => services.find((s) => String(s.id) === String(selectedService));
@@ -104,6 +122,7 @@ export default function AdminBooking() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
 
     if (!selectedTherapist || !selectedDate || !selectedTime) {
       alert('Completa todos los campos obligatorios');
@@ -134,6 +153,7 @@ export default function AdminBooking() {
       ? [selectedService]
       : (getSelectedPackageObj()?.serviceIds || []);
 
+    setSubmitting(true);
     try {
       await addAppointment({
         client_name: clientName,
@@ -158,6 +178,8 @@ export default function AdminBooking() {
       navigate('/admin/citas');
     } catch (err) {
       alert('Error al agendar: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -239,7 +261,7 @@ export default function AdminBooking() {
                 <select
                   style={inputStyle}
                   value={selectedService}
-                  onChange={(e) => setSelectedService(e.target.value)}
+                  onChange={(e) => { setSelectedService(e.target.value); setSelectedTherapist(''); setSelectedTime(''); }}
                   required
                 >
                   <option value="">Seleccionar servicio</option>
@@ -256,6 +278,8 @@ export default function AdminBooking() {
                   value={selectedPackage}
                   onChange={(e) => {
                     setSelectedPackage(e.target.value);
+                    setSelectedTherapist('');
+                    setSelectedTime('');
                     const pkg = (packages || []).find((p) => String(p.id) === e.target.value);
                     if (pkg) {
                       setHours(pkg.hours || 1);
@@ -441,8 +465,8 @@ export default function AdminBooking() {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', marginTop: '0.5rem' }}>
-              {sessionCount > 1 ? `Agendar ${sessionCount} Sesiones` : 'Agendar Cita'}
+            <button type="submit" className="btn btn-primary btn-lg" disabled={submitting} style={{ width: '100%', marginTop: '0.5rem', opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
+              {submitting ? 'Agendando...' : (sessionCount > 1 ? `Agendar ${sessionCount} Sesiones` : 'Agendar Cita')}
             </button>
           </form>
 
