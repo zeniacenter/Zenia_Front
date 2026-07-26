@@ -216,7 +216,9 @@ export default function Booking() {
     setServiceDurations({});
     setSessionCount(1);
     setDirection('forward');
-    setStep(3);
+    const label = type === 'services' ? 'Servicios' : 'Paquetes';
+    const idx = buildSteps(settings, type).findIndex((s) => s.label === label);
+    setStep(idx >= 0 ? idx + 1 : 2);
   };
 
   const toggleService = (serviceId) => {

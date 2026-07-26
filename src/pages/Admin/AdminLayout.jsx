@@ -17,7 +17,7 @@ const SIDEBAR_LINKS = [
 ];
 
 export default function AdminLayout() {
-  const { isAdminLoggedIn, hasModulePermission, user, userPermissions, selectedBranchId, selectBranch } = useApp();
+  const { isAdminLoggedIn, hasModulePermission, user, userPermissions, selectedBranchId, selectBranch, settings } = useApp();
   const location = useLocation();
 
   if (!isAdminLoggedIn) {
@@ -29,6 +29,8 @@ export default function AdminLayout() {
   const visibleLinks = SIDEBAR_LINKS.filter((link) => {
     if (link.adminOnly) return user?.role === 'admin';
     if (!link.module) return true;
+    if (link.module === 'cabinas' && !settings.cabinRequired) return false;
+    if (link.module === 'sedas' && !settings.branchRequired) return false;
     return hasModulePermission(link.module, 'can_view', selectedBranchId);
   });
 

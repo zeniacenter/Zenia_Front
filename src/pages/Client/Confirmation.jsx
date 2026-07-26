@@ -36,10 +36,12 @@ export default function Confirmation() {
             <strong>Terapeuta:</strong>
             <span>{state.therapist}</span>
           </div>
-          <div className="detail-row">
-            <strong>Cabina:</strong>
-            <span>{state.cabin}</span>
-          </div>
+          {state.cabin && (
+            <div className="detail-row">
+              <strong>Cabina:</strong>
+              <span>{state.cabin}</span>
+            </div>
+          )}
           {state.branch && (
             <div className="detail-row">
               <strong>Sede:</strong>
