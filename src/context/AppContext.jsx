@@ -30,7 +30,14 @@ export function AppProvider({ children }) {
     try { return JSON.parse(sessionStorage.getItem('zenia_user')); } catch { return null; }
   });
   const [token, setToken] = useState(() => sessionStorage.getItem('zenia_token'));
-  const [settings, setSettings] = useState({ priceVisible: true, cabinRequired: true, branchRequired: true });
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('zenia_settings'));
+      return { priceVisible: true, cabinRequired: true, branchRequired: true, ...saved };
+    } catch {
+      return { priceVisible: true, cabinRequired: true, branchRequired: true };
+    }
+  });
   const [userPermissions, setUserPermissions] = useState(null);
   const [selectedBranchId, setSelectedBranchId] = useState(null);
   const isAdminLoggedIn = !!token && !!user;
@@ -77,6 +84,10 @@ export function AppProvider({ children }) {
     serviceIds: br.services ? br.services.map((s) => s.id) : [],
     cabinCount: br.cabins ? br.cabins.length : 0,
   });
+
+  useEffect(() => {
+    localStorage.setItem('zenia_settings', JSON.stringify(settings));
+  }, [settings]);
 
   useEffect(() => {
     if (token) return;

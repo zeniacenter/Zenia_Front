@@ -114,14 +114,21 @@ export default function Booking() {
       })
     : therapists.filter((t) => t.is_available ?? t.available);
 
-  const cabinTherapists = selectedCabin
+  const serviceTherapists = selectedServices.length > 0
     ? branchTherapists.filter((t) => {
+        if (!t.serviceIds || t.serviceIds.length === 0) return false;
+        return t.serviceIds.some((sid) => selectedServices.includes(sid));
+      })
+    : branchTherapists;
+
+  const cabinTherapists = selectedCabin
+    ? serviceTherapists.filter((t) => {
         const cabin = cabins.find((c) => c.id === selectedCabin);
         if (!cabin || !cabin.serviceIds || cabin.serviceIds.length === 0) return false;
         if (!t.serviceIds || t.serviceIds.length === 0) return false;
         return t.serviceIds.some((sid) => cabin.serviceIds.includes(sid));
       })
-    : branchTherapists;
+    : serviceTherapists;
 
   const hasSummaryData = step > 1 && (selectedServices.length > 0 || selectedPackage);
 
@@ -169,6 +176,20 @@ export default function Booking() {
     }
   }, [sessionCount, bookingType]);
 
+  useEffect(() => {
+    if (selectedTherapist && selectedServices.length > 0) {
+      const t = therapists.find((th) => th.id === selectedTherapist);
+      if (t && t.serviceIds && t.serviceIds.length > 0) {
+        const hasMatch = t.serviceIds.some((sid) => selectedServices.includes(sid));
+        if (!hasMatch) {
+          setSelectedTherapist('');
+          setSelectedDate('');
+          setSelectedTime('');
+        }
+      }
+    }
+  }, [selectedServices, selectedTherapist, therapists]);
+
   const goNext = () => { setDirection('forward'); setStep((s) => Math.min(totalSteps, s + 1)); };
   const goBack = () => { setDirection('backward'); setStep((s) => Math.max(1, s - 1)); };
 
@@ -195,7 +216,9 @@ export default function Booking() {
     setServiceDurations({});
     setSessionCount(1);
     setDirection('forward');
-    setStep(3);
+    const label = type === 'services' ? 'Servicios' : 'Paquetes';
+    const idx = buildSteps(settings, type).findIndex((s) => s.label === label);
+    setStep(idx >= 0 ? idx + 1 : 2);
   };
 
   const toggleService = (serviceId) => {
@@ -657,7 +680,11 @@ export default function Booking() {
           {steps[step - 1]?.label === 'Terapeuta' && (
             <div className="wizard-step">
               <h2 className="wizard-step-title">Elige tu terapeuta</h2>
-              <p className="wizard-step-subtitle">Todos nuestros profesionales están certificados</p>
+              <p className="wizard-step-subtitle">
+                {selectedServices.length > 0
+                  ? 'Profesionales especializados en los servicios elegidos'
+                  : 'Todos nuestros profesionales están certificados'}
+              </p>
               <div className="wizard-therapist-grid">
                 {cabinTherapists.map((therapist) => (
                   <div
@@ -679,7 +706,11 @@ export default function Booking() {
                   </div>
                 ))}
                 {cabinTherapists.length === 0 && (
-                  <div className="wizard-empty">No hay terapeutas disponibles</div>
+                  <div className="wizard-empty">
+                    {selectedServices.length > 0
+                      ? 'No hay terapeutas disponibles para los servicios seleccionados'
+                      : 'No hay terapeutas disponibles'}
+                  </div>
                 )}
               </div>
             </div>
