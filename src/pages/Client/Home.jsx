@@ -261,16 +261,12 @@ export default function Home() {
                           <span>{pkg.hours}h de duración</span>
                           {totalSessions > 0 && <span>{totalSessions} sesiones incluidas</span>}
                         </div>
-                        <div className="package-pricing">
-                          {settings.priceVisible ? (
-                            <>
-                              <span className="package-original">S/ {pkg.originalPrice}</span>
-                              <span className="package-price">S/ {pkg.packagePrice}</span>
-                            </>
-                          ) : (
-                            <span className="package-price">Ver detalle</span>
-                          )}
-                        </div>
+                        {settings.priceVisible && (
+                          <div className="package-pricing">
+                            <span className="package-original">S/ {pkg.originalPrice}</span>
+                            <span className="package-price">S/ {pkg.packagePrice}</span>
+                          </div>
+                        )}
                         <Link to={`/agendar?package=${pkg.id}`} className="btn-package-cta">
                           Reservar Paquete
                           <ArrowRight size={16} />

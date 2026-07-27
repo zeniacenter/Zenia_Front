@@ -834,16 +834,16 @@ export default function Booking() {
               <p className="wizard-step-subtitle">Completa tu información para confirmar la reserva</p>
               <div className="wizard-form-grid">
                 <div className="form-group">
+                  <label>DNI {dniLoading && <span style={{ fontSize: '0.75rem', color: '#8B6520' }}>Buscando...</span>}</label>
+                  <input type="text" className="form-control" placeholder="45678912" maxLength={15} value={clientDni} onChange={(e) => setClientDni(e.target.value)} onBlur={handleDniBlur} />
+                </div>
+                <div className="form-group">
                   <label>Nombre *</label>
                   <input type="text" className="form-control" placeholder="María" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
                 </div>
                 <div className="form-group">
                   <label>Apellido *</label>
                   <input type="text" className="form-control" placeholder="García" value={clientLastName} onChange={(e) => setClientLastName(e.target.value)} required />
-                </div>
-                <div className="form-group">
-                  <label>DNI {dniLoading && <span style={{ fontSize: '0.75rem', color: '#8B6520' }}>Buscando...</span>}</label>
-                  <input type="text" className="form-control" placeholder="45678912" maxLength={15} value={clientDni} onChange={(e) => setClientDni(e.target.value)} onBlur={handleDniBlur} />
                 </div>
                 <div className="form-group">
                   <label>Dirección</label>
