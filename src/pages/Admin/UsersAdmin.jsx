@@ -28,7 +28,7 @@ export default function UsersAdmin() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [form, setForm] = useState({
     name: '',
-    email: '',
+    email: '@zenia.pe',
     password: '',
     role: 'recepcionista',
     permissions: [],
@@ -40,7 +40,7 @@ export default function UsersAdmin() {
     setEditingId(null);
     setForm({
       name: '',
-      email: '',
+      email: '@zenia.pe',
       password: '',
       role: 'recepcionista',
       permissions: [],
