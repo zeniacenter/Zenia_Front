@@ -3,7 +3,22 @@ import { authAPI, usersAPI, servicesAPI, packagesAPI, therapistsAPI, cabinsAPI, 
 import { BarChart3, Calendar, Users, Home, Sparkles, Package, TrendingUp, Plus, User, MapPin } from 'lucide-react';
 
 const AppContext = createContext(null);
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE = API_URL.replace(/\/api\/?$/, '');
+
+export const getImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http') || path.startsWith('blob:')) return path;
+  return API_BASE + path;
+};
+
+const getImagePath = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http')) {
+    try { return new URL(url).pathname; } catch { return url; }
+  }
+  return url;
+};
 
 export const AVAILABLE_VIEWS = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -48,6 +63,7 @@ export function AppProvider({ children }) {
       : [];
     return {
       ...pkg,
+      image: getImageUrl(pkg.image),
       sessions,
       serviceIds: sessions.map((s) => s.id),
       originalPrice: parseFloat(pkg.original_price) || 0,
@@ -59,6 +75,7 @@ export function AppProvider({ children }) {
 
   const transformService = (svc) => ({
     ...svc,
+    image: getImageUrl(svc.image),
     pricePerHour: parseFloat(svc.price_per_hour) || 0,
     pricePerHalfHour: parseFloat(svc.price_per_half_hour) || 0,
     branchIds: svc.branches ? svc.branches.map((b) => b.id) : [],
@@ -66,6 +83,7 @@ export function AppProvider({ children }) {
 
   const transformTherapist = (th) => ({
     ...th,
+    image: getImageUrl(th.image),
     available: th.is_available ?? true,
     serviceIds: th.services ? th.services.map((s) => s.id) : [],
     branchIds: th.branches ? th.branches.map((b) => b.id) : [],
@@ -73,6 +91,7 @@ export function AppProvider({ children }) {
 
   const transformCabin = (cab) => ({
     ...cab,
+    image: getImageUrl(cab.image),
     available: cab.is_available ?? true,
     serviceIds: cab.services ? cab.services.map((s) => s.id) : [],
     branchId: cab.branch_id ?? cab.branch?.id ?? null,
@@ -260,7 +279,7 @@ export function AppProvider({ children }) {
       price_per_hour: service.pricePerHour,
       price_per_half_hour: service.pricePerHalfHour,
       category: service.category,
-      image: service.image || '',
+      image: getImagePath(service.image) || '',
       is_active: service.is_active ?? true,
       branch_ids: service.branchIds || [],
     };
@@ -281,7 +300,7 @@ export function AppProvider({ children }) {
       price_per_hour: updates.pricePerHour,
       price_per_half_hour: updates.pricePerHalfHour,
       category: updates.category,
-      image: updates.image || '',
+      image: getImagePath(updates.image) || '',
       is_active: updates.is_active ?? true,
       branch_ids: updates.branchIds || [],
     };
@@ -307,7 +326,7 @@ export function AppProvider({ children }) {
       name: therapist.name,
       specialty: therapist.specialty,
       experience: therapist.experience,
-      image: therapist.image || '',
+      image: getImagePath(therapist.image) || '',
       is_available: therapist.available ?? true,
       schedule: therapist.schedule,
       service_ids: therapist.serviceIds || [],
@@ -328,7 +347,7 @@ export function AppProvider({ children }) {
       name: updates.name,
       specialty: updates.specialty,
       experience: updates.experience,
-      image: updates.image || '',
+      image: getImagePath(updates.image) || '',
       is_available: updates.available ?? true,
       schedule: updates.schedule,
       service_ids: updates.serviceIds || [],
@@ -390,7 +409,7 @@ export function AppProvider({ children }) {
       name: cabin.name,
       description: cabin.description,
       capacity: cabin.capacity,
-      image: cabin.image,
+      image: getImagePath(cabin.image),
       is_available: cabin.available ?? cabin.is_available ?? true,
       branch_id: cabin.branchId || cabin.branch_id,
       service_ids: cabin.serviceIds || [],
@@ -410,7 +429,7 @@ export function AppProvider({ children }) {
       name: updates.name,
       description: updates.description,
       capacity: updates.capacity,
-      image: updates.image,
+      image: getImagePath(updates.image),
       is_available: updates.available ?? updates.is_available ?? true,
       branch_id: updates.branchId || updates.branch_id,
       service_ids: updates.serviceIds || [],
@@ -449,7 +468,7 @@ export function AppProvider({ children }) {
       hours: pkg.hours,
       original_price: pkg.originalPrice,
       package_price: pkg.packagePrice,
-      image: pkg.image || '',
+      image: getImagePath(pkg.image) || '',
       is_active: pkg.active ?? true,
       branch_id: pkg.branchId || null,
       service_ids: expandedIds,
@@ -482,7 +501,7 @@ export function AppProvider({ children }) {
       hours: updates.hours,
       original_price: updates.originalPrice,
       package_price: updates.packagePrice,
-      image: updates.image || '',
+      image: getImagePath(updates.image) || '',
       is_active: updates.active ?? true,
       branch_id: updates.branchId || null,
       service_ids: expandedIds,

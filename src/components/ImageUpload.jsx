@@ -1,25 +1,18 @@
-import { useState, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { uploadAPI } from '../services/api';
+import { getImageUrl } from '../context/AppContext';
 import { Camera } from 'lucide-react';
 
 const ImageUpload = forwardRef(function ImageUpload({ value, onChange, imageableType, imageableId, label = 'Imagen' }, ref) {
-  const [preview, setPreview] = useState(value || '');
+  const [preview, setPreview] = useState(() => getImageUrl(value) || '');
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [pendingFile, setPendingFile] = useState(null);
   const inputRef = useRef(null);
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-
-  const getFullUrl = (url) => {
-    if (!url) return '';
-    if (url.startsWith('http')) return url;
-    if (url.startsWith('/api')) {
-      const base = API_BASE.replace('/api', '');
-      return base + url;
-    }
-    return url;
-  };
+  useEffect(() => {
+    setPreview(getImageUrl(value) || '');
+  }, [value]);
 
   useImperativeHandle(ref, () => ({
     async uploadPending(id) {
@@ -27,7 +20,7 @@ const ImageUpload = forwardRef(function ImageUpload({ value, onChange, imageable
       setUploading(true);
       try {
         const res = await uploadAPI.image(pendingFile, imageableType, id);
-        const url = getFullUrl(res.data.url);
+        const url = getImageUrl(res.data.url);
         setPreview(url);
         setPendingFile(null);
         onChange(url);
@@ -59,8 +52,8 @@ const ImageUpload = forwardRef(function ImageUpload({ value, onChange, imageable
       setUploading(true);
       uploadAPI.image(file, imageableType, imageableId)
         .then((res) => {
-          setPreview(getFullUrl(res.data.url));
-          onChange(res.data.url);
+          setPreview(getImageUrl(res.data.url));
+          onChange(getImageUrl(res.data.url));
         })
         .catch(() => {
           alert('Error al subir imagen');
