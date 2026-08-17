@@ -391,6 +391,23 @@ export default function AdminBooking() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
+                <label style={labelStyle}>DNI</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    style={{ ...inputStyle, paddingRight: dniLoading ? '2rem' : '0.75rem' }}
+                    placeholder="45678912"
+                    maxLength={15}
+                    value={clientDni}
+                    onChange={(e) => setClientDni(e.target.value)}
+                    onBlur={handleDniBlur}
+                  />
+                  {dniLoading && (
+                    <span style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.75rem', color: '#C9944A' }}>...</span>
+                  )}
+                </div>
+              </div>
+              <div>
                 <label style={labelStyle}>Nombre *</label>
                 <input
                   type="text"
@@ -411,23 +428,6 @@ export default function AdminBooking() {
                   onChange={(e) => setClientLastName(e.target.value)}
                   required
                 />
-              </div>
-              <div>
-                <label style={labelStyle}>DNI</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    style={{ ...inputStyle, paddingRight: dniLoading ? '2rem' : '0.75rem' }}
-                    placeholder="45678912"
-                    maxLength={15}
-                    value={clientDni}
-                    onChange={(e) => setClientDni(e.target.value)}
-                    onBlur={handleDniBlur}
-                  />
-                  {dniLoading && (
-                    <span style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.75rem', color: '#C9944A' }}>...</span>
-                  )}
-                </div>
               </div>
             </div>
 
