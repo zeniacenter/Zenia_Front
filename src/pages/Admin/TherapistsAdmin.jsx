@@ -51,7 +51,8 @@ export default function TherapistsAdmin() {
     setEditingId(null);
     setForm({
       name: '', specialty: '', experience: '', image: '', available: true,
-      schedule: JSON.parse(JSON.stringify(defaultSchedule)), serviceIds: [], branchIds: [],
+      schedule: Object.fromEntries(Object.keys(defaultSchedule).map((d) => [d, []])),
+      serviceIds: [], branchIds: [],
     });
     setShowModal(true);
   };

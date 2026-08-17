@@ -362,6 +362,7 @@ export default function PackagesAdmin() {
                     type="number"
                     className="form-control"
                     min={0}
+                    step="0.01"
                     value={form.originalPrice}
                     onChange={(e) => setForm({ ...form, originalPrice: Number(e.target.value) })}
                     required
@@ -374,6 +375,7 @@ export default function PackagesAdmin() {
                     type="number"
                     className="form-control"
                     min={0}
+                    step="0.01"
                     value={form.packagePrice}
                     onChange={(e) => setForm({ ...form, packagePrice: Number(e.target.value) })}
                     required

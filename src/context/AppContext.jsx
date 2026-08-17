@@ -110,19 +110,26 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (token) return;
-    Promise.all([
-      servicesAPI.list(),
-      therapistsAPI.list(),
-      cabinsAPI.list(),
-      packagesAPI.list(),
-      branchesAPI.list(),
-    ]).then(([s, t, c, p, b]) => {
-      setServices(s.data.map(transformService));
-      setTherapists(t.data.map(transformTherapist));
-      setCabins(c.data.map(transformCabin));
-      setPackages(p.data.map(transformPackage));
-      setBranches(b.data.map(transformBranch));
-    }).catch(() => {});
+
+    const load = () => {
+      Promise.all([
+        servicesAPI.list(),
+        therapistsAPI.list(),
+        cabinsAPI.list(),
+        packagesAPI.list(),
+        branchesAPI.list(),
+      ]).then(([s, t, c, p, b]) => {
+        setServices(s.data.map(transformService));
+        setTherapists(t.data.map(transformTherapist));
+        setCabins(c.data.map(transformCabin));
+        setPackages(p.data.map(transformPackage));
+        setBranches(b.data.map(transformBranch));
+      }).catch(() => {});
+    };
+
+    load();
+    const intervalId = setInterval(load, 30000);
+    return () => clearInterval(intervalId);
   }, [token]);
 
   useEffect(() => {
@@ -183,6 +190,43 @@ export function AppProvider({ children }) {
       if (uData) setUsers(uData);
     });
   }, [token, selectedBranchId]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const ok = (r) => r.status === 'fulfilled' ? r.value.data : null;
+
+    const poll = () => {
+      Promise.allSettled([
+        usersAPI.list(),
+        servicesAPI.list(),
+        therapistsAPI.list(),
+        cabinsAPI.list(),
+        packagesAPI.list(),
+        branchesAPI.listAll(),
+        appointmentsAPI.list(),
+      ]).then(([u, s, t, c, p, b, a]) => {
+        const uData = ok(u);
+        const sData = ok(s);
+        const tData = ok(t);
+        const cData = ok(c);
+        const pData = ok(p);
+        const bData = ok(b);
+        const aData = ok(a);
+
+        if (uData) setUsers(uData);
+        if (sData) setServices(sData.map(transformService));
+        if (tData) setTherapists(tData.map(transformTherapist));
+        if (cData) setCabins(cData.map(transformCabin));
+        if (pData) setPackages(pData.map(transformPackage));
+        if (bData) setBranches(bData.map(transformBranch));
+        if (aData) setAppointments(aData);
+      });
+    };
+
+    const intervalId = setInterval(poll, 30000);
+    return () => clearInterval(intervalId);
+  }, [token]);
 
   const hasPermission = useCallback((permission) => {
     if (!user) return false;

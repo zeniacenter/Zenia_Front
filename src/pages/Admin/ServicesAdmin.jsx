@@ -158,11 +158,11 @@ export default function ServicesAdmin() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
                   <label>Precio por Hora (S/)</label>
-                  <input type="number" className="form-control" min={0} value={form.pricePerHour} onChange={(e) => setForm({ ...form, pricePerHour: Number(e.target.value) })} required />
+                  <input type="number" className="form-control" min={0} step="0.01" value={form.pricePerHour} onChange={(e) => setForm({ ...form, pricePerHour: Number(e.target.value) })} required />
                 </div>
                 <div className="form-group">
                   <label>Precio por 30 min (S/)</label>
-                  <input type="number" className="form-control" min={0} value={form.pricePerHalfHour} onChange={(e) => setForm({ ...form, pricePerHalfHour: Number(e.target.value) })} required />
+                  <input type="number" className="form-control" min={0} step="0.01" value={form.pricePerHalfHour} onChange={(e) => setForm({ ...form, pricePerHalfHour: Number(e.target.value) })} required />
                 </div>
               </div>
               <ImageUpload ref={imageRef} value={form.image} onChange={(url) => setForm({ ...form, image: url })} imageableType="service" imageableId={editingId} label="Imagen del servicio" />
