@@ -1,12 +1,15 @@
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { personAPI, appointmentsAPI } from '../../services/api';
+import { ArrowLeft } from 'lucide-react';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
+import { clearBusyCache } from '../../utils/busyCache';
 
 export default function AdminBooking() {
   const { services, therapists, cabins, branches, packages, addAppointment, settings } = useApp();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [selectedBranch, setSelectedBranch] = useState('');
   const [bookingType, setBookingType] = useState('service');
@@ -14,8 +17,8 @@ export default function AdminBooking() {
   const [selectedPackage, setSelectedPackage] = useState('');
   const [selectedTherapist, setSelectedTherapist] = useState('');
   const [selectedCabin, setSelectedCabin] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
+  const [selectedDate, setSelectedDate] = useState(searchParams.get('date') || '');
+  const [selectedTime, setSelectedTime] = useState(searchParams.get('time') || '');
   const [hours, setHours] = useState(1);
   const [sessionCount, setSessionCount] = useState(1);
   const [dniLoading, setDniLoading] = useState(false);
@@ -175,6 +178,7 @@ export default function AdminBooking() {
         session_count: sessionCount,
       });
       alert(sessionCount > 1 ? `${sessionCount} sesiones agendadas exitosamente` : 'Cita agendada exitosamente');
+      clearBusyCache();
       navigate('/admin/citas');
     } catch (err) {
       alert('Error al agendar: ' + (err.response?.data?.message || err.message));
@@ -200,7 +204,21 @@ export default function AdminBooking() {
     <div style={{ display: 'flex', justifyContent: 'center' }}>
       <div style={{ width: '100%', maxWidth: '750px' }}>
         <div className="admin-header">
-          <h2>Agendar Cita</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              title="Retroceder"
+              style={{
+                width: '34px', height: '34px', borderRadius: '50%', border: '1px solid #E8E0D6',
+                background: '#FFFFFF', color: '#3D2E24', cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0,
+              }}
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <h2>Agendar Cita</h2>
+          </div>
         </div>
 
         <div className="card" style={{ padding: '2rem' }}>
@@ -349,6 +367,7 @@ export default function AdminBooking() {
                   <TimeSlotPicker
                     therapistId={Number(selectedTherapist)}
                     schedule={getSelectedTherapistObj()?.schedule}
+                    available={getSelectedTherapistObj()?.available ?? getSelectedTherapistObj()?.is_available ?? true}
                     date={selectedDate}
                     value={selectedTime}
                     hours={bookingType === 'package' ? (getSelectedPackageObj()?.hours || hours) : hours}

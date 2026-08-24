@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { Inbox, Info } from 'lucide-react';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
+import { clearBusyCache } from '../../utils/busyCache';
 import CancelAppointmentModal from '../../components/CancelAppointmentModal';
 import AppointmentDetailModal from '../../components/AppointmentDetailModal';
 import PaymentScopeModal from '../../components/PaymentScopeModal';
@@ -131,6 +132,7 @@ export default function AppointmentsAdmin() {
       start_time: postponeTime,
       end_time: endTime,
     });
+    clearBusyCache();
     setPostponeTarget(null);
   };
 

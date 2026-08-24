@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { Sparkles, Gift, ArrowLeft, MapPin } from 'lucide-react';
 import { personAPI } from '../../services/api';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
+import { clearBusyCache } from '../../utils/busyCache';
 
 const BASE_STEPS = [
   { number: 1, label: 'Sede' },
@@ -352,6 +353,7 @@ export default function Booking() {
             status: 'confirmada',
           });
         }
+        clearBusyCache();
         navigate('/confirmacion', {
           state: {
             clientName,
@@ -419,6 +421,7 @@ export default function Booking() {
             status: 'confirmada',
           });
         }
+        clearBusyCache();
         navigate('/confirmacion', {
           state: {
             clientName,
@@ -473,6 +476,7 @@ export default function Booking() {
     };
     try {
       await addAppointment(payload);
+      clearBusyCache();
       navigate('/confirmacion', {
         state: {
           clientName,
@@ -555,7 +559,7 @@ export default function Booking() {
                 <div className="type-card" onClick={() => selectType('services')}>
                   <div className="type-card-icon"><Sparkles size={32} /></div>
                   <h3>Servicios Individuales</h3>
-                  <p>Selecciona uno o más servicios y personaliza la duración a tu medida</p>
+                  <p>Selecciona uno o más servicios para tu cita</p>
                   <span className="type-card-price">Desde S/ 15</span>
                 </div>
                 <div className="type-card" onClick={() => selectType('packages')}>
@@ -769,6 +773,7 @@ export default function Booking() {
                               <TimeSlotPicker
                                 therapistId={selectedTherapist}
                                 schedule={therapist?.schedule}
+                                available={therapist?.available ?? therapist?.is_available ?? true}
                                 date={sched.date}
                                 value={sched.time}
                                 hours={sessionHours}
@@ -812,6 +817,7 @@ export default function Booking() {
                       <TimeSlotPicker
                         therapistId={selectedTherapist}
                         schedule={getSelectedTherapistObj()?.schedule}
+                        available={getSelectedTherapistObj()?.available ?? getSelectedTherapistObj()?.is_available ?? true}
                         date={selectedDate}
                         value={selectedTime}
                         hours={getTotalHours()}
@@ -984,29 +990,9 @@ export default function Booking() {
                         return (
                           <div key={id} className="sidebar-service-item">
                             <span>{svc?.name}</span>
-                            <div className="sidebar-duration-controls">
-                              <button
-                                type="button"
-                                onClick={() => setServiceDurations((d) => ({ ...d, [id]: Math.max(0.5, (d[id] || 1) - 0.5) }))}
-                                style={{
-                                  width: '22px', height: '22px', borderRadius: '50%', border: '1px solid #E8E0D6',
-                                  background: '#fff', color: '#3D2E24', cursor: 'pointer', display: 'flex',
-                                  alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 600, padding: 0,
-                                }}
-                              >−</button>
-                              <span style={{ fontWeight: 600, fontSize: '0.85rem', minWidth: '40px', textAlign: 'center' }}>
-                                {dur}h
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setServiceDurations((d) => ({ ...d, [id]: Math.min(8, (d[id] || 1) + 0.5) }))}
-                                style={{
-                                  width: '22px', height: '22px', borderRadius: '50%', border: '1px solid #E8E0D6',
-                                  background: '#fff', color: '#3D2E24', cursor: 'pointer', display: 'flex',
-                                  alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 600, padding: 0,
-                                }}
-                              >+</button>
-                            </div>
+                            <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#6B5B4E' }}>
+                              {dur}h
+                            </span>
                           </div>
                         );
                       })}

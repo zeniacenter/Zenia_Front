@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -37,6 +38,7 @@ function toDateStr(d) {
 
 export default function Dashboard() {
   const { appointments, therapists, services, cabins, branches } = useApp();
+  const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState('month');
@@ -121,7 +123,13 @@ export default function Dashboard() {
   };
 
   const handleSelectSlot = ({ start }) => {
-    setSelectedDay(toDateStr(start));
+    const dateStr = toDateStr(start);
+    setSelectedDay(dateStr);
+    if (currentView !== 'month') {
+      const hh = String(start.getHours()).padStart(2, '0');
+      const mm = String(start.getMinutes()).padStart(2, '0');
+      navigate(`/admin/agendar?date=${dateStr}&time=${hh}:${mm}`);
+    }
   };
 
   return (

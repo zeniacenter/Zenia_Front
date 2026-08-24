@@ -12,6 +12,8 @@ export const getImageUrl = (path) => {
   return API_BASE + path;
 };
 
+const loadTherapistsForAdmin = () => therapistsAPI.listAll().catch(() => therapistsAPI.list());
+
 const getImagePath = (url) => {
   if (!url) return '';
   if (url.startsWith('http')) {
@@ -139,7 +141,7 @@ export function AppProvider({ children }) {
       Promise.allSettled([
         usersAPI.list(),
         servicesAPI.list(),
-        therapistsAPI.list(),
+        loadTherapistsForAdmin(),
         cabinsAPI.list(),
         packagesAPI.list(),
         branchesAPI.listAll(),
@@ -200,7 +202,7 @@ export function AppProvider({ children }) {
       Promise.allSettled([
         usersAPI.list(),
         servicesAPI.list(),
-        therapistsAPI.list(),
+        loadTherapistsForAdmin(),
         cabinsAPI.list(),
         packagesAPI.list(),
         branchesAPI.listAll(),

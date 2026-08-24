@@ -72,7 +72,7 @@ export const therapistsAPI = {
   create: (data) => api.post('/admin/therapists', data),
   update: (id, data) => api.put(`/admin/therapists/${id}`, data),
   delete: (id) => api.delete(`/admin/therapists/${id}`),
-  availability: (id, date) => api.get(`/therapists/${id}/availability`, { params: { date } }),
+  availability: (id, date, config = {}) => api.get(`/therapists/${id}/availability`, { params: { date }, ...config }),
   busySlots: (id, date, excludeAppointmentId) => {
     const params = { date };
     if (excludeAppointmentId) params.exclude_appointment_id = excludeAppointmentId;
