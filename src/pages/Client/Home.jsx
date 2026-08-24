@@ -382,7 +382,7 @@ export default function Home() {
             <motion.div className="cta-final-features" variants={fadeUp}>
               <span><CheckCircle2 size={16} /> Cancelación gratuita</span>
               <span><CheckCircle2 size={16} /> Confirmación inmediata</span>
-              <span><CheckCircle2 size={16} /> Soporte 24/7</span>
+
             </motion.div>
           </AnimatedSection>
         </div>
