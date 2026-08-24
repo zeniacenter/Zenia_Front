@@ -58,6 +58,7 @@ export default function Booking() {
   const [clientEmail, setClientEmail] = useState('');
   const [sessionCount, setSessionCount] = useState(1);
   const [dniLoading, setDniLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleDniBlur = useCallback(async () => {
     const dni = clientDni.trim();
@@ -315,7 +316,8 @@ export default function Booking() {
   };
 
   const handleSubmit = async () => {
-    if (!canProceed()) return;
+    if (!canProceed() || submitting) return;
+    setSubmitting(true);
 
     if (bookingType === 'packages' && sessionSchedules.length > 1) {
       const pkg = packages.find((p) => p.id === selectedPackage);
@@ -383,6 +385,8 @@ export default function Booking() {
       } catch (err) {
         console.error('Error al agendar:', err);
         alert('Error al agendar cita: ' + (err.response?.data?.message || err.message || 'Error desconocido'));
+      } finally {
+        setSubmitting(false);
       }
       return;
     }
@@ -450,6 +454,8 @@ export default function Booking() {
       } catch (err) {
         console.error('Error al agendar:', err);
         alert('Error al agendar cita: ' + (err.response?.data?.message || err.message || 'Error desconocido'));
+      } finally {
+        setSubmitting(false);
       }
       return;
     }
@@ -500,6 +506,8 @@ export default function Booking() {
     } catch (err) {
       console.error('Error al agendar:', err);
       alert('Error al agendar cita: ' + (err.response?.data?.message || err.message || 'Error desconocido'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -1089,7 +1097,20 @@ export default function Booking() {
         {step < totalSteps ? (
           <button type="button" className="btn btn-primary btn-lg" disabled={!canProceed()} onClick={goNext}>Siguiente →</button>
         ) : (
-          <button type="button" className="btn btn-primary btn-lg" disabled={!canProceed()} onClick={handleSubmit}>Confirmar Reserva</button>
+          <button
+            type="button"
+            className={`btn btn-primary btn-lg ${submitting ? 'is-loading' : ''}`}
+            disabled={submitting || !canProceed()}
+            onClick={handleSubmit}
+          >
+            {submitting ? (
+              <>
+                <span className="btn-spinner" aria-hidden="true" /> Confirmando...
+              </>
+            ) : (
+              'Confirmar Reserva'
+            )}
+          </button>
         )}
       </div>
     </div>
