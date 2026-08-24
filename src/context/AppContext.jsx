@@ -50,9 +50,9 @@ export function AppProvider({ children }) {
   const [settings, setSettings] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('zenia_settings'));
-      return { priceVisible: true, cabinRequired: true, branchRequired: true, ...saved };
+      return { priceVisible: true, cabinRequired: true, branchRequired: true, workStart: '08:00', workEnd: '19:00', ...saved };
     } catch {
-      return { priceVisible: true, cabinRequired: true, branchRequired: true };
+      return { priceVisible: true, cabinRequired: true, branchRequired: true, workStart: '08:00', workEnd: '19:00' };
     }
   });
   const [userPermissions, setUserPermissions] = useState(null);

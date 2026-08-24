@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale';
 import { useApp } from '../../context/AppContext';
 import { CalendarDays, Clock, DollarSign, Hourglass, Home, User, Info } from 'lucide-react';
 import AppointmentDetailModal from '../../components/AppointmentDetailModal';
+import { buildHourRange } from '../../utils/hours';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const locales = { es };
@@ -25,8 +26,6 @@ const STATUSES_COLORS = {
   postergada: '#4A7A9A',
 };
 
-const CABIN_HOURS = Array.from({ length: 12 }, (_, i) => i + 8);
-
 function toDateStr(d) {
   if (!d) return '';
   if (d instanceof Date) {
@@ -40,7 +39,7 @@ function toDateStr(d) {
 }
 
 export default function Dashboard() {
-  const { appointments, therapists, services, cabins, branches } = useApp();
+  const { appointments, therapists, services, cabins, branches, settings } = useApp();
   const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState(null);
   const [detailApt, setDetailApt] = useState(null);
@@ -120,6 +119,11 @@ export default function Dashboard() {
   }, [cabins, filterBranch]);
 
   const cabinDayStr = toDateStr(currentDate);
+
+  const cabinHours = useMemo(
+    () => buildHourRange(settings.workStart, settings.workEnd),
+    [settings.workStart, settings.workEnd]
+  );
 
   const cabinDayAppointments = useMemo(() =>
     filteredAppointments.filter((a) => toDateStr(a.date) === cabinDayStr && a.status !== 'cancelada'),
@@ -284,7 +288,7 @@ export default function Dashboard() {
                       <th style={{ border: '1px solid #E8E0D6', background: '#F5F0E8', color: '#6B5B4E', padding: '0.55rem 0.5rem', fontSize: '0.78rem', textAlign: 'left', minWidth: '130px' }}>
                         Cabina
                       </th>
-                      {CABIN_HOURS.map((hour) => (
+                      {cabinHours.map((hour) => (
                         <th key={hour} style={{ border: '1px solid #E8E0D6', background: '#F5F0E8', color: '#6B5B4E', padding: '0.55rem 0.25rem', fontSize: '0.75rem', textAlign: 'center' }}>
                           {String(hour).padStart(2, '0')}:00
                         </th>
@@ -302,7 +306,7 @@ export default function Dashboard() {
                             </span>
                           ) : null}
                         </td>
-                        {CABIN_HOURS.map((hour) => {
+                        {cabinHours.map((hour) => {
                           const apt = getCabinSlotAppointment(cabin.id, hour);
                           const timeStr = `${String(hour).padStart(2, '0')}:00`;
                           if (apt) {

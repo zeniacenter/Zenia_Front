@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
+import { buildHourRange, formatHour } from '../../utils/hours';
 
 const defaultSchedule = {
   lunes: ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'],
@@ -24,13 +25,9 @@ const dayLabels = {
   domingo: 'Domingo',
 };
 
-const timeOptions = [
-  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
-  '14:00', '15:00', '16:00', '17:00', '18:00', '19:00',
-];
-
 export default function TherapistsAdmin() {
-  const { therapists, services, branches, addTherapist, updateTherapist, deleteTherapist, updateEntityImage, hasModulePermission } = useApp();
+  const { therapists, services, branches, addTherapist, updateTherapist, deleteTherapist, updateEntityImage, hasModulePermission, settings } = useApp();
+  const timeOptions = buildHourRange(settings.workStart, settings.workEnd).map(formatHour);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
