@@ -16,7 +16,7 @@ export default function AdminBooking() {
   const [selectedService, setSelectedService] = useState('');
   const [selectedPackage, setSelectedPackage] = useState('');
   const [selectedTherapist, setSelectedTherapist] = useState('');
-  const [selectedCabin, setSelectedCabin] = useState('');
+  const [selectedCabin, setSelectedCabin] = useState(searchParams.get('cabin') || '');
   const [selectedDate, setSelectedDate] = useState(searchParams.get('date') || '');
   const [selectedTime, setSelectedTime] = useState(searchParams.get('time') || '');
   const [hours, setHours] = useState(1);

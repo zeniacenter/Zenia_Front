@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Package, CreditCard, Clock, MapPin, User, Phone, Scissors, AlertTriangle, Mail, Hash } from 'lucide-react';
+import { X, Package, CreditCard, Clock, MapPin, User, Phone, Scissors, AlertTriangle, Mail, Hash, Home } from 'lucide-react';
 
 const STATUS_CONFIG = {
   pendiente: { label: 'Pendiente', color: '#8B6520', bg: '#FDF6E9' },
@@ -161,6 +161,10 @@ export default function AppointmentDetailModal({
               <span style={value}>{branchName}</span>
             </div>
             <div style={row}>
+              <span style={label}><Home size={13} />Cabina</span>
+              <span style={value}>{apt.cabin?.name || 'N/A'}</span>
+            </div>
+            <div style={row}>
               <span style={label}>📅 Fecha</span>
               <span style={value}>{apt.date ? new Date(apt.date).toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</span>
             </div>
@@ -271,7 +275,7 @@ export default function AppointmentDetailModal({
                 <div style={{ marginTop: '0.6rem', padding: '0.4rem 0.6rem', borderRadius: '6px', background: '#E8F5E9', color: '#2D7A3A', fontSize: '0.75rem', fontWeight: 600, textAlign: 'center' }}>
                   Paquete pagado completamente
                 </div>
-              ) : (
+              ) : onPaymentPropagate ? (
                 <div style={{ marginTop: '0.6rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
                     <span style={{ fontSize: '0.75rem', color: '#A89888' }}>
@@ -287,7 +291,7 @@ export default function AppointmentDetailModal({
                     Marcar todo como pagado
                   </button>
                 </div>
-              )}
+              ) : null}
             </div>
           )}
 

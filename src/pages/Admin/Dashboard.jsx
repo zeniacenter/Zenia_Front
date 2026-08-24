@@ -4,7 +4,8 @@ import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useApp } from '../../context/AppContext';
-import { CalendarDays, Clock, DollarSign, Hourglass, Home } from 'lucide-react';
+import { CalendarDays, Clock, DollarSign, Hourglass, Home, User, Info } from 'lucide-react';
+import AppointmentDetailModal from '../../components/AppointmentDetailModal';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const locales = { es };
@@ -24,6 +25,8 @@ const STATUSES_COLORS = {
   postergada: '#4A7A9A',
 };
 
+const CABIN_HOURS = Array.from({ length: 12 }, (_, i) => i + 8);
+
 function toDateStr(d) {
   if (!d) return '';
   if (d instanceof Date) {
@@ -40,6 +43,7 @@ export default function Dashboard() {
   const { appointments, therapists, services, cabins, branches } = useApp();
   const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState(null);
+  const [detailApt, setDetailApt] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState('month');
   const [filterBranch, setFilterBranch] = useState('');
@@ -106,6 +110,42 @@ export default function Dashboard() {
       return toDateStr(a.date) === selectedDay && a.status !== 'cancelada';
     });
   }, [filteredAppointments, selectedDay]);
+
+  const visibleCabins = useMemo(() => {
+    let list = cabins.filter((c) => c.is_available ?? c.available);
+    if (filterBranch) {
+      list = list.filter((c) => String(c.branchId || c.branch_id) === String(filterBranch));
+    }
+    return list;
+  }, [cabins, filterBranch]);
+
+  const cabinDayStr = toDateStr(currentDate);
+
+  const cabinDayAppointments = useMemo(() =>
+    filteredAppointments.filter((a) => toDateStr(a.date) === cabinDayStr && a.status !== 'cancelada'),
+  [filteredAppointments, cabinDayStr]);
+
+  const getCabinSlotAppointment = (cabinId, hour) => {
+    const slotStart = hour * 60;
+    return cabinDayAppointments.find((a) => {
+      const cid = a.cabinId || a.cabin_id;
+      if (!cid || Number(cid) !== Number(cabinId)) return false;
+      const toMin = (t) => {
+        const parts = String(t).slice(0, 5).split(':').map(Number);
+        return (parts[0] || 0) * 60 + (parts[1] || 0);
+      };
+      const start = a.time || a.start_time;
+      const end = a.end_time || a.time;
+      if (!start || !end) return false;
+      return toMin(start) <= slotStart && slotStart < toMin(end);
+    });
+  };
+
+  const navigateDay = (days) => {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() + days);
+    setCurrentDate(d);
+  };
 
   const eventStyleGetter = (event) => ({
     style: {
@@ -195,32 +235,139 @@ export default function Dashboard() {
 
       <div className="dashboard-grid">
         <div className="calendar-wrapper" style={{ minHeight: 500 }}>
-          <Calendar
-            localizer={localizer}
-            events={events}
-            startAccessor="start"
-            endAccessor="end"
-            style={{ height: 480 }}
-            eventPropGetter={eventStyleGetter}
-            onSelectEvent={handleSelectEvent}
-            onSelectSlot={handleSelectSlot}
-            selectable
-            date={currentDate}
-            view={currentView}
-            onNavigate={(date) => setCurrentDate(date)}
-            onView={(view) => setCurrentView(view)}
-            views={['month', 'week', 'day']}
-            messages={{
-              today: 'Hoy',
-              previous: 'Anterior',
-              next: 'Siguiente',
-              month: 'Mes',
-              week: 'Semana',
-              day: 'Día',
-              noEventsInRange: 'No hay citas en este rango',
-            }}
-            culture="es"
-          />
+          {currentView === 'day' ? (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  {[['month', 'Mes'], ['week', 'Semana'], ['day', 'Día']].map(([view, label]) => (
+                    <button
+                      key={view}
+                      type="button"
+                      onClick={() => setCurrentView(view)}
+                      style={{
+                        padding: '0.35rem 0.85rem', borderRadius: '8px', border: '1px solid',
+                        borderColor: currentView === view ? '#C9944A' : '#E8E0D6',
+                        background: currentView === view ? '#FDF6E9' : '#FFFFFF',
+                        color: currentView === view ? '#8B6520' : '#6B5B4E',
+                        fontWeight: currentView === view ? 600 : 400,
+                        fontSize: '0.82rem', cursor: 'pointer',
+                      }}
+                    >{label}</button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => navigateDay(-1)}
+                    style={{ padding: '0.35rem 0.6rem', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#FFFFFF', color: '#3D2E24', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}
+                  >←</button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentDate(new Date())}
+                    style={{ padding: '0.35rem 0.9rem', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#FDF6E9', color: '#8B6520', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}
+                  >Hoy</button>
+                  <button
+                    type="button"
+                    onClick={() => navigateDay(1)}
+                    style={{ padding: '0.35rem 0.6rem', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#FFFFFF', color: '#3D2E24', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}
+                  >→</button>
+                  <span style={{ marginLeft: '0.35rem', fontSize: '0.85rem', fontWeight: 600, color: '#3D2E24' }}>
+                    {currentDate.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: '780px', tableLayout: 'fixed' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ border: '1px solid #E8E0D6', background: '#F5F0E8', color: '#6B5B4E', padding: '0.55rem 0.5rem', fontSize: '0.78rem', textAlign: 'left', minWidth: '130px' }}>
+                        Cabina
+                      </th>
+                      {CABIN_HOURS.map((hour) => (
+                        <th key={hour} style={{ border: '1px solid #E8E0D6', background: '#F5F0E8', color: '#6B5B4E', padding: '0.55rem 0.25rem', fontSize: '0.75rem', textAlign: 'center' }}>
+                          {String(hour).padStart(2, '0')}:00
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleCabins.map((cabin) => (
+                      <tr key={cabin.id}>
+                        <td style={{ border: '1px solid #E8E0D6', background: '#FDFBF7', padding: '0.5rem', fontWeight: 600, color: '#3D2E24', fontSize: '0.82rem' }}>
+                          {cabin.name}
+                          {cabin.capacity ? (
+                            <span style={{ display: 'block', fontWeight: 400, fontSize: '0.72rem', color: '#A89888' }}>
+                              Cap: {cabin.capacity}
+                            </span>
+                          ) : null}
+                        </td>
+                        {CABIN_HOURS.map((hour) => {
+                          const apt = getCabinSlotAppointment(cabin.id, hour);
+                          const timeStr = `${String(hour).padStart(2, '0')}:00`;
+                          if (apt) {
+                            const clientName = apt.clientName || apt.person?.name || 'N/A';
+                            return (
+                              <td
+                                key={hour}
+                                title={`${clientName} · ${apt.time || apt.start_time}-${apt.end_time || ''} · ${apt.status}`}
+                                onClick={() => setSelectedDay(cabinDayStr)}
+                                className="cabin-slot-busy"
+                                style={{ border: '1px solid #E8E0D6', background: STATUSES_COLORS[apt.status] || '#C5A059', color: '#FDFBF7', padding: '0.45rem 0.3rem', fontSize: '0.72rem', textAlign: 'center', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                              >
+                                {clientName}
+                              </td>
+                            );
+                          }
+                          return (
+                            <td
+                              key={hour}
+                              title={`Agendar en ${cabin.name} — ${timeStr}`}
+                              onClick={() => navigate(`/admin/agendar?date=${cabinDayStr}&time=${timeStr}&cabin=${cabin.id}`)}
+                              className="cabin-slot"
+                              style={{ border: '1px solid #E8E0D6', background: '#FFFFFF', cursor: 'pointer', height: '38px' }}
+                            />
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {visibleCabins.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#A89888', fontSize: '0.85rem' }}>
+                    No hay cabinas disponibles{filterBranch ? ' en esta sede' : ''}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <Calendar
+              localizer={localizer}
+              events={events}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: 480 }}
+              eventPropGetter={eventStyleGetter}
+              onSelectEvent={handleSelectEvent}
+              onSelectSlot={handleSelectSlot}
+              selectable
+              date={currentDate}
+              view={currentView}
+              onNavigate={(date) => setCurrentDate(date)}
+              onView={(view) => setCurrentView(view)}
+              views={['month', 'week', 'day']}
+              messages={{
+                today: 'Hoy',
+                previous: 'Anterior',
+                next: 'Siguiente',
+                month: 'Mes',
+                week: 'Semana',
+                day: 'Día',
+                noEventsInRange: 'No hay citas en este rango',
+              }}
+              culture="es"
+            />
+          )}
         </div>
 
         <div>
@@ -248,9 +395,14 @@ export default function Dashboard() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                     <div>
                       <strong style={{ color: '#3D2E24' }}>{apt.clientName || apt.person?.name}</strong>
-                      <p style={{ fontSize: '0.82rem', color: '#A89888' }}>
-                        {apt.time || apt.start_time} - {therapist?.name}
+                      <p style={{ fontSize: '0.82rem', color: '#A89888', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Clock size={13} /> {apt.time || apt.start_time} - {apt.end_time || ''}
                       </p>
+                      {therapist && (
+                        <p style={{ fontSize: '0.82rem', color: '#A89888', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <User size={13} /> {therapist.name}
+                        </p>
+                      )}
                       {serviceNames && (
                         <p style={{ fontSize: '0.82rem', color: '#A89888' }}>
                           {serviceNames} | {apt.hours}h - S/ {apt.total || apt.total_price}
@@ -258,18 +410,34 @@ export default function Dashboard() {
                       )}
                       {cabin && (
                         <p style={{ fontSize: '0.82rem', color: '#A89888', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Home size={14} /> {cabin.name}
+                          <Home size={13} /> {cabin.name}
                         </p>
                       )}
                     </div>
-                    <span style={{
-                      fontSize: '0.7rem', fontWeight: 600,
-                      padding: '0.2rem 0.6rem', borderRadius: '12px',
-                      background: apt.status === 'confirmada' ? '#F5EDE5' : '#FDF6E9',
-                      color: apt.status === 'confirmada' ? '#8B6A50' : '#8B6520',
-                    }}>
-                      {apt.status}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{
+                        fontSize: '0.7rem', fontWeight: 600,
+                        padding: '0.2rem 0.6rem', borderRadius: '12px',
+                        background: apt.status === 'confirmada' ? '#F5EDE5' : '#FDF6E9',
+                        color: apt.status === 'confirmada' ? '#8B6A50' : '#8B6520',
+                      }}>
+                        {apt.status}
+                      </span>
+                      <button
+                        type="button"
+                        title="Ver detalle"
+                        onClick={() => setDetailApt(apt)}
+                        style={{
+                          width: 24, height: 24, borderRadius: '50%',
+                          border: '1px solid #E8E0D6', background: '#FDFBF7',
+                          color: '#8B6520', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          padding: 0, flexShrink: 0,
+                        }}
+                      >
+                        <Info size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -277,6 +445,14 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      <AppointmentDetailModal
+        open={!!detailApt}
+        appointment={detailApt}
+        allAppointments={appointments}
+        onClose={() => setDetailApt(null)}
+        onSelectSession={(session) => setDetailApt(session)}
+      />
     </div>
   );
 }

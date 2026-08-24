@@ -2125,3 +2125,12 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   background: #b8860b;
   border-color: #b8860b;
 }
+
+
+.cabin-slot:hover {
+  background: #FDF6E9 !important;
+}
+
+.cabin-slot-busy:hover {
+  filter: brightness(1.08);
+}
