@@ -79,8 +79,6 @@ export default function ServicesAdmin() {
   };
 
   const isActiveService = (s) => (optimistic[s.id] ?? s.is_active ?? s.active ?? true);
-  const activeServices = filteredServices.filter(isActiveService);
-  const inactiveServices = filteredServices.filter((s) => !isActiveService(s));
 
   const getBranchNames = (ids) => (ids || []).map((id) => branches.find((b) => b.id === id)?.name || 'N/A').join(', ');
 
@@ -92,6 +90,9 @@ export default function ServicesAdmin() {
   const filteredServices = filterBranch
     ? services.filter((s) => !s.branchIds?.length || s.branchIds.includes(Number(filterBranch)))
     : services;
+
+  const activeServices = filteredServices.filter(isActiveService);
+  const inactiveServices = filteredServices.filter((s) => !isActiveService(s));
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
