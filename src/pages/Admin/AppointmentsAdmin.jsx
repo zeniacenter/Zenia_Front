@@ -8,6 +8,7 @@ import CancelAppointmentModal from '../../components/CancelAppointmentModal';
 import AppointmentDetailModal from '../../components/AppointmentDetailModal';
 import PaymentScopeModal from '../../components/PaymentScopeModal';
 import { appointmentsAPI } from '../../services/api';
+import { TableSkeleton } from '../../components/Skeleton';
 
 const STATUS_CONFIG = {
   pendiente: { label: 'Pendiente', color: '#8B6520', bg: '#FDF6E9' },
@@ -39,7 +40,7 @@ const inputStyle = {
 };
 
 export default function AppointmentsAdmin() {
-  const { appointments, therapists, services, cabins, branches, updateAppointment, hasModulePermission } = useApp();
+  const { appointments, therapists, services, cabins, branches, updateAppointment, hasModulePermission, loading } = useApp();
   const navigate = useNavigate();
   const [filter, setFilter] = useState('todas');
   const [postponeTarget, setPostponeTarget] = useState(null);
@@ -238,6 +239,9 @@ export default function AppointmentsAdmin() {
         ))}
       </div>
 
+      {loading ? (
+        <TableSkeleton columns={7} rows={8} />
+      ) : (
       <div style={{ background: '#FFFFFF', border: '1px solid #E8E0D6', borderRadius: '14px', overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -397,6 +401,7 @@ export default function AppointmentsAdmin() {
           </div>
         )}
       </div>
+      )}
 
       {postponeTarget && (
         <div

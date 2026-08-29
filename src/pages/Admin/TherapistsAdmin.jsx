@@ -5,6 +5,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
 import Pagination from '../../components/Pagination';
 import { buildHourRange, formatHour } from '../../utils/hours';
+import { CardGridSkeleton } from '../../components/Skeleton';
 
 const defaultSchedule = {
   lunes: ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'],
@@ -27,7 +28,7 @@ const dayLabels = {
 };
 
 export default function TherapistsAdmin() {
-  const { therapists, services, branches, addTherapist, updateTherapist, deleteTherapist, updateEntityImage, hasModulePermission, settings } = useApp();
+  const { therapists, services, branches, addTherapist, updateTherapist, deleteTherapist, updateEntityImage, hasModulePermission, settings, loading } = useApp();
   const timeOptions = buildHourRange(settings.workStart, settings.workEnd).map(formatHour);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -162,6 +163,10 @@ export default function TherapistsAdmin() {
         </select>
       </div>
 
+      {loading ? (
+        <CardGridSkeleton columns={3} rows={2} />
+      ) : (
+      <>
       <div className="therapists-grid">
         {pagedTherapists.map((therapist) => (
           <div className="card therapist-card" key={therapist.id}>
@@ -200,6 +205,8 @@ export default function TherapistsAdmin() {
         rowsPerPage={rowsPerPage}
         onRowsPerPageChange={setRowsPerPage}
       />
+      </>
+      )}
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>

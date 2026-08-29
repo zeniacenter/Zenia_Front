@@ -4,9 +4,10 @@ import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
 import Pagination from '../../components/Pagination';
+import { CardGridSkeleton } from '../../components/Skeleton';
 
 export default function CabinsAdmin() {
-  const { cabins, services, branches, addCabin, updateCabin, deleteCabin, updateEntityImage, hasModulePermission } = useApp();
+  const { cabins, services, branches, addCabin, updateCabin, deleteCabin, updateEntityImage, hasModulePermission, loading } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -117,6 +118,10 @@ export default function CabinsAdmin() {
         </select>
       </div>
 
+      {loading ? (
+        <CardGridSkeleton columns={3} rows={2} />
+      ) : (
+      <>
       <div className="services-grid">
         {pagedCabins.map((cabin) => (
           <div className="card" key={cabin.id}>
@@ -159,8 +164,10 @@ export default function CabinsAdmin() {
         rowsPerPage={rowsPerPage}
         onRowsPerPageChange={setRowsPerPage}
       />
+      </>
+      )}
 
-      {cabins.length === 0 && (
+      {cabins.length === 0 && !loading && (
         <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
           <p style={{ color: 'var(--land-text-muted)' }}>No hay cabinas registradas</p>
         </div>

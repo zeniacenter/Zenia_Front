@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
+import { TableSkeleton } from '../../components/Skeleton';
 
 export default function SedesAdmin() {
-  const { branches, therapists, services, addBranch, updateBranch, deleteBranch, hasModulePermission } = useApp();
+  const { branches, therapists, services, addBranch, updateBranch, deleteBranch, hasModulePermission, loading } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -62,6 +63,9 @@ export default function SedesAdmin() {
         )}
       </div>
 
+      {loading ? (
+        <TableSkeleton columns={7} rows={6} />
+      ) : (
       <div className="table-container">
         <table className="table">
           <thead>
@@ -114,6 +118,7 @@ export default function SedesAdmin() {
           </tbody>
         </table>
       </div>
+      )}
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>

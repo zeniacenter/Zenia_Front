@@ -3,9 +3,10 @@ import { useApp } from '../../context/AppContext';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import Pagination from '../../components/Pagination';
+import { CardGridSkeleton } from '../../components/Skeleton';
 
 export default function PackagesAdmin() {
-  const { packages, services, branches, addPackage, updatePackage, deletePackage, updateEntityImage, hasModulePermission } = useApp();
+  const { packages, services, branches, addPackage, updatePackage, deletePackage, updateEntityImage, hasModulePermission, loading } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -176,6 +177,10 @@ export default function PackagesAdmin() {
         </select>
       </div>
 
+      {loading ? (
+        <CardGridSkeleton columns={3} rows={2} />
+      ) : (
+      <>
       <div className="services-grid">
         {pagedPackages.map((pkg) => (
           <div className="card" key={pkg.id}>
@@ -231,8 +236,10 @@ export default function PackagesAdmin() {
         rowsPerPage={rowsPerPage}
         onRowsPerPageChange={setRowsPerPage}
       />
+      </>
+      )}
 
-      {filteredPackages.length === 0 && (
+      {!loading && filteredPackages.length === 0 && (
         <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
           <p style={{ color: 'var(--land-text-muted)' }}>No hay paquetes{filterBranch ? ' en esta sede' : ' creados'}</p>
         </div>

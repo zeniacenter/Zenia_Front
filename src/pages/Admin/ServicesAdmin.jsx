@@ -6,13 +6,16 @@ import MultiSelect from '../../components/MultiSelect';
 import Pagination from '../../components/Pagination';
 import { formatDuration as fmtDuration } from '../../utils/hours';
 import { Camera } from 'lucide-react';
+import { TableSkeleton } from '../../components/Skeleton';
 
 export default function ServicesAdmin() {
-  const { services, branches, addService, updateService, deleteService, updateEntityImage, hasModulePermission } = useApp();
+  const { services, branches, addService, updateService, deleteService, updateEntityImage, hasModulePermission, loading } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [filterBranch, setFilterBranch] = useState('');
+  const [tab, setTab] = useState('active');
+  const [optimistic, setOptimistic] = useState({});
   const imageRef = useRef(null);
   const [form, setForm] = useState({
     name: '', description: '', price: 30, durationH: 1, durationM: 0, image: '', category: '', branchIds: [],
@@ -61,6 +64,8 @@ export default function ServicesAdmin() {
   const confirmDelete = () => { deleteService(deleteTarget); setDeleteTarget(null); };
 
   const toggleServiceActive = (service) => {
+    const next = !(service.is_active ?? service.active ?? true);
+    setOptimistic((prev) => ({ ...prev, [service.id]: next }));
     updateService(service.id, {
       name: service.name,
       description: service.description,
@@ -69,9 +74,13 @@ export default function ServicesAdmin() {
       category: service.category,
       image: service.image,
       branchIds: service.branchIds || [],
-      is_active: !(service.is_active ?? service.active ?? true),
+      is_active: next,
     });
   };
+
+  const isActiveService = (s) => (optimistic[s.id] ?? s.is_active ?? s.active ?? true);
+  const activeServices = filteredServices.filter(isActiveService);
+  const inactiveServices = filteredServices.filter((s) => !isActiveService(s));
 
   const getBranchNames = (ids) => (ids || []).map((id) => branches.find((b) => b.id === id)?.name || 'N/A').join(', ');
 
@@ -84,14 +93,11 @@ export default function ServicesAdmin() {
     ? services.filter((s) => !s.branchIds?.length || s.branchIds.includes(Number(filterBranch)))
     : services;
 
-  const isActiveService = (s) => (s.is_active ?? s.active ?? true);
-  const activeServices = filteredServices.filter(isActiveService);
-  const inactiveServices = filteredServices.filter((s) => !isActiveService(s));
-
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  useEffect(() => { setPage(0); }, [filterBranch]);
-  const pagedServices = activeServices.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+  useEffect(() => { setPage(0); }, [filterBranch, tab]);
+  const currentList = tab === 'active' ? activeServices : inactiveServices;
+  const pagedServices = currentList.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
   return (
     <div>
@@ -116,6 +122,32 @@ export default function ServicesAdmin() {
         </select>
       </div>
 
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+        <button
+          onClick={() => setTab('active')}
+          style={{
+            padding: '0.5rem 1.25rem', borderRadius: '999px', border: '1px solid #E8E0D6',
+            background: tab === 'active' ? '#2D7A3A' : '#fff', color: tab === 'active' ? '#fff' : '#3D2E24',
+            fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+          }}
+        >
+          Activos ({activeServices.length})
+        </button>
+        <button
+          onClick={() => setTab('inactive')}
+          style={{
+            padding: '0.5rem 1.25rem', borderRadius: '999px', border: '1px solid #E8E0D6',
+            background: tab === 'inactive' ? '#B85C4C' : '#fff', color: tab === 'inactive' ? '#fff' : '#3D2E24',
+            fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+          }}
+        >
+          Desactivados ({inactiveServices.length})
+        </button>
+      </div>
+
+      {loading ? (
+        <TableSkeleton columns={9} rows={8} />
+      ) : currentList.length > 0 ? (
       <div className="table-container">
         <table className="table">
           <thead>
@@ -159,23 +191,26 @@ export default function ServicesAdmin() {
                       onClick={() => toggleServiceActive(service)}
                       style={{
                         width: '34px', height: '18px', borderRadius: '9px',
-                        background: (service.is_active ?? service.active ?? true) ? '#2D7A3A' : '#C8C0BA',
+                        background: isActiveService(service) ? '#2D7A3A' : '#C8C0BA',
                         position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
                       }}
                     >
                       <div style={{
                         width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
-                        position: 'absolute', top: '2px', left: (service.is_active ?? service.active ?? true) ? '18px' : '2px',
+                        position: 'absolute', top: '2px', left: isActiveService(service) ? '18px' : '2px',
                         transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
                       }} />
                     </div>
-                    <span style={{ fontSize: '0.72rem', color: (service.is_active ?? service.active ?? true) ? '#2D7A3A' : '#B85C4C', fontWeight: 600 }}>
-                      {(service.is_active ?? service.active ?? true) ? 'Activo' : 'Inactivo'}
+                    <span style={{ fontSize: '0.72rem', color: isActiveService(service) ? '#2D7A3A' : '#B85C4C', fontWeight: 600 }}>
+                      {isActiveService(service) ? 'Activo' : 'Inactivo'}
                     </span>
                   </label>
                 </td>
                 <td>
                   <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    {tab === 'inactive' && hasModulePermission('servicios', 'can_edit') && (
+                      <button className="btn btn-sm btn-primary" onClick={() => toggleServiceActive(service)}>Reactivar</button>
+                    )}
                     {hasModulePermission('servicios', 'can_edit') && (
                       <button className="btn btn-sm btn-outline" onClick={() => openEdit(service)}>Editar</button>
                     )}
@@ -189,90 +224,16 @@ export default function ServicesAdmin() {
           </tbody>
         </table>
         <Pagination
-          total={activeServices.length}
+          total={currentList.length}
           page={page}
           onPageChange={setPage}
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={setRowsPerPage}
         />
       </div>
-
-      {inactiveServices.length > 0 && (
-        <div style={{ marginTop: '2rem' }}>
-          <div className="admin-header" style={{ marginBottom: '0.75rem' }}>
-            <h3 style={{ color: '#B85C4C' }}>Servicios Desactivados ({inactiveServices.length})</h3>
-          </div>
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Imagen</th>
-                  <th>Nombre</th>
-                  <th>Descripción</th>
-                  <th>Duración</th>
-                  <th>Precio</th>
-                  <th>Categoría</th>
-                  <th>Sedes</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inactiveServices.map((service) => (
-                  <tr key={service.id} style={{ opacity: 0.7 }}>
-                    <td>
-                      {service.image ? (
-                        <img src={service.image} alt={service.name} style={{ width: '60px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
-                      ) : (
-                        <div style={{ width: '60px', height: '40px', borderRadius: '6px', background: '#f0ebe3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Camera size={18} color="#B5A898" /></div>
-                      )}
-                    </td>
-                    <td><strong>{service.name}</strong></td>
-                    <td style={{ maxWidth: '250px', fontSize: '0.85rem', color: 'var(--text-light)' }}>{service.description}</td>
-                    <td>{fmtDuration((service.durationMin ?? 60) / 60)}</td>
-                    <td><strong>S/ {service.pricePerHour}</strong></td>
-                    <td>{service.category}</td>
-                    <td>
-                      {service.branchIds?.length > 0 ? (
-                        <span style={{ fontSize: '0.82rem' }}>{getBranchNames(service.branchIds)}</span>
-                      ) : (
-                        <span style={{ color: 'var(--land-text-muted)', fontSize: '0.82rem' }}>Todas</span>
-                      )}
-                    </td>
-                    <td>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
-                        <div
-                          onClick={() => toggleServiceActive(service)}
-                          style={{
-                            width: '34px', height: '18px', borderRadius: '9px',
-                            background: '#C8C0BA',
-                            position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
-                          }}
-                        >
-                          <div style={{
-                            width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
-                            position: 'absolute', top: '2px', left: '2px',
-                            transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
-                          }} />
-                        </div>
-                        <span style={{ fontSize: '0.72rem', color: '#B85C4C', fontWeight: 600 }}>Inactivo</span>
-                      </label>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        {hasModulePermission('servicios', 'can_edit') && (
-                          <button className="btn btn-sm btn-primary" onClick={() => toggleServiceActive(service)}>Reactivar</button>
-                        )}
-                        {hasModulePermission('servicios', 'can_delete') && (
-                          <button className="btn btn-sm btn-danger" onClick={() => handleDelete(service.id)}>Eliminar</button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      ) : (
+        <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#A89888', border: '1px dashed #E8E0D6', borderRadius: '12px' }}>
+          No hay servicios {tab === 'active' ? 'activos' : 'desactivados'} para mostrar.
         </div>
       )}
 

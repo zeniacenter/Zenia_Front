@@ -2,6 +2,7 @@ import { useState, Fragment } from 'react';
 import { useApp } from '../../context/AppContext';
 import ConfirmModal from '../../components/ConfirmModal';
 import { Settings, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { TableSkeleton } from '../../components/Skeleton';
 
 const MODULES = [
   { id: 'citas', label: 'Citas' },
@@ -32,7 +33,7 @@ const DASHBOARD_CARDS = [
 const ALL_CARD_IDS = DASHBOARD_CARDS.map((c) => c.id);
 
 export default function UsersAdmin() {
-  const { users, addUser, updateUser, deleteUser, branches, hasModulePermission } = useApp();
+  const { users, addUser, updateUser, deleteUser, branches, hasModulePermission, loading } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -209,6 +210,9 @@ export default function UsersAdmin() {
         )}
       </div>
 
+      {loading ? (
+        <TableSkeleton columns={6} rows={8} />
+      ) : (
       <div className="table-container">
         <table className="table">
           <thead>
@@ -318,6 +322,7 @@ export default function UsersAdmin() {
           </tbody>
         </table>
       </div>
+      )}
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
