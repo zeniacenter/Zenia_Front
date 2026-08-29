@@ -57,6 +57,7 @@ export function AppProvider({ children }) {
   });
   const [userPermissions, setUserPermissions] = useState(null);
   const [selectedBranchId, setSelectedBranchId] = useState(null);
+  const [loading, setLoading] = useState(true);
   const isAdminLoggedIn = !!token && !!user;
 
   const transformPackage = (pkg) => {
@@ -127,7 +128,7 @@ export function AppProvider({ children }) {
         setCabins(c.data.map(transformCabin));
         setPackages(p.data.map(transformPackage));
         setBranches(b.data.map(transformBranch));
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => setLoading(false));
     };
 
     load();
@@ -174,7 +175,7 @@ export function AppProvider({ children }) {
             setBranchId(firstBranchId);
           }
         }
-      });
+      }).finally(() => setLoading(false));
     }
   }, [token]);
 
@@ -648,7 +649,7 @@ export function AppProvider({ children }) {
     <AppContext.Provider
       value={{
         services, therapists, appointments, packages, cabins, branches,
-        users, user, isAdminLoggedIn, settings, userPermissions,
+        users, user, isAdminLoggedIn, settings, userPermissions, loading,
         selectedBranchId, selectBranch,
         hasPermission, hasModulePermission, hasDashboardCard,
         loginAdmin, logoutAdmin,

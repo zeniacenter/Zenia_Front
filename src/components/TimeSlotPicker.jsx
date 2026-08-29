@@ -1,6 +1,23 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { therapistsAPI } from '../services/api';
 import { getCachedBusy, setCachedBusy } from '../utils/busyCache';
+import Skeleton from './Skeleton';
+
+const SkeletonSlots = ({ compact }) => (
+  <div
+    className="wizard-time-grid"
+    style={{
+      display: 'grid',
+      gridTemplateColumns: compact ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)',
+      gap: compact ? '0.3rem' : '0.4rem',
+      overflow: 'hidden',
+    }}
+  >
+    {Array.from({ length: 8 }).map((_, i) => (
+      <Skeleton key={i} height={compact ? '30px' : '36px'} radius="8px" />
+    ))}
+  </div>
+);
 
 const toMinutes = (hhmm) => {
   const [h, m] = hhmm.split(':').map(Number);
@@ -166,19 +183,11 @@ export default function TimeSlotPicker({
   }
 
   if (!schedule && remoteSlots === null) {
-    return (
-      <div style={{ padding: compact ? '0.5rem' : '1rem', textAlign: 'center', color: '#A89888', fontSize: '0.8rem' }}>
-        Cargando disponibilidad...
-      </div>
-    );
+    return <SkeletonSlots compact={compact} />;
   }
 
   if (loading) {
-    return (
-      <div style={{ padding: compact ? '0.5rem' : '1rem', textAlign: 'center', color: '#A89888', fontSize: '0.8rem' }}>
-        Cargando horarios...
-      </div>
-    );
+    return <SkeletonSlots compact={compact} />;
   }
 
   const slots = getAvailableSlots();

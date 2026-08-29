@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale';
 import { useApp } from '../../context/AppContext';
 import { CalendarDays, Clock, DollarSign, Hourglass, Home, User, Info } from 'lucide-react';
 import AppointmentDetailModal from '../../components/AppointmentDetailModal';
+import Skeleton from '../../components/Skeleton';
 import { buildHourRange, formatHour } from '../../utils/hours';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -39,7 +40,7 @@ function toDateStr(d) {
 }
 
 export default function Dashboard() {
-  const { appointments, therapists, services, cabins, branches, settings, hasDashboardCard } = useApp();
+  const { appointments, therapists, services, cabins, branches, settings, hasDashboardCard, loading } = useApp();
   const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState(null);
   const [detailApt, setDetailApt] = useState(null);
@@ -172,6 +173,42 @@ export default function Dashboard() {
       navigate(`/admin/agendar?date=${dateStr}&time=${hh}:${mm}`);
     }
   };
+
+  if (loading) {
+    return (
+      <div>
+        <div className="admin-header">
+          <Skeleton width="160px" height="28px" />
+        </div>
+        <div className="stats-grid">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div className="stat-card" key={i}>
+              <div className="stat-icon green" style={{ background: 'transparent' }}><Skeleton circle width="44px" height="44px" /></div>
+              <div className="stat-info" style={{ width: '100%', gap: '0.5rem', display: 'flex', flexDirection: 'column' }}>
+                <Skeleton width="60%" height="24px" />
+                <Skeleton width="40%" height="14px" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="dashboard-grid">
+          <div className="calendar-wrapper" style={{ minHeight: 480 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <Skeleton width="220px" height="34px" />
+              <Skeleton width="140px" height="34px" />
+            </div>
+            <Skeleton height="400px" radius="10px" />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <Skeleton width="50%" height="20px" />
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} height="92px" radius="14px" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -4,6 +4,25 @@ import { useApp } from '../../context/AppContext';
 import { motion, useInView } from 'framer-motion';
 import { Sparkles, Heart, Shield, Clock, Star, ArrowRight, CheckCircle2, ImageIcon } from 'lucide-react';
 import AutoCarousel from '../../components/AutoCarousel';
+import Skeleton from '../../components/Skeleton';
+
+const SectionCardsSkeleton = ({ count = 3 }) => (
+  <div className="services-showcase">
+    {Array.from({ length: count }).map((_, i) => (
+      <div className="service-card-premium" key={i} style={{ border: '1px solid var(--land-border)' }}>
+        <div className="service-image-wrapper">
+          <Skeleton height="190px" radius="0" width="100%" />
+        </div>
+        <div className="service-content" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <Skeleton width="70%" height="20px" />
+          <Skeleton height="14px" width="100%" />
+          <Skeleton height="14px" width="90%" />
+          <Skeleton height="36px" width="100%" radius="8px" style={{ marginTop: '0.4rem' }} />
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -80,7 +99,7 @@ const testimonials = [
 ];
 
 export default function Home() {
-  const { services, packages, therapists, settings } = useApp();
+  const { services, packages, therapists, settings, loading } = useApp();
   const activePackages = packages.filter((p) => p.active);
   const featuredTherapists = therapists;
 
@@ -185,9 +204,12 @@ export default function Home() {
             </motion.p>
           </AnimatedSection>
 
-          <AnimatedSection className="services-showcase" viewportMargin="-60px">
-            <AutoCarousel
-              items={services}
+          {loading ? (
+            <SectionCardsSkeleton />
+          ) : (
+            <AnimatedSection className="services-showcase" viewportMargin="-60px">
+              <AutoCarousel
+                items={services}
               renderItem={(service, i) => (
                 <motion.div className="service-card-premium" key={service.id} variants={fadeUp} custom={i}>
                   <div className="service-image-wrapper">
@@ -218,10 +240,11 @@ export default function Home() {
                 </motion.div>
               )}
             />
-          </AnimatedSection>
+            </AnimatedSection>
+          )}
         </div>
       </section>
-      {activePackages.length > 0 && (
+      {(loading || activePackages.length > 0) && (
         <section id="paquetes" className="section-packages">
           <div className="container-premium">
             <AnimatedSection className="section-header">
@@ -236,9 +259,12 @@ export default function Home() {
               </motion.p>
             </AnimatedSection>
 
-            <AnimatedSection className="packages-grid" viewportMargin="-60px">
-              <AutoCarousel
-                items={activePackages}
+            {loading ? (
+              <SectionCardsSkeleton />
+            ) : (
+              <AnimatedSection className="packages-grid" viewportMargin="-60px">
+                <AutoCarousel
+                  items={activePackages}
                 renderItem={(pkg, i) => {
                   const sessions = pkg.sessions || [];
                   const totalSessions = sessions.length;
@@ -276,13 +302,14 @@ export default function Home() {
                   );
                 }}
               />
-            </AnimatedSection>
+              </AnimatedSection>
+            )}
           </div>
         </section>
       )}
 
       {/* ═══════════ THERAPISTS ═══════════ */}
-      {featuredTherapists.length > 0 && (
+      {(loading || featuredTherapists.length > 0) && (
         <section id="equipo" className="section-therapists">
           <div className="container-premium">
             <AnimatedSection className="section-header">
@@ -297,9 +324,12 @@ export default function Home() {
               </motion.p>
             </AnimatedSection>
 
-            <AnimatedSection className="therapists-showcase" viewportMargin="-60px">
-              <AutoCarousel
-                items={featuredTherapists}
+            {loading ? (
+              <SectionCardsSkeleton />
+            ) : (
+              <AnimatedSection className="therapists-showcase" viewportMargin="-60px">
+                <AutoCarousel
+                  items={featuredTherapists}
                 renderItem={(therapist, i) => (
                   <motion.div className="therapist-card-premium" key={therapist.id} variants={fadeUp} custom={i}>
                     <div className="therapist-image-wrapper">
@@ -316,7 +346,8 @@ export default function Home() {
                   </motion.div>
                 )}
               />
-            </AnimatedSection>
+              </AnimatedSection>
+            )}
           </div>
         </section>
       )}

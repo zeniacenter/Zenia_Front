@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { reportsAPI } from '../../services/api';
 import { useApp } from '../../context/AppContext';
+import Skeleton from '../../components/Skeleton';
 import {
   BarChart3, DollarSign, Clock, Timer,
   Download, FileText, FileSpreadsheet, Filter, X, Search
@@ -140,8 +141,28 @@ export default function Reports() {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-        Cargando reportes...
+      <div className="reports-page">
+        <div className="admin-header">
+          <Skeleton width="160px" height="28px" />
+        </div>
+        <div className="stats-grid">
+          {[0, 1, 2, 3].map((i) => (
+            <div className="stat-card" key={i}>
+              <div className="stat-info" style={{ width: '100%', gap: '0.5rem', display: 'flex', flexDirection: 'column' }}>
+                <Skeleton width="70%" height="26px" />
+                <Skeleton width="45%" height="14px" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="charts-grid">
+          {[0, 1, 2, 3].map((i) => (
+            <div className="card" key={i} style={{ padding: '1.5rem', minHeight: 300 }}>
+              <Skeleton width="50%" height="18px" style={{ marginBottom: '1.5rem' }} />
+              <Skeleton height="200px" radius="10px" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
