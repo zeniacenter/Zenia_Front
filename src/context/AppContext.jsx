@@ -142,10 +142,10 @@ export function AppProvider({ children }) {
 
       Promise.allSettled([
         usersAPI.list(),
-        servicesAPI.list(),
+        servicesAPI.listAll(),
         loadTherapistsForAdmin(),
-        cabinsAPI.list(),
-        packagesAPI.list(),
+        cabinsAPI.listAll(),
+        packagesAPI.listAll(),
         branchesAPI.listAll(),
         appointmentsAPI.list(),
         usersAPI.myPermissions(),
@@ -203,10 +203,10 @@ export function AppProvider({ children }) {
     const poll = () => {
       Promise.allSettled([
         usersAPI.list(),
-        servicesAPI.list(),
+        servicesAPI.listAll(),
         loadTherapistsForAdmin(),
-        cabinsAPI.list(),
-        packagesAPI.list(),
+        cabinsAPI.listAll(),
+        packagesAPI.listAll(),
         branchesAPI.listAll(),
         appointmentsAPI.list(),
       ]).then(([u, s, t, c, p, b, a]) => {

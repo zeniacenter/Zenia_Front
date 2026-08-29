@@ -84,10 +84,14 @@ export default function ServicesAdmin() {
     ? services.filter((s) => !s.branchIds?.length || s.branchIds.includes(Number(filterBranch)))
     : services;
 
+  const isActiveService = (s) => (s.is_active ?? s.active ?? true);
+  const activeServices = filteredServices.filter(isActiveService);
+  const inactiveServices = filteredServices.filter((s) => !isActiveService(s));
+
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   useEffect(() => { setPage(0); }, [filterBranch]);
-  const pagedServices = filteredServices.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+  const pagedServices = activeServices.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
   return (
     <div>
@@ -185,13 +189,92 @@ export default function ServicesAdmin() {
           </tbody>
         </table>
         <Pagination
-          total={filteredServices.length}
+          total={activeServices.length}
           page={page}
           onPageChange={setPage}
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={setRowsPerPage}
         />
       </div>
+
+      {inactiveServices.length > 0 && (
+        <div style={{ marginTop: '2rem' }}>
+          <div className="admin-header" style={{ marginBottom: '0.75rem' }}>
+            <h3 style={{ color: '#B85C4C' }}>Servicios Desactivados ({inactiveServices.length})</h3>
+          </div>
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Imagen</th>
+                  <th>Nombre</th>
+                  <th>Descripción</th>
+                  <th>Duración</th>
+                  <th>Precio</th>
+                  <th>Categoría</th>
+                  <th>Sedes</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inactiveServices.map((service) => (
+                  <tr key={service.id} style={{ opacity: 0.7 }}>
+                    <td>
+                      {service.image ? (
+                        <img src={service.image} alt={service.name} style={{ width: '60px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
+                      ) : (
+                        <div style={{ width: '60px', height: '40px', borderRadius: '6px', background: '#f0ebe3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Camera size={18} color="#B5A898" /></div>
+                      )}
+                    </td>
+                    <td><strong>{service.name}</strong></td>
+                    <td style={{ maxWidth: '250px', fontSize: '0.85rem', color: 'var(--text-light)' }}>{service.description}</td>
+                    <td>{fmtDuration((service.durationMin ?? 60) / 60)}</td>
+                    <td><strong>S/ {service.pricePerHour}</strong></td>
+                    <td>{service.category}</td>
+                    <td>
+                      {service.branchIds?.length > 0 ? (
+                        <span style={{ fontSize: '0.82rem' }}>{getBranchNames(service.branchIds)}</span>
+                      ) : (
+                        <span style={{ color: 'var(--land-text-muted)', fontSize: '0.82rem' }}>Todas</span>
+                      )}
+                    </td>
+                    <td>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                        <div
+                          onClick={() => toggleServiceActive(service)}
+                          style={{
+                            width: '34px', height: '18px', borderRadius: '9px',
+                            background: '#C8C0BA',
+                            position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
+                          }}
+                        >
+                          <div style={{
+                            width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
+                            position: 'absolute', top: '2px', left: '2px',
+                            transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                          }} />
+                        </div>
+                        <span style={{ fontSize: '0.72rem', color: '#B85C4C', fontWeight: 600 }}>Inactivo</span>
+                      </label>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        {hasModulePermission('servicios', 'can_edit') && (
+                          <button className="btn btn-sm btn-primary" onClick={() => toggleServiceActive(service)}>Reactivar</button>
+                        )}
+                        {hasModulePermission('servicios', 'can_delete') && (
+                          <button className="btn btn-sm btn-danger" onClick={() => handleDelete(service.id)}>Eliminar</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
