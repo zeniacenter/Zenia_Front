@@ -1,8 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
+import Pagination from '../../components/Pagination';
+import { formatDuration as fmtDuration } from '../../utils/hours';
 import { Camera } from 'lucide-react';
 
 export default function ServicesAdmin() {
@@ -13,20 +15,23 @@ export default function ServicesAdmin() {
   const [filterBranch, setFilterBranch] = useState('');
   const imageRef = useRef(null);
   const [form, setForm] = useState({
-    name: '', description: '', pricePerHour: 30, pricePerHalfHour: 15, image: '', category: '', branchIds: [],
+    name: '', description: '', price: 30, durationH: 1, durationM: 0, image: '', category: '', branchIds: [],
   });
 
   const openNew = () => {
     setEditingId(null);
-    setForm({ name: '', description: '', pricePerHour: 30, pricePerHalfHour: 15, image: '', category: '', branchIds: [] });
+    setForm({ name: '', description: '', price: 30, durationH: 1, durationM: 0, image: '', category: '', branchIds: [] });
     setShowModal(true);
   };
 
   const openEdit = (service) => {
+    const durMin = service.durationMin ?? 60;
     setEditingId(service.id);
     setForm({
-      name: service.name, description: service.description, pricePerHour: service.pricePerHour,
-      pricePerHalfHour: service.pricePerHalfHour, image: service.image, category: service.category,
+      name: service.name, description: service.description,
+      price: service.pricePerHour,
+      durationH: Math.floor(durMin / 60), durationM: durMin % 60,
+      image: service.image, category: service.category,
       branchIds: service.branchIds || [],
     });
     setShowModal(true);
@@ -34,14 +39,16 @@ export default function ServicesAdmin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const durationMin = Math.max(5, (form.durationH || 0) * 60 + (form.durationM || 0));
+    const payload = { ...form, pricePerHour: form.price, durationMin };
     if (editingId) {
-      await updateService(editingId, form);
+      await updateService(editingId, payload);
       if (imageRef.current) {
         const url = await imageRef.current.uploadPending(editingId);
         if (url) updateEntityImage('service', editingId, url);
       }
     } else {
-      const newService = await addService(form);
+      const newService = await addService(payload);
       if (newService && newService.id && imageRef.current) {
         const url = await imageRef.current.uploadPending(newService.id);
         if (url) updateEntityImage('service', newService.id, url);
@@ -53,6 +60,19 @@ export default function ServicesAdmin() {
   const handleDelete = (id) => setDeleteTarget(id);
   const confirmDelete = () => { deleteService(deleteTarget); setDeleteTarget(null); };
 
+  const toggleServiceActive = (service) => {
+    updateService(service.id, {
+      name: service.name,
+      description: service.description,
+      pricePerHour: service.pricePerHour,
+      durationMin: service.durationMin ?? 60,
+      category: service.category,
+      image: service.image,
+      branchIds: service.branchIds || [],
+      is_active: !(service.is_active ?? service.active ?? true),
+    });
+  };
+
   const getBranchNames = (ids) => (ids || []).map((id) => branches.find((b) => b.id === id)?.name || 'N/A').join(', ');
 
   const branchOptions = branches.filter((b) => b.is_active).map((b) => ({
@@ -63,6 +83,11 @@ export default function ServicesAdmin() {
   const filteredServices = filterBranch
     ? services.filter((s) => !s.branchIds?.length || s.branchIds.includes(Number(filterBranch)))
     : services;
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  useEffect(() => { setPage(0); }, [filterBranch]);
+  const pagedServices = filteredServices.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
   return (
     <div>
@@ -94,15 +119,16 @@ export default function ServicesAdmin() {
               <th>Imagen</th>
               <th>Nombre</th>
               <th>Descripción</th>
-              <th>Precio/Hora</th>
-              <th>Precio/30min</th>
+              <th>Duración</th>
+              <th>Precio</th>
               <th>Categoría</th>
               <th>Sedes</th>
+              <th>Estado</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {filteredServices.map((service) => (
+            {pagedServices.map((service) => (
               <tr key={service.id}>
                 <td>
                   {service.image ? (
@@ -113,8 +139,8 @@ export default function ServicesAdmin() {
                 </td>
                 <td><strong>{service.name}</strong></td>
                 <td style={{ maxWidth: '250px', fontSize: '0.85rem', color: 'var(--text-light)' }}>{service.description}</td>
+                <td>{fmtDuration((service.durationMin ?? 60) / 60)}</td>
                 <td><strong>S/ {service.pricePerHour}</strong></td>
-                <td>S/ {service.pricePerHalfHour}</td>
                 <td>{service.category}</td>
                 <td>
                   {service.branchIds?.length > 0 ? (
@@ -122,6 +148,27 @@ export default function ServicesAdmin() {
                   ) : (
                     <span style={{ color: 'var(--land-text-muted)', fontSize: '0.82rem' }}>Todas</span>
                   )}
+                </td>
+                <td>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                    <div
+                      onClick={() => toggleServiceActive(service)}
+                      style={{
+                        width: '34px', height: '18px', borderRadius: '9px',
+                        background: (service.is_active ?? service.active ?? true) ? '#2D7A3A' : '#C8C0BA',
+                        position: 'relative', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
+                      }}
+                    >
+                      <div style={{
+                        width: '14px', height: '14px', borderRadius: '50%', background: '#fff',
+                        position: 'absolute', top: '2px', left: (service.is_active ?? service.active ?? true) ? '18px' : '2px',
+                        transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                      }} />
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: (service.is_active ?? service.active ?? true) ? '#2D7A3A' : '#B85C4C', fontWeight: 600 }}>
+                      {(service.is_active ?? service.active ?? true) ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </label>
                 </td>
                 <td>
                   <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -137,6 +184,13 @@ export default function ServicesAdmin() {
             ))}
           </tbody>
         </table>
+        <Pagination
+          total={filteredServices.length}
+          page={page}
+          onPageChange={setPage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={setRowsPerPage}
+        />
       </div>
 
       {showModal && (
@@ -155,14 +209,18 @@ export default function ServicesAdmin() {
                 <label>Descripción</label>
                 <textarea className="form-control" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
-                  <label>Precio por Hora (S/)</label>
-                  <input type="number" className="form-control" min={0} step="0.01" value={form.pricePerHour} onChange={(e) => setForm({ ...form, pricePerHour: Number(e.target.value) })} required />
+                  <label>Duración Horas</label>
+                  <input type="number" className="form-control" min={0} max={12} value={form.durationH} onChange={(e) => setForm({ ...form, durationH: Number(e.target.value) })} />
                 </div>
                 <div className="form-group">
-                  <label>Precio por 30 min (S/)</label>
-                  <input type="number" className="form-control" min={0} step="0.01" value={form.pricePerHalfHour} onChange={(e) => setForm({ ...form, pricePerHalfHour: Number(e.target.value) })} required />
+                  <label>Minutos</label>
+                  <input type="number" className="form-control" min={0} max={55} step={5} value={form.durationM} onChange={(e) => setForm({ ...form, durationM: Number(e.target.value) })} />
+                </div>
+                <div className="form-group">
+                  <label>Precio (S/) *</label>
+                  <input type="number" className="form-control" min={0} step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} required />
                 </div>
               </div>
               <ImageUpload ref={imageRef} value={form.image} onChange={(url) => setForm({ ...form, image: url })} imageableType="service" imageableId={editingId} label="Imagen del servicio" />

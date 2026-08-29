@@ -155,11 +155,11 @@ export default function TimeSlotPicker({
     );
   }
 
-  if (!therapistId || !date) {
+  if (!date || (!therapistId && !schedule)) {
     return (
       <div className="wizard-time-placeholder">
         <p style={{ fontSize: compact ? '0.7rem' : '0.8rem', color: '#A89888' }}>
-          {therapistId ? 'Selecciona una fecha' : 'Selecciona un terapeuta y fecha'}
+          {!date ? 'Selecciona una fecha' : 'Selecciona un terapeuta'}
         </p>
       </div>
     );

@@ -1,13 +1,13 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { personAPI, appointmentsAPI } from '../../services/api';
+import { personAPI } from '../../services/api';
 import { ArrowLeft } from 'lucide-react';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
 import { clearBusyCache } from '../../utils/busyCache';
 
 export default function AdminBooking() {
-  const { services, therapists, cabins, branches, packages, addAppointment, settings } = useApp();
+  const { services, therapists, cabins, branches, packages, addAppointment, settings, appointments } = useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -21,6 +21,7 @@ export default function AdminBooking() {
   const [selectedTime, setSelectedTime] = useState(searchParams.get('time') || '');
   const [hours, setHours] = useState(1);
   const [sessionCount, setSessionCount] = useState(1);
+  const [priceInput, setPriceInput] = useState('');
   const [dniLoading, setDniLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -79,9 +80,73 @@ export default function AdminBooking() {
     return list;
   })();
 
-  const getSelectedTherapistObj = () => therapists.find((t) => String(t.id) === String(selectedTherapist));
   const getSelectedServiceObj = () => services.find((s) => String(s.id) === String(selectedService));
   const getSelectedPackageObj = () => (packages || []).find((p) => String(p.id) === String(selectedPackage));
+  const getSelectedTherapistObj = () => therapists.find((t) => String(t.id) === String(selectedTherapist));
+
+  const toMinLocal = (t) => {
+    const parts = String(t || '').slice(0, 5).split(':').map(Number);
+    return (parts[0] || 0) * 60 + (parts[1] || 0);
+  };
+  const DAY_NAMES = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+  const dayKey = selectedDate ? DAY_NAMES[new Date(selectedDate + 'T12:00:00').getDay()] : null;
+  const effectiveHours = bookingType === 'package' ? (getSelectedPackageObj()?.hours || hours) : hours;
+  const selStart = selectedTime ? toMinLocal(selectedTime) : null;
+  const selEnd = selStart !== null ? selStart + Math.max(30, Math.round(effectiveHours * 60)) : null;
+
+  const isBlockingStatus = (st) => st === 'pendiente' || st === 'confirmada';
+
+  const cabinOccupied = (cabinId) => {
+    if (selStart === null || !selectedDate) return false;
+    return appointments.some((a) => {
+      if (!isBlockingStatus(a.status)) return false;
+      if (String(a.date) !== String(selectedDate)) return false;
+      const cid = a.cabinId || a.cabin_id;
+      if (!cid || Number(cid) !== Number(cabinId)) return false;
+      const s = toMinLocal(a.time || a.start_time);
+      const eRaw = a.end_time || a.time;
+      const e = eRaw ? toMinLocal(eRaw) : s + 60;
+      return s < selEnd && e > selStart;
+    });
+  };
+
+  const therapistConflict = (therapistId) => {
+    if (selStart === null || !selectedDate) return false;
+    return appointments.some((a) => {
+      if (!isBlockingStatus(a.status)) return false;
+      if (String(a.date) !== String(selectedDate)) return false;
+      const tid = a.therapistId || a.therapist_id;
+      if (!tid || Number(tid) !== Number(therapistId)) return false;
+      const s = toMinLocal(a.time || a.start_time);
+      const eRaw = a.end_time || a.time;
+      const e = eRaw ? toMinLocal(eRaw) : s + 60;
+      return s < selEnd && e > selStart;
+    });
+  };
+
+  const therapistOffSchedule = (t) => {
+    if (!dayKey || selStart === null) return false;
+    const marks = (t.schedule || {})[dayKey] || [];
+    if (marks.length === 0) return false;
+    return !marks.some((mk) => toMinLocal(mk) <= selStart && selStart < toMinLocal(mk) + 60);
+  };
+
+  useEffect(() => {
+    if (selectedTherapist) {
+      const t = filteredTherapists.find((th) => String(th.id) === String(selectedTherapist));
+      if (!t) {
+        setSelectedTherapist('');
+        setSelectedTime('');
+      }
+    }
+    if (selectedCabin && cabinOccupied(selectedCabin)) setSelectedCabin('');
+  }, [selectedService, selectedPackage, bookingType]);
+
+  useEffect(() => {
+    if (!selectedTime || !selectedTherapist || !selectedDate) return;
+    const t = therapists.find((th) => String(th.id) === String(selectedTherapist));
+    if (t && (therapistConflict(t.id) || therapistOffSchedule(t))) setSelectedTime('');
+  }, [selectedDate, selectedTime, hours, selectedTherapist]);
 
   const getTotal = () => {
     if (bookingType === 'package' && selectedPackage) {
@@ -90,8 +155,15 @@ export default function AdminBooking() {
     }
     const service = getSelectedServiceObj();
     if (!service) return 0;
-    return service.pricePerHour * hours;
+    const defH = service.durationMin ? service.durationMin / 60 : 1;
+    return Math.round((service.pricePerHour || 0) * (hours / defH) * 100) / 100;
   };
+
+  const effectiveTotal = priceInput === '' ? getTotal() : (parseFloat(priceInput) || 0);
+
+  useEffect(() => {
+    setPriceInput(String(getTotal()));
+  }, [selectedService, selectedPackage, hours, sessionCount, bookingType]);
 
   const handleDniBlur = useCallback(async () => {
     const dni = clientDni.trim();
@@ -122,6 +194,21 @@ export default function AdminBooking() {
     setSelectedCabin('');
     setSelectedTime('');
   };
+
+  const changeHours = (value) => {
+    setHours(value);
+    setSelectedTime('');
+  };
+
+  const setDuration = (h, m) => {
+    let value = (h || 0) + (m || 0) / 60;
+    if (value <= 0) value = 0.25;
+    if (value > 12) value = 12;
+    changeHours(value);
+  };
+
+  const durH = Math.floor(hours);
+  const durM = Math.round((hours - durH) * 60);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -173,7 +260,7 @@ export default function AdminBooking() {
         date: selectedDate,
         start_time: selectedTime,
         hours: bookingType === 'package' ? (getSelectedPackageObj()?.hours || hours) : hours,
-        total_price: getTotal(),
+        total_price: effectiveTotal,
         status: 'pendiente',
         session_count: sessionCount,
       });
@@ -284,7 +371,7 @@ export default function AdminBooking() {
                 >
                   <option value="">Seleccionar servicio</option>
                   {filteredServices.filter((s) => s.active !== false).map((s) => (
-                    <option key={s.id} value={s.id}>{s.name} - S/ {s.pricePerHour}/h</option>
+                    <option key={s.id} value={s.id}>{s.name} - S/ {s.pricePerHour} ({s.durationMin ?? 60} min)</option>
                   ))}
                 </select>
               </div>
@@ -316,40 +403,22 @@ export default function AdminBooking() {
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-              <div>
-                <label style={labelStyle}>Terapeuta *</label>
-                <select
-                  style={inputStyle}
-                  value={selectedTherapist}
-                  onChange={(e) => { setSelectedTherapist(e.target.value); setSelectedTime(''); }}
-                  required
-                >
-                  <option value="">Seleccionar terapeuta</option>
-                  {filteredTherapists.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name} - {t.specialty}</option>
-                  ))}
-                </select>
-              </div>
-              {settings.cabinRequired && (
-                <div>
-                  <label style={labelStyle}>Cabina *</label>
-                  <select
-                    style={inputStyle}
-                    value={selectedCabin}
-                    onChange={(e) => setSelectedCabin(e.target.value)}
-                    required
-                  >
-                    <option value="">Seleccionar cabina</option>
-                    {filteredCabins.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name} (Cap: {c.capacity})</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={labelStyle}>Terapeuta *</label>
+              <select
+                style={inputStyle}
+                value={selectedTherapist}
+                onChange={(e) => { setSelectedTherapist(e.target.value); setSelectedTime(''); }}
+                required
+              >
+                <option value="">Seleccionar terapeuta</option>
+                {filteredTherapists.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name} - {t.specialty}</option>
+                ))}
+              </select>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: bookingType === 'service' ? '1fr 1fr' : '1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={labelStyle}>Fecha *</label>
                 <input
@@ -361,46 +430,101 @@ export default function AdminBooking() {
                   required
                 />
               </div>
-              <div>
-                <label style={labelStyle}>Hora *</label>
-                {selectedTherapist && selectedDate ? (
-                  <TimeSlotPicker
-                    therapistId={Number(selectedTherapist)}
-                    schedule={getSelectedTherapistObj()?.schedule}
-                    available={getSelectedTherapistObj()?.available ?? getSelectedTherapistObj()?.is_available ?? true}
-                    date={selectedDate}
-                    value={selectedTime}
-                    hours={bookingType === 'package' ? (getSelectedPackageObj()?.hours || hours) : hours}
-                    onChange={setSelectedTime}
-                  />
-                ) : (
-                  <div style={{ padding: '0.6rem', textAlign: 'center', color: '#A89888', fontSize: '0.85rem', border: '1px solid #E8E0D6', borderRadius: '8px' }}>
-                    Selecciona terapeuta y fecha
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: bookingType === 'service' ? '1fr 1fr' : '1fr', gap: '1rem', marginBottom: '1.25rem' }}>
               {bookingType === 'service' && (
                 <div>
-                  <label style={labelStyle}>Duración (horas)</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <button type="button" onClick={() => setHours((h) => Math.max(0.5, h - 0.5))} style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#fff', cursor: 'pointer', fontWeight: 600 }}>−</button>
-                    <span style={{ fontSize: '0.95rem', fontWeight: 600, minWidth: '60px', textAlign: 'center' }}>{hours}h</span>
-                    <button type="button" onClick={() => setHours((h) => Math.min(8, h + 0.5))} style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#fff', cursor: 'pointer', fontWeight: 600 }}>+</button>
-                    <span style={{ color: '#A89888', fontSize: '0.85rem' }}>S/ {getTotal()}</span>
+                  <label style={labelStyle}>Duración</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <input
+                      type="number"
+                      min={0}
+                      max={12}
+                      value={durH}
+                      onChange={(e) => setDuration(parseInt(e.target.value, 10) || 0, durM)}
+                      style={{ ...inputStyle, width: '58px', textAlign: 'center' }}
+                    />
+                    <span style={{ color: '#6B5B4E', fontSize: '0.8rem' }}>h</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={59}
+                      step={5}
+                      value={durM}
+                      onChange={(e) => setDuration(durH, Math.min(59, Math.max(0, parseInt(e.target.value, 10) || 0)))}
+                      style={{ ...inputStyle, width: '58px', textAlign: 'center' }}
+                    />
+                    <span style={{ color: '#6B5B4E', fontSize: '0.8rem' }}>min</span>
                   </div>
                 </div>
               )}
-              <div>
-                <label style={labelStyle}>Cantidad de sesiones</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <button type="button" onClick={() => setSessionCount((c) => Math.max(1, c - 1))} style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#fff', cursor: 'pointer', fontWeight: 600 }}>−</button>
-                  <span style={{ fontSize: '0.95rem', fontWeight: 600, minWidth: '30px', textAlign: 'center' }}>{sessionCount}</span>
-                  <button type="button" onClick={() => setSessionCount((c) => Math.min(50, c + 1))} style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#fff', cursor: 'pointer', fontWeight: 600 }}>+</button>
-                  {sessionCount > 1 && <span style={{ color: '#8B6520', fontSize: '0.8rem', fontWeight: 500 }}>Multi-sesión</span>}
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={labelStyle}>Precio (S/) *</label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                style={inputStyle}
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value)}
+              />
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.72rem', color: '#A89888' }}>
+                Se recalcula al cambiar servicio o duración; puedes editarlo manualmente.
+              </p>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={labelStyle}>Hora *</label>
+              {!selectedTherapist ? (
+                <div style={{ padding: '0.6rem', textAlign: 'center', color: '#A89888', fontSize: '0.85rem', border: '1px solid #E8E0D6', borderRadius: '8px' }}>
+                  Selecciona un terapeuta primero
                 </div>
+              ) : !selectedDate ? (
+                <div style={{ padding: '0.6rem', textAlign: 'center', color: '#A89888', fontSize: '0.85rem', border: '1px solid #E8E0D6', borderRadius: '8px' }}>
+                  Selecciona una fecha primero
+                </div>
+              ) : (
+                <TimeSlotPicker
+                  therapistId={selectedTherapist}
+                  schedule={getSelectedTherapistObj()?.schedule}
+                  available={true}
+                  date={selectedDate}
+                  value={selectedTime}
+                  hours={effectiveHours}
+                  onChange={setSelectedTime}
+                />
+              )}
+            </div>
+
+            {settings.cabinRequired && (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={labelStyle}>Cabina *</label>
+                <select
+                  style={inputStyle}
+                  value={selectedCabin}
+                  onChange={(e) => setSelectedCabin(e.target.value)}
+                  required
+                >
+                  <option value="">Seleccionar cabina</option>
+                  {filteredCabins.map((c) => {
+                    const occupied = cabinOccupied(c.id);
+                    return (
+                      <option key={c.id} value={c.id} disabled={occupied}>
+                        {c.name} (Cap: {c.capacity}){occupied ? ' — Ocupada en ese horario' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={labelStyle}>Cantidad de sesiones</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <button type="button" onClick={() => setSessionCount((c) => Math.max(1, c - 1))} style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#fff', cursor: 'pointer', fontWeight: 600 }}>−</button>
+                <span style={{ fontSize: '0.95rem', fontWeight: 600, minWidth: '30px', textAlign: 'center' }}>{sessionCount}</span>
+                <button type="button" onClick={() => setSessionCount((c) => Math.min(50, c + 1))} style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#fff', cursor: 'pointer', fontWeight: 600 }}>+</button>
+                {sessionCount > 1 && <span style={{ color: '#8B6520', fontSize: '0.8rem', fontWeight: 500 }}>Multi-sesión</span>}
               </div>
             </div>
 
@@ -520,6 +644,18 @@ export default function AdminBooking() {
                     </span>
                   </>
                 )}
+                <span style={{ color: '#A89888' }}>Fecha</span>
+                <span style={{ color: '#3D2E24', fontWeight: 600 }}>
+                  {new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })} - {selectedTime}
+                </span>
+                {selectedCabin && (
+                  <>
+                    <span style={{ color: '#A89888' }}>Cabina</span>
+                    <span style={{ color: '#3D2E24', fontWeight: 600 }}>
+                      {cabins.find((c) => String(c.id) === String(selectedCabin))?.name || 'N/A'}
+                    </span>
+                  </>
+                )}
                 {selectedTherapist && (
                   <>
                     <span style={{ color: '#A89888' }}>Terapeuta</span>
@@ -528,14 +664,10 @@ export default function AdminBooking() {
                     </span>
                   </>
                 )}
-                <span style={{ color: '#A89888' }}>Fecha</span>
-                <span style={{ color: '#3D2E24', fontWeight: 600 }}>
-                  {new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })} - {selectedTime}
-                </span>
                 <span style={{ color: '#A89888' }}>Sesiones</span>
                 <span style={{ color: '#3D2E24', fontWeight: 600 }}>{sessionCount}</span>
                 <span style={{ color: '#A89888' }}>Total</span>
-                <span style={{ color: '#3D2E24', fontWeight: 700, fontSize: '0.95rem' }}>S/ {getTotal()}</span>
+                <span style={{ color: '#3D2E24', fontWeight: 700, fontSize: '0.95rem' }}>S/ {effectiveTotal}</span>
               </div>
             </div>
           )}

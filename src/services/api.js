@@ -95,6 +95,7 @@ export const appointmentsAPI = {
   update: (id, data) => api.put(`/admin/appointments/${id}`, data),
   delete: (id) => api.delete(`/admin/appointments/${id}`),
   calendar: (params) => api.get('/admin/appointments/calendar', { params }),
+  slotAvailability: (params, config = {}) => api.get('/slot-availability', { params, ...config }),
   propagatePayment: (packageId, personId) => api.post('/admin/appointments/propagate-payment', { package_id: packageId, person_id: personId }),
   propagatePaymentGroup: (groupId, personId) => api.post('/admin/appointments/propagate-payment-group', { group_id: groupId, person_id: personId }),
 };

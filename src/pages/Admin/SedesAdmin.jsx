@@ -50,7 +50,7 @@ export default function SedesAdmin() {
 
   const serviceOptions = services.map((s) => ({
     id: s.id,
-    name: s.name + ' - S/ ' + s.pricePerHour + '/h',
+    name: s.name + ' - S/ ' + s.pricePerHour,
   }));
 
   return (

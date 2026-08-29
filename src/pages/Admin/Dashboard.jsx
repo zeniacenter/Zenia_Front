@@ -6,7 +6,7 @@ import { es } from 'date-fns/locale';
 import { useApp } from '../../context/AppContext';
 import { CalendarDays, Clock, DollarSign, Hourglass, Home, User, Info } from 'lucide-react';
 import AppointmentDetailModal from '../../components/AppointmentDetailModal';
-import { buildHourRange } from '../../utils/hours';
+import { buildHourRange, formatHour } from '../../utils/hours';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const locales = { es };
@@ -39,7 +39,7 @@ function toDateStr(d) {
 }
 
 export default function Dashboard() {
-  const { appointments, therapists, services, cabins, branches, settings } = useApp();
+  const { appointments, therapists, services, cabins, branches, settings, hasDashboardCard } = useApp();
   const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState(null);
   const [detailApt, setDetailApt] = useState(null);
@@ -110,12 +110,9 @@ export default function Dashboard() {
     });
   }, [filteredAppointments, selectedDay]);
 
-  const visibleCabins = useMemo(() => {
-    let list = cabins.filter((c) => c.is_available ?? c.available);
-    if (filterBranch) {
-      list = list.filter((c) => String(c.branchId || c.branch_id) === String(filterBranch));
-    }
-    return list;
+  const branchCabins = useMemo(() => {
+    if (!filterBranch) return cabins;
+    return cabins.filter((c) => String(c.branchId || c.branch_id) === String(filterBranch));
   }, [cabins, filterBranch]);
 
   const cabinDayStr = toDateStr(currentDate);
@@ -200,41 +197,51 @@ export default function Dashboard() {
       </div>
 
       <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon green"><CalendarDays size={22} /></div>
-          <div className="stat-info">
-            <h4>{stats.totalAppointments}</h4>
-            <p>Total Citas</p>
+        {hasDashboardCard('total') && (
+          <div className="stat-card">
+            <div className="stat-icon green"><CalendarDays size={22} /></div>
+            <div className="stat-info">
+              <h4>{stats.totalAppointments}</h4>
+              <p>Total Citas</p>
+            </div>
           </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon gold"><Clock size={22} /></div>
-          <div className="stat-info">
-            <h4>{stats.todayCount}</h4>
-            <p>Citas Hoy</p>
+        )}
+        {hasDashboardCard('today') && (
+          <div className="stat-card">
+            <div className="stat-icon gold"><Clock size={22} /></div>
+            <div className="stat-info">
+              <h4>{stats.todayCount}</h4>
+              <p>Citas Hoy</p>
+            </div>
           </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon blue"><DollarSign size={22} /></div>
-          <div className="stat-info">
-            <h4>S/ {stats.totalRevenue}</h4>
-            <p>Ingresos Totales</p>
+        )}
+        {hasDashboardCard('revenue') && (
+          <div className="stat-card">
+            <div className="stat-icon blue"><DollarSign size={22} /></div>
+            <div className="stat-info">
+              <h4>S/ {stats.totalRevenue}</h4>
+              <p>Ingresos Totales</p>
+            </div>
           </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon red"><Hourglass size={22} /></div>
-          <div className="stat-info">
-            <h4>{stats.pendingCount}</h4>
-            <p>Pendientes</p>
+        )}
+        {hasDashboardCard('pending') && (
+          <div className="stat-card">
+            <div className="stat-icon red"><Hourglass size={22} /></div>
+            <div className="stat-info">
+              <h4>{stats.pendingCount}</h4>
+              <p>Pendientes</p>
+            </div>
           </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon gold"><Home size={22} /></div>
-          <div className="stat-info">
-            <h4>{stats.cabinCount}</h4>
-            <p>Cabinas</p>
+        )}
+        {hasDashboardCard('cabins') && (
+          <div className="stat-card">
+            <div className="stat-icon gold"><Home size={22} /></div>
+            <div className="stat-info">
+              <h4>{stats.cabinCount}</h4>
+              <p>Cabinas</p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="dashboard-grid">
@@ -282,64 +289,98 @@ export default function Dashboard() {
               </div>
 
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: '780px', tableLayout: 'fixed' }}>
+                <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: '640px', tableLayout: 'fixed' }}>
                   <thead>
                     <tr>
-                      <th style={{ border: '1px solid #E8E0D6', background: '#F5F0E8', color: '#6B5B4E', padding: '0.55rem 0.5rem', fontSize: '0.78rem', textAlign: 'left', minWidth: '130px' }}>
-                        Cabina
+                      <th style={{ border: '1px solid #E8E0D6', background: '#F5F0E8', color: '#6B5B4E', padding: '0.55rem 0.5rem', fontSize: '0.78rem', textAlign: 'left', width: '70px' }}>
+                        Hora
                       </th>
-                      {cabinHours.map((hour) => (
-                        <th key={hour} style={{ border: '1px solid #E8E0D6', background: '#F5F0E8', color: '#6B5B4E', padding: '0.55rem 0.25rem', fontSize: '0.75rem', textAlign: 'center' }}>
-                          {String(hour).padStart(2, '0')}:00
-                        </th>
-                      ))}
+                      {branchCabins.map((cabin) => {
+                        const isAvailable = cabin.is_available ?? cabin.available ?? true;
+                        return (
+                          <th
+                            key={cabin.id}
+                            title={isAvailable ? `${cabin.name} — disponible` : `${cabin.name} — no disponible`}
+                            style={{
+                              border: '1px solid #E8E0D6',
+                              background: isAvailable ? '#FDFBF7' : '#F3EFEA',
+                              padding: '0.55rem 0.4rem',
+                              fontSize: '0.8rem',
+                              textAlign: 'center',
+                            }}
+                          >
+                            <span style={{ fontWeight: 600, color: isAvailable ? '#3D2E24' : '#A89888' }}>{cabin.name}</span>
+                            {cabin.capacity ? (
+                              <span style={{ display: 'block', fontWeight: 400, fontSize: '0.68rem', color: '#A89888' }}>
+                                Cap: {cabin.capacity}
+                              </span>
+                            ) : null}
+                            <span style={{
+                              display: 'inline-block', marginTop: '2px',
+                              fontSize: '0.62rem', fontWeight: 600,
+                              padding: '0.1rem 0.45rem', borderRadius: '10px',
+                              background: isAvailable ? '#E8F5E9' : '#FCEEED',
+                              color: isAvailable ? '#2D7A3A' : '#B85C4C',
+                            }}>
+                              {isAvailable ? 'Disponible' : 'No disponible'}
+                            </span>
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleCabins.map((cabin) => (
-                      <tr key={cabin.id}>
-                        <td style={{ border: '1px solid #E8E0D6', background: '#FDFBF7', padding: '0.5rem', fontWeight: 600, color: '#3D2E24', fontSize: '0.82rem' }}>
-                          {cabin.name}
-                          {cabin.capacity ? (
-                            <span style={{ display: 'block', fontWeight: 400, fontSize: '0.72rem', color: '#A89888' }}>
-                              Cap: {cabin.capacity}
-                            </span>
-                          ) : null}
-                        </td>
-                        {cabinHours.map((hour) => {
-                          const apt = getCabinSlotAppointment(cabin.id, hour);
-                          const timeStr = `${String(hour).padStart(2, '0')}:00`;
-                          if (apt) {
-                            const clientName = apt.clientName || apt.person?.name || 'N/A';
+                    {cabinHours.map((hour) => {
+                      const timeStr = formatHour(hour);
+                      return (
+                        <tr key={hour}>
+                          <td style={{ border: '1px solid #E8E0D6', background: '#F5F0E8', padding: '0.4rem 0.5rem', fontSize: '0.78rem', fontWeight: 600, color: '#6B5B4E', textAlign: 'center' }}>
+                            {timeStr}
+                          </td>
+                          {branchCabins.map((cabin) => {
+                            const isAvailable = cabin.is_available ?? cabin.available ?? true;
+                            const apt = getCabinSlotAppointment(cabin.id, hour);
+                            if (apt) {
+                              const clientName = apt.clientName || apt.person?.name || 'N/A';
+                              return (
+                                <td
+                                  key={cabin.id}
+                                  title={`${clientName} · ${apt.time || apt.start_time}-${apt.end_time || ''} · ${apt.status}`}
+                                  onClick={() => setSelectedDay(cabinDayStr)}
+                                  className="cabin-slot-busy"
+                                  style={{ border: '1px solid #E8E0D6', background: STATUSES_COLORS[apt.status] || '#C5A059', color: '#FDFBF7', padding: '0.45rem 0.3rem', fontSize: '0.72rem', textAlign: 'center', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', height: '38px' }}
+                                >
+                                  {clientName}
+                                </td>
+                              );
+                            }
+                            if (!isAvailable) {
+                              return (
+                                <td
+                                  key={cabin.id}
+                                  title={`${cabin.name} no disponible`}
+                                  style={{ border: '1px solid #E8E0D6', background: '#F3EFEA', cursor: 'not-allowed', height: '38px', backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 6px, rgba(168,152,136,0.12) 6px, rgba(168,152,136,0.12) 12px)' }}
+                                />
+                              );
+                            }
                             return (
                               <td
-                                key={hour}
-                                title={`${clientName} · ${apt.time || apt.start_time}-${apt.end_time || ''} · ${apt.status}`}
-                                onClick={() => setSelectedDay(cabinDayStr)}
-                                className="cabin-slot-busy"
-                                style={{ border: '1px solid #E8E0D6', background: STATUSES_COLORS[apt.status] || '#C5A059', color: '#FDFBF7', padding: '0.45rem 0.3rem', fontSize: '0.72rem', textAlign: 'center', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                              >
-                                {clientName}
-                              </td>
+                                key={cabin.id}
+                                title={`Agendar en ${cabin.name} — ${timeStr}`}
+                                onClick={() => navigate(`/admin/agendar?date=${cabinDayStr}&time=${timeStr}&cabin=${cabin.id}`)}
+                                className="cabin-slot"
+                                style={{ border: '1px solid #E8E0D6', background: '#FFFFFF', cursor: 'pointer', height: '38px' }}
+                              />
                             );
-                          }
-                          return (
-                            <td
-                              key={hour}
-                              title={`Agendar en ${cabin.name} — ${timeStr}`}
-                              onClick={() => navigate(`/admin/agendar?date=${cabinDayStr}&time=${timeStr}&cabin=${cabin.id}`)}
-                              className="cabin-slot"
-                              style={{ border: '1px solid #E8E0D6', background: '#FFFFFF', cursor: 'pointer', height: '38px' }}
-                            />
-                          );
-                        })}
-                      </tr>
-                    ))}
+                          })}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
-                {visibleCabins.length === 0 && (
+                {branchCabins.length === 0 && (
                   <div style={{ textAlign: 'center', padding: '2rem', color: '#A89888', fontSize: '0.85rem' }}>
-                    No hay cabinas disponibles{filterBranch ? ' en esta sede' : ''}
+                    No hay cabinas registradas{filterBranch ? ' en esta sede' : ''}
                   </div>
                 )}
               </div>

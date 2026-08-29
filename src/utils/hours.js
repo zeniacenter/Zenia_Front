@@ -16,3 +16,12 @@ export function buildHourRange(startStr, endStr) {
 export function formatHour(h) {
   return `${String(h).padStart(2, '0')}:00`;
 }
+
+export function formatDuration(hoursFloat) {
+  const totalMin = Math.round((Number(hoursFloat) || 0) * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+}

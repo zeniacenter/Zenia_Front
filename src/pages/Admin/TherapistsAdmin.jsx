@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
+import Pagination from '../../components/Pagination';
 import { buildHourRange, formatHour } from '../../utils/hours';
 
 const defaultSchedule = {
@@ -126,12 +127,17 @@ export default function TherapistsAdmin() {
 
   const serviceOptions = availableServices.map((s) => ({
     id: s.id,
-    name: s.name + ' - S/ ' + s.pricePerHour + '/h',
+    name: s.name + ' - S/ ' + s.pricePerHour,
   }));
 
   const filteredTherapists = filterBranch
     ? therapists.filter((t) => !t.branchIds?.length || t.branchIds.includes(Number(filterBranch)))
     : therapists;
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(9);
+  useEffect(() => { setPage(0); }, [filterBranch]);
+  const pagedTherapists = filteredTherapists.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
   return (
     <div>
@@ -157,7 +163,7 @@ export default function TherapistsAdmin() {
       </div>
 
       <div className="therapists-grid">
-        {filteredTherapists.map((therapist) => (
+        {pagedTherapists.map((therapist) => (
           <div className="card therapist-card" key={therapist.id}>
             <img src={therapist.image || 'https://via.placeholder.com/100'} alt={therapist.name} />
             <h3>{therapist.name}</h3>
@@ -187,6 +193,13 @@ export default function TherapistsAdmin() {
           </div>
         ))}
       </div>
+      <Pagination
+        total={filteredTherapists.length}
+        page={page}
+        onPageChange={setPage}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={setRowsPerPage}
+      />
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>

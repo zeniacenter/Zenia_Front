@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
+import Pagination from '../../components/Pagination';
 
 export default function CabinsAdmin() {
   const { cabins, services, branches, addCabin, updateCabin, deleteCabin, updateEntityImage, hasModulePermission } = useApp();
@@ -81,12 +82,17 @@ export default function CabinsAdmin() {
 
   const serviceOptions = availableServices.map((s) => ({
     id: s.id,
-    name: s.name + ' - S/ ' + s.pricePerHour + '/h',
+    name: s.name + ' - S/ ' + s.pricePerHour,
   }));
 
   const filteredCabins = filterBranch
     ? cabins.filter((c) => String(c.branchId || c.branch_id) === String(filterBranch))
     : cabins;
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(9);
+  useEffect(() => { setPage(0); }, [filterBranch]);
+  const pagedCabins = filteredCabins.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
   return (
     <div>
@@ -112,7 +118,7 @@ export default function CabinsAdmin() {
       </div>
 
       <div className="services-grid">
-        {filteredCabins.map((cabin) => (
+        {pagedCabins.map((cabin) => (
           <div className="card" key={cabin.id}>
             {cabin.image && <img src={cabin.image} alt={cabin.name} className="card-image" />}
             <div className="card-body">
@@ -146,6 +152,13 @@ export default function CabinsAdmin() {
           </div>
         ))}
       </div>
+      <Pagination
+        total={filteredCabins.length}
+        page={page}
+        onPageChange={setPage}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={setRowsPerPage}
+      />
 
       {cabins.length === 0 && (
         <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>

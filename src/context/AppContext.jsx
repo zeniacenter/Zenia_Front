@@ -80,6 +80,7 @@ export function AppProvider({ children }) {
     image: getImageUrl(svc.image),
     pricePerHour: parseFloat(svc.price_per_hour) || 0,
     pricePerHalfHour: parseFloat(svc.price_per_half_hour) || 0,
+    durationMin: svc.duration_min ?? 60,
     branchIds: svc.branches ? svc.branches.map((b) => b.id) : [],
   });
 
@@ -257,6 +258,15 @@ export function AppProvider({ children }) {
     return userPermissions.modules.some((branchData) => checkBranch(branchData.modules));
   }, [user, userPermissions]);
 
+  const hasDashboardCard = useCallback((card) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    if (userPermissions?.is_admin) return true;
+    const cards = userPermissions?.dashboard_cards;
+    if (!Array.isArray(cards)) return true;
+    return cards.includes(card);
+  }, [user, userPermissions]);
+
   const loginAdmin = useCallback(async (email, password) => {
     try {
       const res = await authAPI.login(email, password);
@@ -323,7 +333,7 @@ export function AppProvider({ children }) {
       name: service.name,
       description: service.description,
       price_per_hour: service.pricePerHour,
-      price_per_half_hour: service.pricePerHalfHour,
+      duration_min: service.durationMin ?? 60,
       category: service.category,
       image: getImagePath(service.image) || '',
       is_active: service.is_active ?? true,
@@ -344,7 +354,7 @@ export function AppProvider({ children }) {
       name: updates.name,
       description: updates.description,
       price_per_hour: updates.pricePerHour,
-      price_per_half_hour: updates.pricePerHalfHour,
+      duration_min: updates.durationMin ?? 60,
       category: updates.category,
       image: getImagePath(updates.image) || '',
       is_active: updates.is_active ?? true,
@@ -640,7 +650,7 @@ export function AppProvider({ children }) {
         services, therapists, appointments, packages, cabins, branches,
         users, user, isAdminLoggedIn, settings, userPermissions,
         selectedBranchId, selectBranch,
-        hasPermission, hasModulePermission,
+        hasPermission, hasModulePermission, hasDashboardCard,
         loginAdmin, logoutAdmin,
         updateSettings, updateEntityImage,
         addUser, updateUser, deleteUser,

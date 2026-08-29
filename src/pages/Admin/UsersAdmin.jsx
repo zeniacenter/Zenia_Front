@@ -21,6 +21,16 @@ const PERMISSION_LABELS = {
   can_delete: 'Eliminar',
 };
 
+const DASHBOARD_CARDS = [
+  { id: 'total', label: 'Total Citas' },
+  { id: 'today', label: 'Citas Hoy' },
+  { id: 'revenue', label: 'Ingresos Totales' },
+  { id: 'pending', label: 'Pendientes' },
+  { id: 'cabins', label: 'Cabinas' },
+];
+
+const ALL_CARD_IDS = DASHBOARD_CARDS.map((c) => c.id);
+
 export default function UsersAdmin() {
   const { users, addUser, updateUser, deleteUser, branches, hasModulePermission } = useApp();
   const [showModal, setShowModal] = useState(false);
@@ -33,6 +43,7 @@ export default function UsersAdmin() {
     role: 'recepcionista',
     permissions: [],
     module_permissions: [],
+    dashboard_cards: [...ALL_CARD_IDS],
   });
   const [expandedUser, setExpandedUser] = useState(null);
 
@@ -45,6 +56,7 @@ export default function UsersAdmin() {
       role: 'recepcionista',
       permissions: [],
       module_permissions: [],
+      dashboard_cards: [...ALL_CARD_IDS],
     });
     setShowModal(true);
   };
@@ -58,6 +70,7 @@ export default function UsersAdmin() {
       role: u.role,
       permissions: u.permissions || [],
       module_permissions: u.module_permissions || [],
+      dashboard_cards: Array.isArray(u.dashboard_cards) ? u.dashboard_cards : [...ALL_CARD_IDS],
     });
     setShowModal(true);
   };
@@ -71,6 +84,7 @@ export default function UsersAdmin() {
         role: form.role,
         permissions: form.permissions,
         module_permissions: form.module_permissions,
+        dashboard_cards: form.dashboard_cards,
       };
       if (form.password) updates.password = form.password;
       updateUser(editingId, updates);
@@ -78,6 +92,15 @@ export default function UsersAdmin() {
       addUser(form);
     }
     setShowModal(false);
+  };
+
+  const toggleDashboardCard = (cardId) => {
+    setForm((prev) => ({
+      ...prev,
+      dashboard_cards: prev.dashboard_cards.includes(cardId)
+        ? prev.dashboard_cards.filter((c) => c !== cardId)
+        : [...prev.dashboard_cards, cardId],
+    }));
   };
 
   const handleDelete = (id) => {
@@ -436,6 +459,49 @@ export default function UsersAdmin() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {form.role !== 'admin' && (
+                <div className="form-group">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <label style={{ margin: 0 }}>Widgets visibles en el Dashboard</label>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          dashboard_cards:
+                            prev.dashboard_cards.length === ALL_CARD_IDS.length ? [] : [...ALL_CARD_IDS],
+                        }))
+                      }
+                    >
+                      {form.dashboard_cards.length === ALL_CARD_IDS.length ? 'Ninguno' : 'Todos'}
+                    </button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '0.5rem' }}>
+                    {DASHBOARD_CARDS.map((card) => (
+                      <label
+                        key={card.id}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem',
+                          cursor: 'pointer', border: '1px solid #E8E0D6', borderRadius: '6px',
+                          padding: '0.45rem 0.6rem', background: form.dashboard_cards.includes(card.id) ? '#F0EBE3' : '#fff',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form.dashboard_cards.includes(card.id)}
+                          onChange={() => toggleDashboardCard(card.id)}
+                        />
+                        {card.label}
+                      </label>
+                    ))}
+                  </div>
+                  <small style={{ color: 'var(--land-text-muted)', fontSize: '0.72rem', display: 'block', marginTop: '0.3rem' }}>
+                    Controla qué tarjetas de estadísticas verá este usuario en su panel principal.
+                  </small>
                 </div>
               )}
 

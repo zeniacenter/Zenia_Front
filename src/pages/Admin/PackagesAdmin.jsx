@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
+import Pagination from '../../components/Pagination';
 
 export default function PackagesAdmin() {
   const { packages, services, branches, addPackage, updatePackage, deletePackage, updateEntityImage, hasModulePermission } = useApp();
@@ -145,6 +146,11 @@ export default function PackagesAdmin() {
     ? packages.filter((p) => !p.branchId || p.branchId === Number(filterBranch))
     : packages;
 
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(9);
+  useEffect(() => { setPage(0); }, [filterBranch]);
+  const pagedPackages = filteredPackages.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+
   return (
     <div>
       <div className="admin-header">
@@ -171,7 +177,7 @@ export default function PackagesAdmin() {
       </div>
 
       <div className="services-grid">
-        {filteredPackages.map((pkg) => (
+        {pagedPackages.map((pkg) => (
           <div className="card" key={pkg.id}>
             <img src={pkg.image || 'https://via.placeholder.com/400x300'} alt={pkg.name} className="card-image" />
             <div className="card-body">
@@ -218,6 +224,13 @@ export default function PackagesAdmin() {
           </div>
         ))}
       </div>
+      <Pagination
+        total={filteredPackages.length}
+        page={page}
+        onPageChange={setPage}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={setRowsPerPage}
+      />
 
       {filteredPackages.length === 0 && (
         <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
@@ -294,7 +307,7 @@ export default function PackagesAdmin() {
                       >
                         <option value="">+ Agregar servicio</option>
                         {availableServices.map((svc) => (
-                          <option key={svc.id} value={svc.id}>{svc.name} (S/ {svc.pricePerHour}/h)</option>
+                          <option key={svc.id} value={svc.id}>{svc.name} (S/ {svc.pricePerHour})</option>
                         ))}
                       </select>
                     )}
@@ -332,7 +345,7 @@ export default function PackagesAdmin() {
                       >
                         <option value="">+ Agregar servicio</option>
                         {availableServices.map((svc) => (
-                          <option key={svc.id} value={svc.id}>{svc.name} (S/ {svc.pricePerHour}/h)</option>
+                          <option key={svc.id} value={svc.id}>{svc.name} (S/ {svc.pricePerHour})</option>
                         ))}
                       </select>
                     )}
