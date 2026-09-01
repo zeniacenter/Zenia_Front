@@ -169,7 +169,7 @@ export default function ServicesAdmin() {
               <tr key={service.id}>
                 <td>
                   {service.image ? (
-                    <img src={service.image} alt={service.name} style={{ width: '60px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
+                    <img src={service.image} alt={service.name} loading="lazy" style={{ width: '60px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
                   ) : (
                     <div style={{ width: '60px', height: '40px', borderRadius: '6px', background: '#f0ebe3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Camera size={18} color="#B5A898" /></div>
                   )}

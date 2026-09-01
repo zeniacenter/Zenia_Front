@@ -170,7 +170,7 @@ export default function TherapistsAdmin() {
       <div className="therapists-grid">
         {pagedTherapists.map((therapist) => (
           <div className="card therapist-card" key={therapist.id}>
-            <img src={therapist.image || 'https://via.placeholder.com/100'} alt={therapist.name} />
+            <img src={therapist.image || 'https://via.placeholder.com/100'} alt={therapist.name} loading="lazy" />
             <h3>{therapist.name}</h3>
             <p className="specialty">{therapist.specialty}</p>
             <p className="experience">{therapist.experience}</p>

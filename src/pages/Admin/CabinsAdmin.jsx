@@ -125,7 +125,7 @@ export default function CabinsAdmin() {
       <div className="services-grid">
         {pagedCabins.map((cabin) => (
           <div className="card" key={cabin.id}>
-            {cabin.image && <img src={cabin.image} alt={cabin.name} className="card-image" />}
+            {cabin.image && <img src={cabin.image} alt={cabin.name} className="card-image" loading="lazy" />}
             <div className="card-body">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
                 <h3 className="card-title" style={{ margin: 0 }}>{cabin.name}</h3>

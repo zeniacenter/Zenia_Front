@@ -15,7 +15,7 @@ export default function Services() {
         <div className="services-grid">
           {services.map((service) => (
             <div className="card" key={service.id}>
-              <img src={service.image} alt={service.name} className="card-image" />
+              <img src={service.image} alt={service.name} className="card-image" loading="lazy" />
               <div className="card-body">
                 <h3 className="card-title">{service.name}</h3>
                 <p className="card-text">{service.description}</p>

@@ -14,6 +14,18 @@ export const getImageUrl = (path) => {
 
 const loadTherapistsForAdmin = () => therapistsAPI.listAll().catch(() => therapistsAPI.list());
 
+const APPOINTMENT_RANGE_DAYS_PAST = 60;
+const APPOINTMENT_RANGE_DAYS_FUTURE = 30;
+
+const appointmentRange = () => {
+  const to = new Date();
+  to.setDate(to.getDate() + APPOINTMENT_RANGE_DAYS_FUTURE);
+  const from = new Date();
+  from.setDate(from.getDate() - APPOINTMENT_RANGE_DAYS_PAST);
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  return { from: fmt(from), to: fmt(to) };
+};
+
 const getImagePath = (url) => {
   if (!url) return '';
   if (url.startsWith('http')) {
@@ -132,7 +144,7 @@ export function AppProvider({ children }) {
     };
 
     load();
-    const intervalId = setInterval(load, 30000);
+    const intervalId = setInterval(load, 60000);
     return () => clearInterval(intervalId);
   }, [token]);
 
@@ -147,16 +159,14 @@ export function AppProvider({ children }) {
         cabinsAPI.listAll(),
         packagesAPI.listAll(),
         branchesAPI.listAll(),
-        appointmentsAPI.list(),
         usersAPI.myPermissions(),
-      ]).then(([u, s, t, c, p, b, a, perms]) => {
+      ]).then(([u, s, t, c, p, b, perms]) => {
         const uData = ok(u);
         const sData = ok(s);
         const tData = ok(t);
         const cData = ok(c);
         const pData = ok(p);
         const bData = ok(b);
-        const aData = ok(a);
         const permsData = ok(perms);
 
         if (uData) setUsers(uData);
@@ -165,7 +175,6 @@ export function AppProvider({ children }) {
         if (cData) setCabins(cData.map(transformCabin));
         if (pData) setPackages(pData.map(transformPackage));
         if (bData) setBranches(bData.map(transformBranch));
-        if (aData) setAppointments(aData);
         if (permsData) {
           setUserPermissions(permsData);
 
@@ -182,16 +191,9 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (!token || !selectedBranchId) return;
 
-    const ok = (r) => r.status === 'fulfilled' ? r.value.data : null;
-
-    Promise.allSettled([
-      appointmentsAPI.list(),
-      usersAPI.list(),
-    ]).then(([a, u]) => {
-      const aData = ok(a);
-      const uData = ok(u);
+    appointmentsAPI.list(appointmentRange()).then((a) => {
+      const aData = a?.data;
       if (aData) setAppointments(aData);
-      if (uData) setUsers(uData);
     });
   }, [token, selectedBranchId]);
 
@@ -202,33 +204,17 @@ export function AppProvider({ children }) {
 
     const poll = () => {
       Promise.allSettled([
+        appointmentsAPI.list(appointmentRange()),
         usersAPI.list(),
-        servicesAPI.listAll(),
-        loadTherapistsForAdmin(),
-        cabinsAPI.listAll(),
-        packagesAPI.listAll(),
-        branchesAPI.listAll(),
-        appointmentsAPI.list(),
-      ]).then(([u, s, t, c, p, b, a]) => {
-        const uData = ok(u);
-        const sData = ok(s);
-        const tData = ok(t);
-        const cData = ok(c);
-        const pData = ok(p);
-        const bData = ok(b);
+      ]).then(([a, u]) => {
         const aData = ok(a);
-
-        if (uData) setUsers(uData);
-        if (sData) setServices(sData.map(transformService));
-        if (tData) setTherapists(tData.map(transformTherapist));
-        if (cData) setCabins(cData.map(transformCabin));
-        if (pData) setPackages(pData.map(transformPackage));
-        if (bData) setBranches(bData.map(transformBranch));
+        const uData = ok(u);
         if (aData) setAppointments(aData);
+        if (uData) setUsers(uData);
       });
     };
 
-    const intervalId = setInterval(poll, 30000);
+    const intervalId = setInterval(poll, 60000);
     return () => clearInterval(intervalId);
   }, [token]);
 
