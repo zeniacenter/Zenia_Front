@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import useEscClose from '../../hooks/useEscClose';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
 import { TableSkeleton } from '../../components/Skeleton';
@@ -12,6 +13,8 @@ export default function SedesAdmin() {
   const [form, setForm] = useState({
     name: '', address: '', phone: '', is_active: true, therapistIds: [], serviceIds: [],
   });
+
+  useEscClose(showModal, () => setShowModal(false));
 
   const openNew = () => {
     setEditingId(null);
@@ -121,8 +124,8 @@ export default function SedesAdmin() {
       )}
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay">
+          <div className="modal">
             <div className="modal-header">
               <h3>{editingId ? 'Editar Sede' : 'Nueva Sede'}</h3>
               <button className="modal-close" onClick={() => setShowModal(false)}>×</button>

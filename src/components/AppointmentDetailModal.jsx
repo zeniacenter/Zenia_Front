@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { X, Package, CreditCard, Clock, MapPin, User, Phone, Scissors, AlertTriangle, Mail, Hash, Home } from 'lucide-react';
+import useEscClose from '../hooks/useEscClose';
 
 const STATUS_CONFIG = {
   pendiente: { label: 'Pendiente', color: '#8B6520', bg: '#FDF6E9' },
@@ -33,6 +33,7 @@ export default function AppointmentDetailModal({
   onPaymentPropagate,
   onSelectSession,
 }) {
+  useEscClose(open, onClose);
   if (!open || !appointment) return null;
 
   const apt = appointment;
@@ -88,14 +89,12 @@ export default function AppointmentDetailModal({
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
-      onClick={onClose}
     >
       <div
         style={{
           background: '#FFFFFF', borderRadius: '14px', width: '100%', maxWidth: '520px',
           maxHeight: '90vh', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
         }}
-        onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', borderBottom: '1px solid #E8E0D6' }}>
           <h3 style={{ margin: 0, fontSize: '1rem', color: '#3D2E24' }}>Detalle de Cita</h3>

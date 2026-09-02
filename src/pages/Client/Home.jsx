@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { motion, useInView } from 'framer-motion';
-import { Sparkles, Heart, Shield, Clock, Star, ArrowRight, CheckCircle2, ImageIcon } from 'lucide-react';
+import { Sparkles, Heart, Shield, Clock, ArrowRight, CheckCircle2, ImageIcon } from 'lucide-react';
 import AutoCarousel from '../../components/AutoCarousel';
 import Skeleton from '../../components/Skeleton';
 
@@ -74,27 +74,6 @@ const benefits = [
     icon: <Clock size={28} />,
     title: 'Horarios Flexibles',
     desc: 'Adaptamos nuestras agendas para encajar en tu rutina diaria.',
-  },
-];
-
-const testimonials = [
-  {
-    name: 'María García',
-    role: 'Cliente frecuente',
-    text: 'Una experiencia transformadora. El masaje de relajación fue exactamente lo que necesitaba. El ambiente y el personal son excepcionales.',
-    rating: 5,
-  },
-  {
-    name: 'Carlos Mendoza',
-    role: 'Cliente desde 2023',
-    text: 'Los terapeutas son increíblemente capacitados. Cada visita supera la anterior. Zenia Center se ha convertido en mi lugar de bienestar.',
-    rating: 5,
-  },
-  {
-    name: 'Ana Rodríguez',
-    role: 'Primera visita',
-    text: 'Quedé impresionada por la calidad del servicio y la atención al detalle. Definitivamente volveré. El mejor centro de masajes de la ciudad.',
-    rating: 5,
   },
 ];
 

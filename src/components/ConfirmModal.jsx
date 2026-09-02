@@ -1,13 +1,14 @@
 import { AlertTriangle } from 'lucide-react';
+import useEscClose from '../hooks/useEscClose';
 
 export default function ConfirmModal({ open, title, message, onConfirm, onCancel }) {
+  useEscClose(open, onCancel);
   if (!open) return null;
 
   return (
-    <div className="modal-overlay" onClick={onCancel}>
+    <div className="modal-overlay">
       <div
         className="modal"
-        onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: '400px', textAlign: 'center' }}
       >
         <div style={{ marginBottom: '0.75rem', color: '#B85C4C' }}><AlertTriangle size={42} /></div>

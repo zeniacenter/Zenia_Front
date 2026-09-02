@@ -160,6 +160,7 @@ export default function Booking() {
       })
       .catch(() => {});
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, selectedTime, bookingType, sessionCount, singleSessionWithTime]);
 
   const hasSummaryData = step > 1 && (selectedServices.length > 0 || selectedPackage);
@@ -463,7 +464,7 @@ export default function Booking() {
             cabin: getSelectedCabinObj()?.name,
             branch: getSelectedBranchObj()?.name,
             services: [svc?.name],
-            sessions: sessionSchedules.map((sched, i) => ({
+            sessions: sessionSchedules.map((sched) => ({
               name: svc?.name,
               date: sched.date,
               time: sched.time,

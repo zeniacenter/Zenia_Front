@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import useEscClose from '../hooks/useEscClose';
 
 const CANCEL_REASONS = [
   { value: 'cliente_solicita', label: 'El cliente solicitó la cancelación' },
@@ -13,6 +14,12 @@ const CANCEL_REASONS = [
 export default function CancelAppointmentModal({ open, appointment, onConfirm, onCancel }) {
   const [reason, setReason] = useState('');
   const [customReason, setCustomReason] = useState('');
+
+  useEscClose(open, () => {
+    setReason('');
+    setCustomReason('');
+    onCancel();
+  });
 
   if (!open || !appointment) return null;
 
@@ -41,14 +48,12 @@ export default function CancelAppointmentModal({ open, appointment, onConfirm, o
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
       }}
-      onClick={handleClose}
     >
       <div
         style={{
           background: '#FFFFFF', borderRadius: '14px', padding: '1.5rem',
           width: '100%', maxWidth: '440px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
         }}
-        onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
           <div style={{ color: '#B85C4C' }}><AlertTriangle size={28} /></div>

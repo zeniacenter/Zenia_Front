@@ -104,6 +104,13 @@ export const personAPI = {
   searchByDni: (dni) => api.get('/persons/search-by-dni', { params: { dni } }),
 };
 
+export const invoicesAPI = {
+  list: () => api.get('/admin/invoices'),
+  config: () => api.get('/admin/invoices/config'),
+  saveConfig: (data) => api.put('/admin/invoices/config', data),
+  emit: (data) => api.post('/admin/invoices/emit', data),
+};
+
 const buildReportsUrl = (params, path) => {
   const query = new URLSearchParams();
   if (params.date_from) query.set('date_from', params.date_from);
@@ -163,7 +170,42 @@ export const whatsappAPI = {
       }
       return response.json();
     });
-  }
+  },
+  listHumanChats: () => {
+    const baseUrl = import.meta.env.VITE_WHATSAPP_URL || 'http://localhost:3100';
+    const token = import.meta.env.VITE_WHATSAPP_API_TOKEN;
+    return fetch(`${baseUrl}/api/human-chats`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    }).then((response) => {
+      if (!response.ok) {
+        return response.json().then((data) => {
+          const error = new Error(data.message || 'Error al obtener chats');
+          error.response = { data, status: response.status };
+          throw error;
+        });
+      }
+      return response.json();
+    });
+  },
+  releaseHumanChat: (phone) => {
+    const baseUrl = import.meta.env.VITE_WHATSAPP_URL || 'http://localhost:3100';
+    const token = import.meta.env.VITE_WHATSAPP_API_TOKEN;
+    return fetch(`${baseUrl}/api/human-mode/${encodeURIComponent(phone)}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    }).then((response) => {
+      if (!response.ok) {
+        return response.json().then((data) => {
+          const error = new Error(data.message || 'Error al liberar chat');
+          error.response = { data, status: response.status };
+          throw error;
+        });
+      }
+      return response.json();
+    });
+  },
+  getConfig: () => api.get('/admin/whatsapp/config'),
+  saveConfig: (config) => api.put('/admin/whatsapp/config', config),
 };
 
 export const branchesAPI = {

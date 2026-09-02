@@ -6,15 +6,15 @@ const AppContext = createContext(null);
 const API_URL = import.meta.env.VITE_API_URL || '';
 const API_BASE = API_URL.replace(/\/api\/?$/, '');
 
-export const getImageUrl = (path) => {
-  if (!path) return '';
+// eslint-disable-next-line react/only-export-components
+export const getImageUrl = (path) => {  if (!path) return '';
   if (path.startsWith('http') || path.startsWith('blob:')) return path;
   return API_BASE + path;
 };
 
 const loadTherapistsForAdmin = () => therapistsAPI.listAll().catch(() => therapistsAPI.list());
 
-const APPOINTMENT_RANGE_DAYS_PAST = 60;
+const APPOINTMENT_RANGE_DAYS_PAST = 30;
 const APPOINTMENT_RANGE_DAYS_FUTURE = 30;
 
 const appointmentRange = () => {
@@ -34,6 +34,7 @@ const getImagePath = (url) => {
   return url;
 };
 
+// eslint-disable-next-line react/only-export-components
 export const AVAILABLE_VIEWS = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { id: 'citas', label: 'Citas', icon: Calendar },
@@ -203,6 +204,7 @@ export function AppProvider({ children }) {
     const ok = (r) => r.status === 'fulfilled' ? r.value.data : null;
 
     const poll = () => {
+      if (document.hidden) return;
       Promise.allSettled([
         appointmentsAPI.list(appointmentRange()),
         usersAPI.list(),
@@ -214,7 +216,7 @@ export function AppProvider({ children }) {
       });
     };
 
-    const intervalId = setInterval(poll, 60000);
+    const intervalId = setInterval(poll, 300000);
     return () => clearInterval(intervalId);
   }, [token]);
 
@@ -447,6 +449,18 @@ export function AppProvider({ children }) {
     }
   }, []);
 
+  const refreshAppointments = useCallback(async (params = {}) => {
+    if (!token) return null;
+    try {
+      const res = await appointmentsAPI.list({ ...appointmentRange(), ...params });
+      if (res?.data) setAppointments(res.data);
+      return res?.data ?? null;
+    } catch (err) {
+      console.error('Error actualizando citas:', err);
+      return null;
+    }
+  }, [token]);
+
   const addCabin = useCallback(async (cabin) => {
     const payload = {
       name: cabin.name,
@@ -643,7 +657,7 @@ export function AppProvider({ children }) {
         addUser, updateUser, deleteUser,
         addService, updateService, deleteService,
         addTherapist, updateTherapist, deleteTherapist,
-        addAppointment, updateAppointment, deleteAppointment,
+        addAppointment, updateAppointment, deleteAppointment, refreshAppointments,
         addCabin, updateCabin, deleteCabin,
         addPackage, updatePackage, deletePackage,
         addBranch, updateBranch, deleteBranch,
@@ -654,6 +668,7 @@ export function AppProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react/only-export-components
 export function useApp() {
   const context = useContext(AppContext);
   if (!context) {

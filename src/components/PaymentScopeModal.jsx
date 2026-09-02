@@ -1,6 +1,8 @@
-import { X, CreditCard, Package } from 'lucide-react';
+import { CreditCard, Package } from 'lucide-react';
+import useEscClose from '../hooks/useEscClose';
 
 export default function PaymentScopeModal({ open, onClose, appointment, onPaySession, onPayAllSessions }) {
+  useEscClose(open, onClose);
   if (!open || !appointment) return null;
 
   const apt = appointment;
@@ -13,8 +15,8 @@ export default function PaymentScopeModal({ open, onClose, appointment, onPaySes
   const currentSession = isGroupSession ? apt.session_number : 1;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal" style={{ maxWidth: '480px' }}>
         <div className="modal-header">
           <h3>Seleccionar Alcance del Pago</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>

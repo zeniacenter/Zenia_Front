@@ -1,7 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { Inbox, Info } from 'lucide-react';
+import useEscClose from '../../hooks/useEscClose';
+import {
+  Inbox, Info, MoreVertical, Check, CheckCircle2,
+  CalendarClock, XCircle, CreditCard, Receipt, RefreshCw, Search,
+} from 'lucide-react';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
 import { clearBusyCache } from '../../utils/busyCache';
 import CancelAppointmentModal from '../../components/CancelAppointmentModal';
@@ -39,21 +43,72 @@ const inputStyle = {
   fontSize: '0.85rem', fontFamily: 'inherit', outline: 'none',
 };
 
+const MenuItem = ({ label, icon, onClick, danger }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    onMouseEnter={(e) => { e.currentTarget.style.background = danger ? '#FCEEED' : '#F5F0E8'; }}
+    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+    style={{
+      display: 'flex', alignItems: 'center', gap: '0.5rem',
+      padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.78rem',
+      border: 'none', background: 'transparent', cursor: 'pointer',
+      color: danger ? '#B85C4C' : '#3D2E24', fontWeight: 500,
+      width: '100%', textAlign: 'left', transition: 'background 0.12s',
+    }}
+  >
+    {icon}
+    <span>{label}</span>
+  </button>
+);
+
+const MenuItemDivider = () => (
+  <div style={{ height: '1px', background: '#F0EBE3', margin: '0.25rem 0.3rem' }} />
+);
+
 export default function AppointmentsAdmin() {
-  const { appointments, therapists, services, cabins, branches, updateAppointment, hasModulePermission, loading } = useApp();
+  const { appointments, services, cabins, branches, updateAppointment, hasModulePermission, loading, refreshAppointments } = useApp();
   const navigate = useNavigate();
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshAppointments();
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const [filter, setFilter] = useState('todas');
   const [postponeTarget, setPostponeTarget] = useState(null);
   const [postponeDate, setPostponeDate] = useState('');
   const [postponeTime, setPostponeTime] = useState('');
+  useEscClose(!!postponeTarget, () => setPostponeTarget(null));
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [filterBranch, setFilterBranch] = useState('');
+  const [search, setSearch] = useState('');
   const [cancelTarget, setCancelTarget] = useState(null);
   const [detailTarget, setDetailTarget] = useState(null);
   const [paymentScopeTarget, setPaymentScopeTarget] = useState(null);
+  const [menuFor, setMenuFor] = useState(null);
+  const menuRefs = useRef({});
 
   useEffect(() => { setPage(0); }, [filter]);
+
+  useEffect(() => {
+    if (!menuFor) return;
+    const onClick = (e) => {
+      const inside = Object.values(menuRefs.current).some((el) => el && el.contains(e.target));
+      if (!inside) setMenuFor(null);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setMenuFor(null); };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuFor]);
 
   const counts = useMemo(() => ({
     todas: appointments.filter((a) => a.status !== 'cancelada').length,
@@ -76,12 +131,21 @@ export default function AppointmentsAdmin() {
         return cabin && String(c.branchId || c.branch_id) === String(filterBranch);
       });
     }
+    if (search) {
+      const q = search.trim().toLowerCase();
+      list = list.filter((a) => {
+        const client = [a.person?.name, a.person?.last_name, a.clientName].filter(Boolean).join(' ').toLowerCase();
+        const svc = (a.services?.map((s) => s.name) || []).join(' ').toLowerCase();
+        const pkg = a.package?.name || '';
+        return client.includes(q) || svc.includes(q) || pkg.toLowerCase().includes(q);
+      });
+    }
     return [...list].sort((a, b) => {
       const d = (a.date || '').localeCompare(b.date || '');
       if (d !== 0) return d;
       return (a.start_time || '').localeCompare(b.start_time || '');
     });
-  }, [appointments, filter, filterBranch, cabins]);
+  }, [appointments, filter, filterBranch, cabins, search]);
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const paged = filtered.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
@@ -199,25 +263,58 @@ export default function AppointmentsAdmin() {
     <div>
       <div className="admin-header">
         <h2>Gestión de Citas</h2>
-        {hasModulePermission('citas', 'can_create') && (
-          <button className="btn btn-primary" onClick={() => navigate('/admin/agendar')}>
-            + Agendar Cita
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button
+            className="btn"
+            onClick={handleRefresh}
+            disabled={refreshing || loading}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.35rem',
+              background: refreshing || loading ? '#F5F0E8' : '#FFFFFF',
+              border: '1px solid #E8E0D6', color: '#6B5B4E',
+              cursor: refreshing || loading ? 'default' : 'pointer',
+            }}
+          >
+            <RefreshCw size={14} style={refreshing ? { animation: 'spin 1s linear infinite' } : undefined} />
+            {refreshing ? 'Actualizando...' : 'Actualizar'}
           </button>
-        )}
+          {hasModulePermission('citas', 'can_create') && (
+            <button className="btn btn-primary" onClick={() => navigate('/admin/agendar')}>
+              + Agendar Cita
+            </button>
+          )}
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
-        <span style={{ fontSize: '0.82rem', color: '#A89888' }}>Sede:</span>
-        <select
-          value={filterBranch}
-          onChange={(e) => setFilterBranch(e.target.value)}
-          style={{ padding: '0.4rem 0.75rem', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#fff', color: '#3D2E24', fontSize: '0.85rem', outline: 'none' }}
-        >
-          <option value="">Todas</option>
-          {branches.filter((b) => b.is_active).map((b) => (
-            <option key={b.id} value={b.id}>{b.name}</option>
-          ))}
-        </select>
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.82rem', color: '#A89888' }}>Sede:</span>
+          <select
+            value={filterBranch}
+            onChange={(e) => setFilterBranch(e.target.value)}
+            style={{ padding: '0.4rem 0.75rem', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#fff', color: '#3D2E24', fontSize: '0.85rem', outline: 'none' }}
+          >
+            <option value="">Todas</option>
+            {branches.filter((b) => b.is_active).map((b) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1, maxWidth: 320 }}>
+          <Search size={14} style={{ position: 'absolute', left: 10, color: '#A89888', pointerEvents: 'none' }} />
+          <input
+            type="text"
+            placeholder="Buscar por cliente o servicio..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+            style={{
+              width: '100%', padding: '0.4rem 0.75rem 0.4rem 2rem', borderRadius: '8px',
+              border: '1px solid #E8E0D6', background: '#FFFFFF', color: '#3D2E24',
+              fontSize: '0.85rem', outline: 'none',
+            }}
+          />
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1.25rem' }}>
@@ -225,13 +322,15 @@ export default function AppointmentsAdmin() {
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
+            onMouseEnter={(e) => { if (filter !== f.key) { e.currentTarget.style.borderColor = '#C9944A'; e.currentTarget.style.color = '#8B6520'; } }}
+            onMouseLeave={(e) => { if (filter !== f.key) { e.currentTarget.style.borderColor = '#E8E0D6'; e.currentTarget.style.color = '#A89888'; } }}
             style={{
               padding: '0.4rem 0.9rem', borderRadius: '20px',
               border: filter === f.key ? '1.5px solid #C9944A' : '1px solid #E8E0D6',
-              background: filter === f.key ? '#FDF6E9' : '#FFFFFF',
-              color: filter === f.key ? '#8B6520' : '#A89888',
+              background: filter === f.key ? '#C9944A' : '#FFFFFF',
+              color: filter === f.key ? '#FFFFFF' : '#A89888',
               fontSize: '0.8rem', fontWeight: filter === f.key ? 600 : 400,
-              cursor: 'pointer', transition: 'all 0.2s ease',
+              cursor: 'pointer', transition: 'all 0.15s ease',
             }}
           >
             {f.label} ({counts[f.key]})
@@ -242,7 +341,7 @@ export default function AppointmentsAdmin() {
       {loading ? (
         <TableSkeleton columns={7} rows={8} />
       ) : (
-      <div style={{ background: '#FFFFFF', border: '1px solid #E8E0D6', borderRadius: '14px', overflow: 'hidden' }}>
+      <div style={{ background: '#FFFFFF', border: '1px solid #E8E0D6', borderRadius: '14px', overflow: 'visible', opacity: refreshing ? 0.6 : 1, transition: 'opacity 0.15s ease' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -308,7 +407,7 @@ export default function AppointmentsAdmin() {
                       })()}
                     </td>
                     <td style={{ padding: '0.65rem 0.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', position: 'relative' }} ref={(el) => { menuRefs.current[apt.id] = el; }}>
                         <button
                           title="Ver detalle"
                           onClick={() => setDetailTarget(apt)}
@@ -323,34 +422,54 @@ export default function AppointmentsAdmin() {
                           <Info size={14} />
                         </button>
                         {hasModulePermission('citas', 'can_edit') && (
-                        <select
-                          value=""
-                          onChange={(e) => {
-                            const action = e.target.value;
-                            if (!action) return;
-                            if (action === 'confirmar') updateAppointment(apt.id, { status: 'confirmada' });
-                            else if (action === 'realizado') updateAppointment(apt.id, { status: 'realizada' });
-                            else if (action === 'postergar') openPostpone(apt);
-                            else if (action === 'cancelar') setCancelTarget(apt);
-                            else if (action === 'pagar') setPaymentScopeTarget(apt);
-                            else if (action === 'emitir_boleta') navigate(`/admin/boletas/${apt.id}`);
-                            e.target.value = '';
-                          }}
-                          style={{
-                            fontSize: '0.7rem', padding: '0.3rem 0.4rem', borderRadius: '6px',
-                            border: '1px solid #E8E0D6', background: '#FFFFFF',
-                            color: '#3D2E24', cursor: 'pointer', fontWeight: 500, minWidth: '100px',
-                          }}
-                        >
-                          <option value="">Acciones...</option>
-                          {apt.status === 'pendiente' && <option value="confirmar">Confirmar</option>}
-                          {(apt.status === 'pendiente' || apt.status === 'confirmada') && <option value="realizado">Realizado</option>}
-                          {(apt.status === 'pendiente' || apt.status === 'confirmada') && <option value="postergar">Postergar</option>}
-                          {(apt.status === 'pendiente' || apt.status === 'confirmada' || apt.status === 'postergada') && <option value="cancelar">Cancelar</option>}
-                          {apt.status === 'postergada' && <option value="postergar">Reprogramar</option>}
-                          {apt.payment_status !== 'pagado' && <option value="pagar">Pagar</option>}
-                          <option value="emitir_boleta">Boleta</option>
-                        </select>
+                          <>
+                            <button
+                              title="Acciones"
+                              onClick={() => setMenuFor((m) => (m === apt.id ? null : apt.id))}
+                              style={{
+                                background: menuFor === apt.id ? '#FDF6E9' : 'none',
+                                border: menuFor === apt.id ? '1px solid #C9944A' : '1px solid #E8E0D6',
+                                borderRadius: '6px', cursor: 'pointer', padding: '0.3rem 0.4rem',
+                                color: menuFor === apt.id ? '#8B6520' : '#6B5B4E',
+                                display: 'flex', alignItems: 'center', transition: 'all 0.15s',
+                              }}
+                              onMouseEnter={(e) => { if (menuFor !== apt.id) { e.currentTarget.style.borderColor = '#C9944A'; e.currentTarget.style.color = '#8B6520'; } }}
+                              onMouseLeave={(e) => { if (menuFor !== apt.id) { e.currentTarget.style.borderColor = '#E8E0D6'; e.currentTarget.style.color = '#6B5B4E'; } }}
+                            >
+                              <MoreVertical size={14} />
+                            </button>
+
+                            {menuFor === apt.id && (
+                              <div style={{
+                                position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 50,
+                                background: '#FFFFFF', border: '1px solid #E8E0D6', borderRadius: '10px',
+                                boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: '190px',
+                                padding: '0.3rem', display: 'flex', flexDirection: 'column',
+                              }}>
+                                {apt.status === 'pendiente' && (
+                                  <MenuItem label="Confirmar" icon={<Check size={14} />} onClick={() => { setMenuFor(null); updateAppointment(apt.id, { status: 'confirmada' }); }} />
+                                )}
+                                {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
+                                  <MenuItem label="Marcar como realizada" icon={<CheckCircle2 size={14} />} onClick={() => { setMenuFor(null); updateAppointment(apt.id, { status: 'realizada' }); }} />
+                                )}
+                                {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
+                                  <MenuItem label="Postergar" icon={<CalendarClock size={14} />} onClick={() => { setMenuFor(null); openPostpone(apt); }} />
+                                )}
+                                {apt.status === 'postergada' && (
+                                  <MenuItem label="Reprogramar" icon={<CalendarClock size={14} />} onClick={() => { setMenuFor(null); openPostpone(apt); }} />
+                                )}
+                                {(apt.status === 'pendiente' || apt.status === 'confirmada' || apt.status === 'postergada') && (
+                                  <MenuItem label="Cancelar" icon={<XCircle size={14} />} danger onClick={() => { setMenuFor(null); setCancelTarget(apt); }} />
+                                )}
+                                {apt.payment_status !== 'pagado' && (
+                                  <MenuItem label="Registrar pago" icon={<CreditCard size={14} />} onClick={() => { setMenuFor(null); setPaymentScopeTarget(apt); }} />
+                                )}
+                                <MenuItemDivider />
+                                <MenuItem label="Ver detalle" icon={<Info size={14} />} onClick={() => { setMenuFor(null); setDetailTarget(apt); }} />
+                                <MenuItem label="Emitir boleta" icon={<Receipt size={14} />} onClick={() => { setMenuFor(null); navigate(`/admin/boletas/${apt.id}`); }} />
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>
@@ -394,10 +513,19 @@ export default function AppointmentsAdmin() {
           </div>
         )}
 
-        {filtered.length === 0 && (
+        {filtered.length === 0 && !loading && !refreshing && (
           <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#A89888' }}>
-            <div style={{ marginBottom: '0.5rem' }}><Inbox size={40} /></div>
-            <p>No hay citas {filter !== 'todas' ? 'con este estado' : 'activas'}</p>
+            <div style={{ marginBottom: '0.75rem' }}><Inbox size={40} /></div>
+            <p style={{ margin: '0 0 1.25rem', fontSize: '0.9rem' }}>
+              {search
+                ? 'No se encontraron citas para la búsqueda'
+                : `No hay citas ${filter !== 'todas' ? 'con este estado' : 'activas'}`}
+            </p>
+            {!search && hasModulePermission('citas', 'can_create') && (
+              <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => navigate('/admin/agendar')}>
+                + Agendar cita
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -406,11 +534,9 @@ export default function AppointmentsAdmin() {
       {postponeTarget && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
-          onClick={() => setPostponeTarget(null)}
         >
           <div
             style={{ background: '#FFFFFF', borderRadius: '14px', padding: '1.5rem', width: '100%', maxWidth: '440px', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
-            onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{ margin: '0 0 0.25rem', fontSize: '1.1rem', color: '#3D2E24' }}>
               {postponeTarget.status === 'postergada' ? 'Reprogramar Cita' : 'Postergar Cita'}

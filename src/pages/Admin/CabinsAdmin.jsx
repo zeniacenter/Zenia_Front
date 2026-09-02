@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import useEscClose from '../../hooks/useEscClose';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
@@ -16,6 +17,8 @@ export default function CabinsAdmin() {
   const [form, setForm] = useState({
     name: '', description: '', capacity: 1, image: '', is_available: true, branchId: '', serviceIds: [],
   });
+
+  useEscClose(showModal, () => setShowModal(false));
 
   const openNew = () => {
     setEditingId(null);
@@ -174,8 +177,8 @@ export default function CabinsAdmin() {
       )}
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay">
+          <div className="modal">
             <div className="modal-header">
               <h3>{editingId ? 'Editar Cabina' : 'Nueva Cabina'}</h3>
               <button className="modal-close" onClick={() => setShowModal(false)}>×</button>

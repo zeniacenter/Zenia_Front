@@ -1,7 +1,8 @@
 import { useState, Fragment } from 'react';
 import { useApp } from '../../context/AppContext';
+import useEscClose from '../../hooks/useEscClose';
 import ConfirmModal from '../../components/ConfirmModal';
-import { Settings, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { TableSkeleton } from '../../components/Skeleton';
 
 const MODULES = [
@@ -46,7 +47,8 @@ export default function UsersAdmin() {
     module_permissions: [],
     dashboard_cards: [...ALL_CARD_IDS],
   });
-  const [expandedUser, setExpandedUser] = useState(null);
+
+  useEscClose(showModal, () => setShowModal(false));
 
   const openNew = () => {
     setEditingId(null);
@@ -190,15 +192,6 @@ export default function UsersAdmin() {
     }
   };
 
-  const getModulesByBranch = () => {
-    const grouped = {};
-    form.module_permissions.forEach((mp) => {
-      if (!grouped[mp.branch_id]) grouped[mp.branch_id] = [];
-      grouped[mp.branch_id].push(mp);
-    });
-    return grouped;
-  };
-
   return (
     <div>
       <div className="admin-header">
@@ -283,40 +276,6 @@ export default function UsersAdmin() {
                     </div>
                   </td>
                 </tr>
-                {expandedUser === u.id && u.role !== 'admin' && (
-                  <tr key={`${u.id}-expanded`}>
-                    <td colSpan="6" style={{ padding: '0.75rem 1rem', background: '#FDFCFA' }}>
-                      <div style={{ fontSize: '0.8rem' }}>
-                        <strong>Permisos por sede:</strong>
-                        {Object.entries(
-                          (u.module_permissions || []).reduce((acc, mp) => {
-                            if (!acc[mp.branch_id]) acc[mp.branch_id] = [];
-                            acc[mp.branch_id].push(mp);
-                            return acc;
-                          }, {})
-                        ).map(([branchId, perms]) => {
-                          const branch = branches.find((b) => b.id === parseInt(branchId));
-                          return (
-                            <div key={branchId} style={{ marginTop: '0.5rem', padding: '0.5rem', background: '#fff', borderRadius: '6px', border: '1px solid #E8E0D6' }}>
-                              <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{branch?.name || `Sede ${branchId}`}</div>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                {perms.map((mp) => (
-                                  <span key={mp.id} className="badge badge-confirmed" style={{ fontSize: '0.65rem' }}>
-                                    {MODULES.find((m) => m.id === mp.module)?.label || mp.module}
-                                    {mp.can_view ? ' 👁' : ''}
-                                    {mp.can_create ? ' +' : ''}
-                                    {mp.can_edit ? ' ✏' : ''}
-                                    {mp.can_delete ? ' 🗑' : ''}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </td>
-                  </tr>
-                )}
               </Fragment>
             ))}
           </tbody>
@@ -325,8 +284,8 @@ export default function UsersAdmin() {
       )}
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" style={{ maxWidth: '680px', maxHeight: '85vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: '680px', maxHeight: '85vh', overflow: 'auto' }}>
             <div className="modal-header">
               <h3>{editingId ? 'Editar Usuario' : 'Nuevo Usuario'}</h3>
               <button className="modal-close" onClick={() => setShowModal(false)}>&times;</button>

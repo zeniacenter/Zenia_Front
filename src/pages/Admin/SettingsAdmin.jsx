@@ -1,9 +1,37 @@
+import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import { invoicesAPI } from '../../services/api';
 
 const HOUR_SELECT_OPTIONS = Array.from({ length: 17 }, (_, i) => `${String(i + 6).padStart(2, '0')}:00`);
 
 export default function SettingsAdmin() {
   const { settings, updateSettings } = useApp();
+  const [company, setCompany] = useState({});
+  const [savingCompany, setSavingCompany] = useState(false);
+  const [companyMsg, setCompanyMsg] = useState('');
+  const [loadingCompany, setLoadingCompany] = useState(true);
+
+  useEffect(() => {
+    invoicesAPI.config()
+      .then((res) => setCompany(res.data?.company || {}))
+      .catch(() => {})
+      .finally(() => setLoadingCompany(false));
+  }, []);
+
+  const setCompanyField = (key, value) => setCompany((prev) => ({ ...prev, [key]: value }));
+
+  const saveCompany = async () => {
+    setSavingCompany(true);
+    setCompanyMsg('');
+    try {
+      await invoicesAPI.saveConfig(company);
+      setCompanyMsg('Configuración de facturación guardada correctamente');
+    } catch (e) {
+      setCompanyMsg(e.response?.data?.message || 'Error al guardar la configuración');
+    } finally {
+      setSavingCompany(false);
+    }
+  };
 
   const handleWorkStart = (value) => {
     const updates = { workStart: value };
@@ -107,6 +135,66 @@ export default function SettingsAdmin() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="card" style={{ padding: '2rem', maxWidth: '600px', marginTop: '1.5rem' }}>
+        <h3 style={{ marginBottom: '0.5rem' }}>Datos de Facturación (RAPIFAC)</h3>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+          Configuración de la empresa emisora y las series de comprobantes electrónicos.
+        </p>
+
+        {loadingCompany ? (
+          <p style={{ color: 'var(--text-muted)' }}>Cargando...</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <label>
+              RUC
+              <input className="form-input" value={company.ruc || ''} onChange={(e) => setCompanyField('ruc', e.target.value)} />
+            </label>
+            <label>
+              Razón Social
+              <input className="form-input" value={company.razon_social || ''} onChange={(e) => setCompanyField('razon_social', e.target.value)} />
+            </label>
+            <label>
+              Dirección
+              <input className="form-input" value={company.direccion || ''} onChange={(e) => setCompanyField('direccion', e.target.value)} />
+            </label>
+            <label>
+              Serie Boleta (B001)
+              <input className="form-input" value={company.serie_boleta || ''} onChange={(e) => setCompanyField('serie_boleta', e.target.value)} />
+            </label>
+            <label>
+              Serie Factura (F001)
+              <input className="form-input" value={company.serie_factura || ''} onChange={(e) => setCompanyField('serie_factura', e.target.value)} />
+            </label>
+            <label>
+              Sucursal RAPIFAC
+              <input className="form-input" value={company.sucursal || ''} onChange={(e) => setCompanyField('sucursal', e.target.value)} />
+            </label>
+            <label>
+              Usuario RAPIFAC
+              <input className="form-input" value={company.usuario || ''} onChange={(e) => setCompanyField('usuario', e.target.value)} />
+            </label>
+            <label>
+              IGV (%) 
+              <input className="form-input" type="number" value={company.igv ?? 18} onChange={(e) => setCompanyField('igv', e.target.value)} />
+            </label>
+          </div>
+        )}
+
+        {companyMsg && (
+          <p style={{
+            marginTop: '1rem', padding: '0.75rem', borderRadius: '6px',
+            color: companyMsg.includes('correctamente') ? '#2E7D32' : '#B85C4C',
+            background: companyMsg.includes('correctamente') ? '#E8F5E9' : '#FCEEED',
+          }}>
+            {companyMsg}
+          </p>
+        )}
+
+        <button className="btn btn-primary" style={{ marginTop: '1.25rem' }} onClick={saveCompany} disabled={savingCompany || loadingCompany}>
+          {savingCompany ? 'Guardando...' : 'Guardar configuración'}
+        </button>
       </div>
     </div>
   );

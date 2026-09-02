@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import useEscClose from '../../hooks/useEscClose';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import Pagination from '../../components/Pagination';
@@ -24,6 +25,8 @@ export default function PackagesAdmin() {
     active: true,
     branchId: '',
   });
+
+  useEscClose(showModal, () => setShowModal(false));
 
   const openNew = () => {
     setEditingId(null);
@@ -246,8 +249,8 @@ export default function PackagesAdmin() {
       )}
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: '600px' }}>
             <div className="modal-header">
               <h3>{editingId ? 'Editar Paquete' : 'Nuevo Paquete'}</h3>
               <button className="modal-close" onClick={() => setShowModal(false)}>×</button>

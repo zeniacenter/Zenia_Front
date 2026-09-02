@@ -140,12 +140,14 @@ export default function AdminBooking() {
       }
     }
     if (selectedCabin && cabinOccupied(selectedCabin)) setSelectedCabin('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedService, selectedPackage, bookingType]);
 
   useEffect(() => {
     if (!selectedTime || !selectedTherapist || !selectedDate) return;
     const t = therapists.find((th) => String(th.id) === String(selectedTherapist));
     if (t && (therapistConflict(t.id) || therapistOffSchedule(t))) setSelectedTime('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, selectedTime, hours, selectedTherapist]);
 
   const getTotal = () => {
@@ -163,6 +165,7 @@ export default function AdminBooking() {
 
   useEffect(() => {
     setPriceInput(String(getTotal()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedService, selectedPackage, hours, sessionCount, bookingType]);
 
   const handleDniBlur = useCallback(async () => {

@@ -1,4 +1,4 @@
-import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, Navigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { BarChart3, Calendar, Users, Home, Sparkles, Package, TrendingUp, User, Settings, MessageSquare, MapPin, ChevronDown } from 'lucide-react';
 
@@ -18,7 +18,6 @@ const SIDEBAR_LINKS = [
 
 export default function AdminLayout() {
   const { isAdminLoggedIn, hasModulePermission, user, userPermissions, selectedBranchId, selectBranch, settings } = useApp();
-  const location = useLocation();
 
   if (!isAdminLoggedIn) {
     return <Navigate to="/login" replace />;

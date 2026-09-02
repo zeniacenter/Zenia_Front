@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
+import useEscClose from '../../hooks/useEscClose';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
@@ -18,22 +19,30 @@ export default function ServicesAdmin() {
   const [optimistic, setOptimistic] = useState({});
   const imageRef = useRef(null);
   const [form, setForm] = useState({
-    name: '', description: '', price: 30, durationH: 1, durationM: 0, image: '', category: '', branchIds: [],
+    name: '', description: '', price: 30, durationValue: 1, durationUnit: 'hours', image: '', category: '', branchIds: [],
   });
+
+  useEscClose(showModal, () => setShowModal(false));
 
   const openNew = () => {
     setEditingId(null);
-    setForm({ name: '', description: '', price: 30, durationH: 1, durationM: 0, image: '', category: '', branchIds: [] });
+    setForm({ name: '', description: '', price: 30, durationValue: 1, durationUnit: 'hours', image: '', category: '', branchIds: [] });
     setShowModal(true);
   };
 
   const openEdit = (service) => {
     const durMin = service.durationMin ?? 60;
     setEditingId(service.id);
+    let durationValue = durMin;
+    let durationUnit = 'minutes';
+    if (durMin >= 60 && durMin % 60 === 0) {
+      durationValue = durMin / 60;
+      durationUnit = 'hours';
+    }
     setForm({
       name: service.name, description: service.description,
       price: service.pricePerHour,
-      durationH: Math.floor(durMin / 60), durationM: durMin % 60,
+      durationValue, durationUnit,
       image: service.image, category: service.category,
       branchIds: service.branchIds || [],
     });
@@ -42,7 +51,8 @@ export default function ServicesAdmin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const durationMin = Math.max(5, (form.durationH || 0) * 60 + (form.durationM || 0));
+    const raw = Number(form.durationValue) || 0;
+    const durationMin = Math.max(5, form.durationUnit === 'hours' ? Math.round(raw * 60) : Math.round(raw));
     const payload = { ...form, pricePerHour: form.price, durationMin };
     if (editingId) {
       await updateService(editingId, payload);
@@ -239,8 +249,8 @@ export default function ServicesAdmin() {
       )}
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay">
+          <div className="modal">
             <div className="modal-header">
               <h3>{editingId ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
               <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
@@ -256,12 +266,15 @@ export default function ServicesAdmin() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
-                  <label>Duración Horas</label>
-                  <input type="number" className="form-control" min={0} max={12} value={form.durationH} onChange={(e) => setForm({ ...form, durationH: Number(e.target.value) })} />
+                  <label>Duración *</label>
+                  <input type="number" className="form-control" min={0} step={form.durationUnit === 'hours' ? 0.5 : 5} value={form.durationValue} onChange={(e) => setForm({ ...form, durationValue: Number(e.target.value) })} required />
                 </div>
                 <div className="form-group">
-                  <label>Minutos</label>
-                  <input type="number" className="form-control" min={0} max={55} step={5} value={form.durationM} onChange={(e) => setForm({ ...form, durationM: Number(e.target.value) })} />
+                  <label>Unidad</label>
+                  <select className="form-control" value={form.durationUnit} onChange={(e) => setForm({ ...form, durationUnit: e.target.value })}>
+                    <option value="hours">Horas</option>
+                    <option value="minutes">Minutos</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Precio (S/) *</label>

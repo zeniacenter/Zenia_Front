@@ -2,14 +2,8 @@ import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 
 export default function Packages() {
-  const { packages, services, settings } = useApp();
+  const { packages, settings } = useApp();
   const activePackages = packages.filter((p) => p.active);
-
-  const getServiceNames = (sessions) =>
-    (sessions || []).map((s) => {
-      const svc = services.find((sv) => sv.id === s.id);
-      return svc ? `${svc.name} (${s.hours}h)` : 'N/A';
-    }).join(', ');
 
   return (
     <div>
