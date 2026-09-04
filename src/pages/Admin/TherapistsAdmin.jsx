@@ -5,16 +5,16 @@ import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
 import Pagination from '../../components/Pagination';
-import { buildHourRange, formatHour } from '../../utils/hours';
+import { buildSlotOptions } from '../../utils/hours';
 import { CardGridSkeleton } from '../../components/Skeleton';
 
 const defaultSchedule = {
-  lunes: ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'],
-  martes: ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'],
-  miercoles: ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'],
-  jueves: ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'],
-  viernes: ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'],
-  sabado: ['09:00', '10:00', '11:00', '12:00'],
+  lunes: ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'],
+  martes: ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'],
+  miercoles: ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'],
+  jueves: ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'],
+  viernes: ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'],
+  sabado: ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30'],
   domingo: [],
 };
 
@@ -30,7 +30,7 @@ const dayLabels = {
 
 export default function TherapistsAdmin() {
   const { therapists, services, branches, addTherapist, updateTherapist, deleteTherapist, updateEntityImage, hasModulePermission, settings, loading } = useApp();
-  const timeOptions = buildHourRange(settings.workStart, settings.workEnd).map(formatHour);
+  const timeOptions = buildSlotOptions(settings.workStart, settings.workEnd);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);

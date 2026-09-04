@@ -330,13 +330,56 @@ export function AppProvider({ children }) {
     };
     try {
       const res = await servicesAPI.create(payload);
-      setServices((prev) => [...prev, transformService(res.data)]);
+      const newService = transformService(res.data);
+      setServices((prev) => [...prev, newService]);
+
+      const newId = res.data.id;
+
+      const activeBranches = branches.filter((b) => b.is_active ?? true);
+      await Promise.all(activeBranches.map(async (b) => {
+        if ((b.serviceIds || []).includes(newId)) return;
+        const branchServiceIds = [...new Set([...(b.serviceIds || []), newId])];
+        try {
+          const r = await branchesAPI.update(b.id, {
+            name: b.name,
+            address: b.address,
+            phone: b.phone,
+            is_active: b.is_active ?? true,
+            therapist_ids: b.therapistIds || [],
+            service_ids: branchServiceIds,
+          });
+          setBranches((prev) => prev.map((x) => (x.id === b.id ? transformBranch(r.data) : x)));
+        } catch (err) {
+          console.error('Error asociando servicio a sede:', err);
+        }
+      }));
+
+      await Promise.all(therapists.map(async (t) => {
+        if ((t.serviceIds || []).includes(newId)) return;
+        const therapistServiceIds = [...new Set([...(t.serviceIds || []), newId])];
+        try {
+          const r = await therapistsAPI.update(t.id, {
+            name: t.name,
+            specialty: t.specialty,
+            experience: t.experience,
+            image: getImagePath(t.image) || '',
+            is_available: t.available ?? t.is_available ?? true,
+            schedule: t.schedule,
+            service_ids: therapistServiceIds,
+            branch_ids: t.branchIds || [],
+          });
+          setTherapists((prev) => prev.map((x) => (x.id === t.id ? transformTherapist(r.data) : x)));
+        } catch (err) {
+          console.error('Error asociando servicio a terapeuta:', err);
+        }
+      }));
+
       return res.data;
     } catch (err) {
       console.error('Error creando servicio:', err);
       return null;
     }
-  }, []);
+  }, [branches, therapists]);
 
   const updateService = useCallback(async (id, updates) => {
     const payload = {

@@ -173,7 +173,7 @@ export default function Booking() {
       if (svc) {
         setBookingType('services');
         setSelectedServices([svc.id]);
-        setServiceDurations({ [svc.id]: 1 });
+        setServiceDurations({ [svc.id]: svc.durationMin ? svc.durationMin / 60 : 1 });
         if (!settings.branchRequired) {
           setStep(buildSteps(settings, 'services').findIndex((s) => s.label === 'Servicios') + 1);
         }

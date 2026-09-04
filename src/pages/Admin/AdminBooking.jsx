@@ -369,7 +369,13 @@ export default function AdminBooking() {
                 <select
                   style={inputStyle}
                   value={selectedService}
-                  onChange={(e) => { setSelectedService(e.target.value); setSelectedTherapist(''); setSelectedTime(''); }}
+                  onChange={(e) => {
+                    setSelectedService(e.target.value);
+                    setSelectedTherapist('');
+                    setSelectedTime('');
+                    const svc = services.find((s) => String(s.id) === String(e.target.value));
+                    if (svc && svc.durationMin) setHours(svc.durationMin / 60);
+                  }}
                   required
                 >
                   <option value="">Seleccionar servicio</option>

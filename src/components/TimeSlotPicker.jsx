@@ -27,7 +27,7 @@ const toMinutes = (hhmm) => {
 const toTimeString = (mins) =>
   `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
 
-const SLOT_STEP_MINUTES = 15;
+const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
 
 export default function TimeSlotPicker({
   therapistId,
@@ -136,16 +136,27 @@ export default function TimeSlotPicker({
     if (marks.length === 0) return [];
 
     const duration = Math.round(hours * 60);
-    const windowStart = Math.min(...marks);
-    const windowEnd = Math.max(...marks) + 60;
+    const step = Math.max(5, gcd(duration, 60));
+    const sorted = [...marks].sort((a, b) => a - b);
 
-    const candidates = new Set(marks);
-    busyIntervals.forEach((interval) => {
-      const busyStart = toMinutes(interval.start);
-      const busyEnd = toMinutes(interval.end);
-      candidates.add(Math.ceil(busyEnd / SLOT_STEP_MINUTES) * SLOT_STEP_MINUTES);
-      const beforeBusy = Math.floor((busyStart - duration) / SLOT_STEP_MINUTES) * SLOT_STEP_MINUTES;
-      if (beforeBusy >= windowStart) candidates.add(beforeBusy);
+    const blocks = [];
+    let blockStart = sorted[0];
+    let prev = sorted[0];
+    for (let i = 1; i < sorted.length; i++) {
+      const m = sorted[i];
+      if (m - prev > 60) {
+        blocks.push([blockStart, prev + 60]);
+        blockStart = m;
+      }
+      prev = m;
+    }
+    blocks.push([blockStart, prev + 60]);
+
+    const candidates = new Set();
+    blocks.forEach(([bs, be]) => {
+      for (let t = bs; t < be - duration + 1; t += step) {
+        candidates.add(t);
+      }
     });
 
     const isToday = date === today;
@@ -154,7 +165,6 @@ export default function TimeSlotPicker({
     return [...candidates]
       .filter((start) => {
         const end = start + duration;
-        if (start < windowStart || end > windowEnd) return false;
         if (isToday && start <= currentMinutes) return false;
         return !busyIntervals.some(
           (interval) => start < toMinutes(interval.end) && toMinutes(interval.start) < end
