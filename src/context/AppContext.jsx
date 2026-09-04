@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { authAPI, usersAPI, servicesAPI, packagesAPI, therapistsAPI, cabinsAPI, appointmentsAPI, branchesAPI, setBranchId } from '../services/api';
+import { authAPI, usersAPI, servicesAPI, packagesAPI, therapistsAPI, cabinsAPI, appointmentsAPI, branchesAPI, settingsAPI, setBranchId } from '../services/api';
 import { BarChart3, Calendar, Users, Home, Sparkles, Package, TrendingUp, Plus, User, MapPin } from 'lucide-react';
 
 const AppContext = createContext(null);
@@ -124,6 +124,17 @@ export function AppProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('zenia_settings', JSON.stringify(settings));
   }, [settings]);
+
+  useEffect(() => {
+    settingsAPI.get()
+      .then((res) => {
+        const s = res.data?.settings;
+        if (s) {
+          setSettings((prev) => ({ ...prev, ...s }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (token) return;
@@ -670,8 +681,14 @@ export function AppProvider({ children }) {
   }, []);
 
   const updateSettings = useCallback((updates) => {
-    setSettings((prev) => ({ ...prev, ...updates }));
-  }, []);
+    setSettings((prev) => {
+      const next = { ...prev, ...updates };
+      if (token) {
+        settingsAPI.save(next).catch(() => {});
+      }
+      return next;
+    });
+  }, [token]);
 
   const updateEntityImage = useCallback((entityType, entityId, imageUrl) => {
     const setters = {

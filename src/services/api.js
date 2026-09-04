@@ -209,6 +209,11 @@ export const whatsappAPI = {
   saveConfig: (config) => api.put('/admin/whatsapp/config', config),
 };
 
+export const settingsAPI = {
+  get: () => api.get('/settings'),
+  save: (settings) => api.put('/admin/settings', settings),
+};
+
 export const branchesAPI = {
   list: () => api.get('/branches'),
   listAll: () => api.get('/admin/branches'),
