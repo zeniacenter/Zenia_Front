@@ -189,36 +189,36 @@ export default function Home() {
             <AnimatedSection className="services-showcase" viewportMargin="-60px">
               <AutoCarousel
                 items={services}
-              renderItem={(service, i) => (
-                <motion.div className="service-card-premium" key={service.id} variants={fadeUp} custom={i}>
-                  <div className="service-image-wrapper">
-                    {service.image ? (
-                      <img src={service.image} alt={service.name} loading="lazy" />
-                    ) : (
-                      <div className="service-image-fallback"><ImageIcon size={40} /></div>
-                    )}
-                    <div className="service-image-overlay" />
-                  </div>
-                  <div className="service-content">
-                    <h3>{service.name}</h3>
-                    <p>{service.description}</p>
-                    <div className="service-footer">
-                      {settings.priceVisible && (
-                        <div className="service-price">
-                          <span className="price-from">Desde</span>
-                          <span className="price-value">S/ {service.pricePerHour}</span>
-                          <span className="price-unit">/ hora</span>
-                        </div>
+                renderItem={(service, i) => (
+                  <motion.div className="service-card-premium" key={service.id} variants={fadeUp} custom={i}>
+                    <div className="service-image-wrapper">
+                      {service.image ? (
+                        <img src={service.image} alt={service.name} loading="lazy" />
+                      ) : (
+                        <div className="service-image-fallback"><ImageIcon size={40} /></div>
                       )}
-                      <Link to={`/agendar?service=${service.id}`} className="service-cta">
-                        Reservar
-                        <ArrowRight size={16} />
-                      </Link>
+                      <div className="service-image-overlay" />
                     </div>
-                  </div>
-                </motion.div>
-              )}
-            />
+                    <div className="service-content">
+                      <h3>{service.name}</h3>
+                      <p>{service.description}</p>
+                      <div className="service-footer">
+                        {settings.priceVisible && (
+                          <div className="service-price">
+                            <span className="price-from">Desde</span>
+                            <span className="price-value">S/ {service.pricePerHour}</span>
+                            <span className="price-unit">/ hora</span>
+                          </div>
+                        )}
+                        <Link to={`/agendar?service=${service.id}`} className="service-cta">
+                          Reservar
+                          <ArrowRight size={16} />
+                        </Link>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              />
             </AnimatedSection>
           )}
         </div>
@@ -244,43 +244,43 @@ export default function Home() {
               <AnimatedSection className="packages-grid" viewportMargin="-60px">
                 <AutoCarousel
                   items={activePackages}
-                renderItem={(pkg, i) => {
-                  const sessions = pkg.sessions || [];
-                  const totalSessions = sessions.length;
-                  return (
-                    <motion.div className="package-card-premium" key={pkg.id} variants={fadeUp} custom={i}>
-                      <div className="package-badge">
-                        -{Math.round(((pkg.originalPrice - pkg.packagePrice) / pkg.originalPrice) * 100)}%
-                      </div>
-                      <div className="package-image-wrapper">
-                        {pkg.image ? (
-                          <img src={pkg.image} alt={pkg.name} loading="lazy" />
-                        ) : (
-                          <div className="service-image-fallback"><ImageIcon size={40} /></div>
-                        )}
-                      </div>
-                      <div className="package-content">
-                        <h3>{pkg.name}</h3>
-                        <p>{pkg.description}</p>
-                        <div className="package-meta">
-                          <span>{pkg.hours}h de duración</span>
-                          {totalSessions > 0 && <span>{totalSessions} sesiones incluidas</span>}
+                  renderItem={(pkg, i) => {
+                    const sessions = pkg.sessions || [];
+                    const totalSessions = sessions.length;
+                    return (
+                      <motion.div className="package-card-premium" key={pkg.id} variants={fadeUp} custom={i}>
+                        <div className="package-badge">
+                          -{Math.round(((pkg.originalPrice - pkg.packagePrice) / pkg.originalPrice) * 100)}%
                         </div>
-                        {settings.priceVisible && (
-                          <div className="package-pricing">
-                            <span className="package-original">S/ {pkg.originalPrice}</span>
-                            <span className="package-price">S/ {pkg.packagePrice}</span>
+                        <div className="package-image-wrapper">
+                          {pkg.image ? (
+                            <img src={pkg.image} alt={pkg.name} loading="lazy" />
+                          ) : (
+                            <div className="service-image-fallback"><ImageIcon size={40} /></div>
+                          )}
+                        </div>
+                        <div className="package-content">
+                          <h3>{pkg.name}</h3>
+                          <p>{pkg.description}</p>
+                          <div className="package-meta">
+                            <span>{pkg.hours}h de duración</span>
+                            {totalSessions > 0 && <span>{totalSessions} sesiones incluidas</span>}
                           </div>
-                        )}
-                        <Link to={`/agendar?package=${pkg.id}`} className="btn-package-cta">
-                          Reservar Paquete
-                          <ArrowRight size={16} />
-                        </Link>
-                      </div>
-                    </motion.div>
-                  );
-                }}
-              />
+                          {settings.priceVisible && (
+                            <div className="package-pricing">
+                              <span className="package-original">S/ {pkg.originalPrice}</span>
+                              <span className="package-price">S/ {pkg.packagePrice}</span>
+                            </div>
+                          )}
+                          <Link to={`/agendar?package=${pkg.id}`} className="btn-package-cta">
+                            Reservar Paquete
+                            <ArrowRight size={16} />
+                          </Link>
+                        </div>
+                      </motion.div>
+                    );
+                  }}
+                />
               </AnimatedSection>
             )}
           </div>
@@ -309,22 +309,22 @@ export default function Home() {
               <AnimatedSection className="therapists-showcase" viewportMargin="-60px">
                 <AutoCarousel
                   items={featuredTherapists}
-                renderItem={(therapist, i) => (
-                  <motion.div className="therapist-card-premium" key={therapist.id} variants={fadeUp} custom={i}>
-                    <div className="therapist-image-wrapper">
-                      {therapist.image ? (
-                        <img src={therapist.image} alt={therapist.name} loading="lazy" />
-                      ) : (
-                        <div className="therapist-image-fallback">{therapist.name?.charAt(0)}</div>
-                      )}
-                      <div className="therapist-image-ring" />
-                    </div>
-                    <h3>{therapist.name}</h3>
-                    <span className="therapist-specialty">{therapist.specialty}</span>
-                    <p className="therapist-exp">{therapist.experience}</p>
-                  </motion.div>
-                )}
-              />
+                  renderItem={(therapist, i) => (
+                    <motion.div className="therapist-card-premium" key={therapist.id} variants={fadeUp} custom={i}>
+                      <div className="therapist-image-wrapper">
+                        {therapist.image ? (
+                          <img src={therapist.image} alt={therapist.name} loading="lazy" />
+                        ) : (
+                          <div className="therapist-image-fallback">{therapist.name?.charAt(0)}</div>
+                        )}
+                        <div className="therapist-image-ring" />
+                      </div>
+                      <h3>{therapist.name}</h3>
+                      <span className="therapist-specialty">{therapist.specialty}</span>
+                      <p className="therapist-exp">{therapist.experience}</p>
+                    </motion.div>
+                  )}
+                />
               </AnimatedSection>
             )}
           </div>
@@ -400,7 +400,7 @@ export default function Home() {
 
       {/* ═══════════ WHATSAPP FLOATING BUTTON ═══════════ */}
       <a
-        href="https://wa.me/51963590138?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20sus%20servicios"
+        href="https://wa.me/51970546706?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20sus%20servicios"
         className="whatsapp-float-btn"
         target="_blank"
         rel="noopener noreferrer"

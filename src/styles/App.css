@@ -2040,6 +2040,13 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   margin: var(--sp-1) 0;
 }
 
+.drive-status {
+  display: block;
+  margin-top: var(--sp-2);
+  font-size: var(--fs-xs);
+  color: #2D7A3A;
+}
+
 .reports-filters {
   display: flex;
   flex-wrap: wrap;
@@ -2123,6 +2130,48 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
 .admin-layout .reports-filters {
   background: #FFFFFF;
   border-color: #E8E0D6;
+}
+
+.report-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1.75rem 0 0.75rem;
+}
+.report-block-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #3D2E24;
+}
+.report-block-header span {
+  font-size: 0.8rem;
+  color: #A89888;
+}
+
+.card-table {
+  overflow: visible;
+}
+.card-table:hover {
+  transform: none;
+  box-shadow: var(--sh-lg);
+}
+
+.report-breakdowns {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 1100px) {
+  .report-breakdowns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.text-right {
+  text-align: right !important;
 }
 
 .hours-btn {

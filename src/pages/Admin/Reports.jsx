@@ -8,7 +8,7 @@ import { useApp } from '../../context/AppContext';
 import Skeleton from '../../components/Skeleton';
 import {
   BarChart3, DollarSign, Clock, Timer,
-  Download, FileText, FileSpreadsheet, Filter, X, Search
+  Download, FileText, FileSpreadsheet, Filter, X, Search, CloudUpload
 } from 'lucide-react';
 
 const COLORS = ['#C9A96E', '#E6C992', '#9A7D52', '#5A8F6A', '#D46B5A', '#B5A898'];
@@ -23,6 +23,41 @@ const customTooltipStyle = {
 
 const CHART_CARD = { padding: '1.5rem' };
 const CHART_TITLE = { marginBottom: '1rem', fontSize: '1.1rem', color: '#F5EDE0' };
+
+const STATUS_CONFIG = {
+  pendiente: { label: 'Pendiente', color: '#8B6520', bg: '#FDF6E9' },
+  confirmada: { label: 'Confirmada', color: '#8B6A50', bg: '#F5EDE5' },
+  cancelada: { label: 'Cancelada', color: '#B85C4C', bg: '#FCEEED' },
+  realizada: { label: 'Realizada', color: '#6A4A3A', bg: '#F0EBE3' },
+  postergada: { label: 'Postergada', color: '#4A7A9A', bg: '#EBF3F8' },
+};
+
+const PAYMENT_CONFIG = {
+  pagado: { label: 'Pagado', color: '#2D7A3A', bg: '#E8F5E9' },
+  pendiente: { label: 'Pendiente', color: '#B85C4C', bg: '#FCEEED' },
+  parcial: { label: 'Parcial', color: '#B8860B', bg: '#FFF8E1' },
+};
+
+const badge = (cfg) => ({
+  display: 'inline-block', fontSize: '0.7rem', fontWeight: 600,
+  padding: '0.2rem 0.6rem', borderRadius: '12px',
+  background: cfg.bg, color: cfg.color, whiteSpace: 'nowrap',
+});
+
+const detailTh = {
+  textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase',
+  letterSpacing: '0.04em', color: '#A89888', padding: '0.6rem 0.75rem', whiteSpace: 'nowrap',
+};
+const detailTd = { fontSize: '0.8rem', color: '#6B5B4E', padding: '0.55rem 0.75rem' };
+
+const fmtMoney = (n) => `S/ ${Number(n || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const fmtDate = (d) => {
+  if (!d) return '-';
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return d;
+  return dt.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
 
 function downloadBlob(blob, filename) {
   const url = window.URL.createObjectURL(blob);
@@ -42,21 +77,40 @@ const INITIAL_FILTERS = {
 export default function Reports() {
   const { branches, therapists } = useApp();
   const [data, setData] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [breakdowns, setBreakdowns] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [exporting, setExporting] = useState(null);
+  const [driveMessage, setDriveMessage] = useState('');
   const [filters, setFilters] = useState(INITIAL_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
 
-  const fetchData = useCallback(async (filterParams = {}) => {
+  const baseParams = useMemo(() => {
+    const params = {};
+    Object.entries(filters).forEach(([k, v]) => { if (v !== '') params[k] = v; });
+    return params;
+  }, [filters]);
+
+  const fetchData = useCallback(async (filterParams = {}, targetPage = 1) => {
     setLoading(true);
     setError(false);
     try {
-      const res = await reportsAPI.dashboardData(filterParams);
-      setData(res.data);
+      const [dashRes, filteredRes, brkRes] = await Promise.all([
+        reportsAPI.dashboardData(filterParams),
+        reportsAPI.filtered({ ...filterParams, page: targetPage }),
+        reportsAPI.breakdowns(filterParams),
+      ]);
+      setData(dashRes.data);
+      setDetail(filteredRes.data);
+      setBreakdowns(brkRes.data);
+      setPage(targetPage);
     } catch {
       setError(true);
       setData(null);
+      setDetail(null);
+      setBreakdowns(null);
     } finally {
       setLoading(false);
     }
@@ -67,15 +121,23 @@ export default function Reports() {
   }, [fetchData]);
 
   const applyFilters = useCallback(() => {
-    const params = {};
-    Object.entries(filters).forEach(([k, v]) => { if (v !== '') params[k] = v; });
-    fetchData(params);
-  }, [filters, fetchData]);
+    fetchData(baseParams, 1);
+  }, [fetchData, baseParams]);
 
   const clearFilters = useCallback(() => {
     setFilters(INITIAL_FILTERS);
-    fetchData();
+    fetchData({}, 1);
   }, [fetchData]);
+
+  const goToPage = useCallback(async (target) => {
+    try {
+      const filteredRes = await reportsAPI.filtered({ ...baseParams, page: target });
+      setDetail(filteredRes.data);
+      setPage(target);
+    } catch {
+      setError(true);
+    }
+  }, [baseParams]);
 
   const activeFilters = useMemo(
     () => Object.entries(filters).filter(([, v]) => v !== '').length,
@@ -127,15 +189,29 @@ export default function Reports() {
       const params = {};
       Object.entries(filters).forEach(([k, v]) => { if (v !== '') params[k] = v; });
 
-      let res;
-      if (type === 'pdf-citas') res = await reportsAPI.exportPdf(params);
-      else if (type === 'excel-citas') res = await reportsAPI.exportExcel(params);
-      else if (type === 'pdf-resumen') res = await reportsAPI.exportSummaryPdf(params);
-      else if (type === 'excel-resumen') res = await reportsAPI.exportSummaryExcel(params);
+      const res = type === 'excel'
+        ? await reportsAPI.exportExcel(params)
+        : await reportsAPI.exportPdf(params);
 
-      downloadBlob(res.data, `reporte-${type}.${type.startsWith('pdf') ? 'pdf' : 'xlsx'}`);
+      downloadBlob(res.data, `reporte-zenia.${type === 'excel' ? 'xlsx' : 'pdf'}`);
     } finally {
       setExporting(null);
+    }
+  }, [filters]);
+
+  const handleUploadToDrive = useCallback(async () => {
+    setDriveMessage('Subiendo...');
+    try {
+      const params = {};
+      Object.entries(filters).forEach(([k, v]) => { if (v !== '') params[k] = v; });
+      const res = await reportsAPI.uploadToDrive(params);
+      setDriveMessage(res.data?.message || 'Reporte subido a Google Drive.');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Error al subir a Google Drive';
+      setDriveMessage('');
+      alert(msg);
+    } finally {
+      setTimeout(() => setDriveMessage(''), 4000);
     }
   }, [filters]);
 
@@ -199,21 +275,21 @@ export default function Reports() {
               {exporting ? 'Exportando...' : 'Exportar'}
             </button>
             <div className="export-menu">
-              <button onClick={() => handleExport('pdf-resumen')} disabled={!!exporting}>
-                <FileText size={14} /> PDF - Resumen
+              <button onClick={() => handleExport('pdf')} disabled={!!exporting}>
+                <FileText size={14} /> PDF
               </button>
-              <button onClick={() => handleExport('excel-resumen')} disabled={!!exporting}>
-                <FileSpreadsheet size={14} /> Excel - Resumen
+              <button onClick={() => handleExport('excel')} disabled={!!exporting}>
+                <FileSpreadsheet size={14} /> Excel
               </button>
               <div className="export-divider" />
-              <button onClick={() => handleExport('pdf-citas')} disabled={!!exporting}>
-                <FileText size={14} /> PDF - Citas
-              </button>
-              <button onClick={() => handleExport('excel-citas')} disabled={!!exporting}>
-                <FileSpreadsheet size={14} /> Excel - Citas
+              <button onClick={handleUploadToDrive} disabled={!!exporting || !!driveMessage}>
+                <CloudUpload size={14} /> Subir a Drive
               </button>
             </div>
           </div>
+          {driveMessage && (
+            <span className="drive-status">{driveMessage}</span>
+          )}
         </div>
       </div>
 
@@ -405,6 +481,189 @@ export default function Reports() {
           </div>
         </div>
       </div>
+
+      {loading ? (
+        <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem', minHeight: 200 }}>
+          <Skeleton width="50%" height="18px" style={{ marginBottom: '1.5rem' }} />
+          <Skeleton height="160px" radius="10px" />
+        </div>
+      ) : (
+        <>
+          <div className="report-block-header">
+            <h3>Detalle de Citas</h3>
+            <span>({detail?.total ?? 0} citas en el rango)</span>
+          </div>
+          {!detail || detail.appointments.length === 0 ? (
+            <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#B5A898' }}>
+              Sin citas para los filtros seleccionados
+            </div>
+          ) : (
+            <div className="card card-table" style={{ overflow: 'visible' }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #E8E0D6' }}>
+                      <th style={detailTh}>Fecha</th>
+                      <th style={detailTh}>Hora</th>
+                      <th style={detailTh}>Cliente</th>
+                      <th style={detailTh}>Teléfono</th>
+                      <th style={detailTh}>Servicio(s)</th>
+                      <th style={detailTh}>Terapeuta</th>
+                      <th style={detailTh}>Sede</th>
+                      <th style={detailTh}>Cabina</th>
+                      <th style={detailTh}>Horas</th>
+                      <th style={detailTh} className="text-right">Total</th>
+                      <th style={detailTh}>Estado</th>
+                      <th style={detailTh}>Pago</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detail.appointments.map((a) => {
+                      const st = STATUS_CONFIG[a.status] || STATUS_CONFIG.pendiente;
+                      const ps = PAYMENT_CONFIG[a.payment_status] || PAYMENT_CONFIG.pendiente;
+                      const name = [a.client_name, a.client_last_name].filter(Boolean).join(' ');
+                      return (
+                        <tr key={a.id} style={{ borderBottom: '1px solid #F0EBE3' }}>
+                          <td style={detailTd}>{fmtDate(a.date)}</td>
+                          <td style={detailTd}>{a.start_time} - {a.end_time}</td>
+                          <td style={{ ...detailTd, fontWeight: 600, color: '#3D2E24' }}>{name || a.client_name}</td>
+                          <td style={detailTd}>{a.client_phone || '-'}</td>
+                          <td style={detailTd}>{a.client_services || '-'}</td>
+                          <td style={detailTd}>{a.therapist_name}</td>
+                          <td style={detailTd}>{a.branch_name || '-'}</td>
+                          <td style={detailTd}>{a.cabin_name || '-'}</td>
+                          <td style={detailTd}>{Number(a.hours)}</td>
+                          <td style={{ ...detailTd, textAlign: 'right', fontWeight: 600, color: '#3D2E24' }}>{fmtMoney(a.total_price)}</td>
+                          <td style={detailTd}><span style={badge(st)}>{st.label}</span></td>
+                          <td style={detailTd}><span style={badge(ps)}>{ps.label}</span></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  {detail.totals && (
+                    <tfoot>
+                      <tr style={{ borderTop: '2px solid #C9A96E' }}>
+                        <td colSpan="8" style={{ ...detailTd, fontWeight: 700, color: '#3D2E24' }}>Totales (rango filtrado)</td>
+                        <td style={{ ...detailTd, fontWeight: 700, color: '#3D2E24' }}>{Number(detail.totals.total_horas)}h</td>
+                        <td style={{ ...detailTd, textAlign: 'right', fontWeight: 700, color: '#3D2E24' }}>{fmtMoney(detail.totals.total_ingresos)}</td>
+                        <td style={{ ...detailTd, fontWeight: 700, color: '#3D2E24' }}>{detail.totals.total_citas} citas</td>
+                        <td style={detailTd}></td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.85rem 1rem', borderTop: '1px solid #E8E0D6', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.8rem', color: '#6B5B4E' }}>
+                  Página {detail.current_page} de {detail.last_page}
+                </span>
+                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    disabled={page <= 1 || loading}
+                    onClick={() => goToPage(page - 1)}
+                  >
+                    ← Anterior
+                  </button>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    disabled={page >= detail.last_page || loading}
+                    onClick={() => goToPage(page + 1)}
+                  >
+                    Siguiente →
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="report-breakdowns">
+            <div className="card" style={CHART_CARD}>
+              <h3 style={CHART_TITLE}>Ingresos por Servicio</h3>
+              {(!breakdowns || breakdowns.serviceRevenue.length === 0) ? (
+                <p style={{ color: '#B5A898', fontSize: '0.85rem' }}>Sin datos</p>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #E8E0D6' }}>
+                      <th style={detailTh}>Servicio</th>
+                      <th style={detailTh}>Citas</th>
+                      <th style={detailTh} className="text-right">Ingresos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {breakdowns.serviceRevenue.map((s, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid #F0EBE3' }}>
+                        <td style={{ ...detailTd, color: '#3D2E24', fontWeight: 500 }}>{s.service}</td>
+                        <td style={detailTd}>{s.appointment_count}</td>
+                        <td style={{ ...detailTd, textAlign: 'right', fontWeight: 600, color: '#3D2E24' }}>{fmtMoney(s.total_price)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="card" style={CHART_CARD}>
+              <h3 style={CHART_TITLE}>Ingresos por Terapeuta</h3>
+              {(!breakdowns || breakdowns.therapistRevenue.length === 0) ? (
+                <p style={{ color: '#B5A898', fontSize: '0.85rem' }}>Sin datos</p>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #E8E0D6' }}>
+                      <th style={detailTh}>Terapeuta</th>
+                      <th style={detailTh}>Citas</th>
+                      <th style={detailTh}>Horas</th>
+                      <th style={detailTh} className="text-right">Ingresos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {breakdowns.therapistRevenue.map((t, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid #F0EBE3' }}>
+                        <td style={{ ...detailTd, color: '#3D2E24', fontWeight: 500 }}>{t.therapist}</td>
+                        <td style={detailTd}>{t.appointment_count}</td>
+                        <td style={detailTd}>{Number(t.total_hours)}</td>
+                        <td style={{ ...detailTd, textAlign: 'right', fontWeight: 600, color: '#3D2E24' }}>{fmtMoney(t.total_price)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="card" style={CHART_CARD}>
+              <h3 style={CHART_TITLE}>Detalle Financiero (Pagos)</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                {['pendiente', 'parcial', 'pagado'].map((st) => {
+                  const ps = PAYMENT_CONFIG[st] || { label: st, color: '#6B5B4E', bg: '#F0EBE3' };
+                  const item = detail?.payment_summary?.[st] || { citas: 0, total_price: 0, paid_amount: 0 };
+                  return (
+                    <div key={st} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '0.6rem 0.75rem', borderRadius: '8px', background: ps.bg,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: ps.color }} />
+                        <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#3D2E24' }}>{ps.label}</span>
+                        <span style={{ fontSize: '0.75rem', color: '#6B5B4E' }}>({item.citas} citas)</span>
+                      </div>
+                      <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#3D2E24' }}>{fmtMoney(item.total_price)}</span>
+                    </div>
+                  );
+                })}
+                {detail?.totals && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid #E8E0D6' }}>
+                    <span style={{ fontWeight: 700, color: '#3D2E24' }}>Total ingresos</span>
+                    <span style={{ fontWeight: 700, color: '#C9A96E', fontSize: '1rem' }}>{fmtMoney(detail.totals.total_ingresos)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

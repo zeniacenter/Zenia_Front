@@ -118,6 +118,7 @@ const buildReportsUrl = (params, path) => {
   if (params.branch_id) query.set('branch_id', params.branch_id);
   if (params.therapist_id) query.set('therapist_id', params.therapist_id);
   if (params.status) query.set('status', params.status);
+  if (params.page) query.set('page', params.page);
   const qs = query.toString();
   return qs ? `${path}?${qs}` : path;
 };
@@ -131,10 +132,10 @@ export const reportsAPI = {
   revenueByHour: () => api.get('/admin/reports/revenue-by-hour'),
   revenueByCategory: () => api.get('/admin/reports/revenue-by-category'),
   filtered: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/filtered')),
+  breakdowns: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/breakdowns')),
   exportPdf: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/pdf'), { responseType: 'blob' }),
   exportExcel: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/excel'), { responseType: 'blob' }),
-  exportSummaryPdf: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/summary-pdf'), { responseType: 'blob' }),
-  exportSummaryExcel: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/summary-excel'), { responseType: 'blob' }),
+  uploadToDrive: (params = {}) => api.post('/admin/reports/export/drive', params),
 };
 
 export const uploadAPI = {
