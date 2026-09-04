@@ -164,8 +164,16 @@ export default function SettingsAdmin() {
               <input className="form-input" value={company.serie_boleta || ''} onChange={(e) => setCompanyField('serie_boleta', e.target.value)} />
             </label>
             <label>
+              Num. próximo boleta
+              <input className="form-input" type="number" value={Number(company.correlativo_boleta ?? 0)} onChange={(e) => setCompanyField('correlativo_boleta', e.target.value)} />
+            </label>
+            <label>
               Serie Factura (F001)
               <input className="form-input" value={company.serie_factura || ''} onChange={(e) => setCompanyField('serie_factura', e.target.value)} />
+            </label>
+            <label>
+              Num. próximo factura
+              <input className="form-input" type="number" value={Number(company.correlativo_factura ?? 0)} onChange={(e) => setCompanyField('correlativo_factura', e.target.value)} />
             </label>
             <label>
               Sucursal RAPIFAC

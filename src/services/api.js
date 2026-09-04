@@ -109,6 +109,9 @@ export const invoicesAPI = {
   config: () => api.get('/admin/invoices/config'),
   saveConfig: (data) => api.put('/admin/invoices/config', data),
   emit: (data) => api.post('/admin/invoices/emit', data),
+  pdf: (id) => api.get(`/admin/invoices/${id}/pdf`, { responseType: 'blob' }),
+  xml: (id) => api.get(`/admin/invoices/${id}/xml`, { responseType: 'blob' }),
+  email: (id, to) => api.post(`/admin/invoices/${id}/enviar-correo`, { to }),
 };
 
 const buildReportsUrl = (params, path) => {
