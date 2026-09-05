@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { appointmentsAPI, invoicesAPI } from '../../services/api';
+import useEscClose from '../../hooks/useEscClose';
 
 const formatMoney = (n) => Number(n || 0).toFixed(2);
 
@@ -23,6 +24,9 @@ export default function BoletasPlaceholder() {
   const [sendEmail, setSendEmail] = useState(false);
   const [emitting, setEmitting] = useState(false);
   const [result, setResult] = useState(null);
+  const [confirmDuplicate, setConfirmDuplicate] = useState(null);
+
+  useEscClose(!!confirmDuplicate, () => setConfirmDuplicate(null));
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +104,29 @@ export default function BoletasPlaceholder() {
       return;
     }
 
+    // Detectar si alguna de las citas seleccionadas ya tiene un comprobante emitido
+    try {
+      const invRes = await invoicesAPI.list();
+      const invoices = invRes.data || [];
+      const existing = invoices.filter((inv) =>
+        (inv.appointments || []).some((a) => selectedIds.includes(a.id))
+      );
+      if (existing.length > 0) {
+        setConfirmDuplicate({
+          type,
+          existingDoc: existing.map((e) => e.documento_id).join(', '),
+        });
+        return;
+      }
+    } catch {
+      // Si no se puede verificar, continúa con la emisión
+    }
+
+    await doEmit();
+  };
+
+  const doEmit = async () => {
+    setError('');
     setEmitting(true);
     try {
       const res = await invoicesAPI.emit({
@@ -118,6 +145,11 @@ export default function BoletasPlaceholder() {
     } finally {
       setEmitting(false);
     }
+  };
+
+  const confirmDuplicateYes = () => {
+    setConfirmDuplicate(null);
+    doEmit();
   };
 
   if (loading) {
@@ -295,6 +327,34 @@ export default function BoletasPlaceholder() {
             </button>
           </section>
         </>
+      )}
+
+      {confirmDuplicate && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: '460px' }}>
+            <div className="modal-header">
+              <h3>Comprobante ya emitido</h3>
+              <button className="modal-close" onClick={() => setConfirmDuplicate(null)}>&times;</button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ margin: 0 }}>
+                Las citas seleccionadas ya tienen un comprobante emitido:
+              </p>
+              <p style={{ fontWeight: 600, margin: '0.5rem 0' }}>{confirmDuplicate.existingDoc}</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                ¿Quieres volver a emitir {confirmDuplicate.type === 'factura' ? 'una factura' : 'una boleta'}? Esto podría generar un duplicado.
+              </p>
+            </div>
+            <div className="modal-actions" style={{ borderTop: '1px solid var(--adm-border)', padding: '1rem 1.5rem' }}>
+              <button className="btn btn-outline" onClick={() => setConfirmDuplicate(null)}>
+                Cancelar
+              </button>
+              <button className="btn btn-primary" onClick={confirmDuplicateYes}>
+                Sí, emitir {confirmDuplicate.type === 'factura' ? 'factura' : 'boleta'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
