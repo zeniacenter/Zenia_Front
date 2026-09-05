@@ -19,6 +19,8 @@ export default function BoletasPlaceholder() {
   const [clientDocument, setClientDocument] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientAddress, setClientAddress] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [sendEmail, setSendEmail] = useState(false);
   const [emitting, setEmitting] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -38,6 +40,7 @@ export default function BoletasPlaceholder() {
           setClientDocument(person.ruc || person.dni || '');
           setClientName(`${person.name || ''}${person.last_name ? ' ' + person.last_name : ''}`.trim());
           setClientAddress(person.address || '');
+          setClientEmail(person.email || '');
         }
 
         // Cargar las citas del mismo cliente para el modo agrupado
@@ -106,6 +109,8 @@ export default function BoletasPlaceholder() {
         client_document: clientDocument,
         client_name: clientName,
         client_address: clientAddress,
+        client_email: sendEmail ? clientEmail : undefined,
+        send_email: sendEmail,
       });
       setResult(res.data);
     } catch (e) {
@@ -148,6 +153,7 @@ export default function BoletasPlaceholder() {
           </p>
           <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
             <button className="btn btn-primary" onClick={() => window.location.reload()}>Emitir otro</button>
+            <Link to="/admin/comprobantes" className="btn btn-secondary">Ver Comprobantes</Link>
             <Link to="/admin/citas" className="btn btn-secondary">Ir a Citas</Link>
           </div>
         </div>
@@ -246,7 +252,20 @@ export default function BoletasPlaceholder() {
                 Dirección (obligatoria en factura)
                 <input className="form-input" value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} />
               </label>
+              <label>
+                Correo del cliente (para envío)
+                <input className="form-input" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="cliente@correo.com" />
+              </label>
             </div>
+
+            <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '1rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={sendEmail}
+                onChange={(e) => setSendEmail(e.target.checked)}
+              />
+              <span>Enviar comprobante por correo al cliente tras emitir</span>
+            </label>
           </section>
 
           <section className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>

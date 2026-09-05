@@ -562,6 +562,48 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   margin-bottom: var(--sp-2);
 }
 
+.admin-nav-section {
+  margin-top: 2px;
+}
+
+.admin-nav-section-head {
+  display: flex;
+  align-items: center;
+}
+
+.admin-nav-section-head .section-link {
+  flex: 1;
+}
+
+.admin-nav-section-chev {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--adm-text-sec);
+  padding: var(--sp-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.admin-nav-section-chev:hover {
+  color: var(--adm-text);
+}
+
+.admin-nav-section-chev .section-chev {
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.admin-nav-section-chev .section-chev.open {
+  transform: rotate(180deg);
+}
+
+.admin-nav-section .admin-nav-link.sub {
+  padding-left: calc(var(--sp-4) + 24px + var(--sp-3));
+  font-size: calc(var(--fs-sm) - 1px);
+}
+
 .admin-logout-btn {
   display: flex;
   align-items: center;

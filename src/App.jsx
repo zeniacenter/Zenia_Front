@@ -25,6 +25,7 @@ const SettingsAdmin = lazy(() => import('./pages/Admin/SettingsAdmin'));
 const WhatsAppAdmin = lazy(() => import('./pages/Admin/WhatsAppAdmin'));
 const SedesAdmin = lazy(() => import('./pages/Admin/SedesAdmin'));
 const BoletasPlaceholder = lazy(() => import('./pages/Admin/BoletasPlaceholder'));
+const InvoicesAdmin = lazy(() => import('./pages/Admin/InvoicesAdmin'));
 
 function ModuleRoute({ module, children }) {
   const { hasModulePermission, user, selectedBranchId } = useApp();
@@ -67,6 +68,7 @@ function AppContent() {
               <Route path="sedas" element={<ModuleRoute module="sedas"><SedesAdmin /></ModuleRoute>} />
               <Route path="configuracion" element={<SettingsAdmin />} />
               <Route path="boletas/:id" element={<BoletasPlaceholder />} />
+              <Route path="comprobantes" element={<ModuleRoute module="citas"><InvoicesAdmin /></ModuleRoute>} />
             </Route>
           </Routes>
         </Suspense>
