@@ -12,6 +12,7 @@ const DEFAULT_CONFIG = {
   menuSedes: true,
   menuConsultarReserva: true,
   menuAgendar: true,
+  humanModeTtlMinutes: 10,
 };
 
 export default function WhatsAppAdmin() {
@@ -213,6 +214,30 @@ export default function WhatsAppAdmin() {
                 </div>
               </div>
             ))}
+            <div className="settings-divider"></div>
+            <div className="settings-row">
+              <div className="settings-info">
+                <h3>Modo humano automático</h3>
+                <p>
+                  Minutos que el modo humano permanece activo antes de que el bot vuelva a responder solo al chat.
+                </p>
+              </div>
+              <input
+                type="number"
+                min={1}
+                max={1440}
+                className="form-input"
+                style={{ width: '88px' }}
+                value={config.humanModeTtlMinutes}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value, 10);
+                  setConfig((prev) => ({
+                    ...prev,
+                    humanModeTtlMinutes: Number.isNaN(n) ? 10 : Math.min(1440, Math.max(1, n)),
+                  }));
+                }}
+              />
+            </div>
           </div>
         )}
         {configMsg && (
