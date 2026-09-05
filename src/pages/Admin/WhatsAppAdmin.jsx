@@ -30,6 +30,9 @@ export default function WhatsAppAdmin() {
 
   const [humanChats, setHumanChats] = useState([]);
   const [releasingPhone, setReleasingPhone] = useState(null);
+  const [takePhone, setTakePhone] = useState('');
+  const [takingPhone, setTakingPhone] = useState(false);
+  const [takeResult, setTakeResult] = useState(null);
 
   useEffect(() => {
     const socket = getWhatsAppSocket();
@@ -134,6 +137,29 @@ export default function WhatsAppAdmin() {
       alert(error.response?.data?.message || 'Error al liberar el chat');
     } finally {
       setReleasingPhone(null);
+    }
+  };
+
+  const takeChat = async (e) => {
+    e.preventDefault();
+    setTakeResult(null);
+    const raw = takePhone.replace(/\D/g, '');
+    const cleanPhone = raw.startsWith('51') ? raw : `51${raw}`;
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setTakeResult({ ok: false, message: 'Ingresa un número de teléfono válido' });
+      return;
+    }
+    setTakingPhone(true);
+    try {
+      await whatsappAPI.takeHumanChat(cleanPhone);
+      setTakeResult({ ok: true, message: 'Intervención activada: el bot queda en silencio en ese chat.' });
+      setTakePhone('');
+      loadHumanChats();
+    } catch (error) {
+      const data = error.response?.data;
+      setTakeResult({ ok: false, message: data?.message || 'Error al tomar control del chat' });
+    } finally {
+      setTakingPhone(false);
     }
   };
 
@@ -277,6 +303,29 @@ export default function WhatsAppAdmin() {
             <RefreshCw size={16} aria-hidden="true" /> Actualizar
           </button>
         </div>
+
+        <form
+          onSubmit={takeChat}
+          style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}
+        >
+          <input
+            type="tel"
+            className="form-input"
+            placeholder="Número a intervenir (987654321)"
+            value={takePhone}
+            onChange={(e) => setTakePhone(e.target.value)}
+            disabled={takingPhone}
+            style={{ flex: '1 1 220px', padding: '0.55rem 0.75rem', border: '1px solid #D6CBC0', borderRadius: '8px', fontSize: '0.9rem' }}
+          />
+          <button type="submit" className="btn btn-secondary" disabled={takingPhone} style={{ fontSize: '0.85rem' }}>
+            {takingPhone ? 'Activando...' : 'Tomar control manual'}
+          </button>
+        </form>
+        {takeResult && (
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: takeResult.ok ? '#1E7B34' : '#991B1B' }}>
+            {takeResult.message}
+          </p>
+        )}
 
         {humanChats.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', margin: 0 }}>No hay chats en modo humano en este momento.</p>

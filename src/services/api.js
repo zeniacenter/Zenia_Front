@@ -208,6 +208,23 @@ export const whatsappAPI = {
       return response.json();
     });
   },
+  takeHumanChat: (phone) => {
+    const baseUrl = import.meta.env.VITE_WHATSAPP_URL || 'http://localhost:3100';
+    const token = import.meta.env.VITE_WHATSAPP_API_TOKEN;
+    return fetch(`${baseUrl}/api/human-mode/${encodeURIComponent(phone)}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    }).then((response) => {
+      if (!response.ok) {
+        return response.json().then((data) => {
+          const error = new Error(data.message || 'Error al tomar control del chat');
+          error.response = { data, status: response.status };
+          throw error;
+        });
+      }
+      return response.json();
+    });
+  },
   getConfig: () => api.get('/admin/whatsapp/config'),
   saveConfig: (config) => api.put('/admin/whatsapp/config', config),
 };
