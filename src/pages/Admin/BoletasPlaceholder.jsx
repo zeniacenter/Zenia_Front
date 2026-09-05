@@ -104,6 +104,9 @@ export default function BoletasPlaceholder() {
       return;
     }
 
+    // Bloquear el botón desde el inicio para evitar envíos duplicados
+    setEmitting(true);
+
     // Detectar si alguna de las citas seleccionadas ya tiene un comprobante emitido
     try {
       const invRes = await invoicesAPI.list();
@@ -112,6 +115,7 @@ export default function BoletasPlaceholder() {
         (inv.appointments || []).some((a) => selectedIds.includes(a.id))
       );
       if (existing.length > 0) {
+        setEmitting(false);
         setConfirmDuplicate({
           type,
           existingDoc: existing.map((e) => e.documento_id).join(', '),
