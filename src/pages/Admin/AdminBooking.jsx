@@ -48,12 +48,29 @@ export default function AdminBooking() {
       })
     : packages?.filter((p) => p.active) || [];
 
-  const filteredCabins = selectedBranch
-    ? cabins.filter((c) => {
-        if (String(c.branchId || c.branch_id) !== String(selectedBranch)) return false;
-        return c.is_available ?? c.available;
-      })
-    : cabins.filter((c) => c.is_available ?? c.available);
+  const activeBookingServiceIds = (() => {
+    if (bookingType === 'service') return selectedService ? [Number(selectedService)] : [];
+    if (bookingType === 'package' && selectedPackage) {
+      const pkg = (packages || []).find((p) => String(p.id) === String(selectedPackage));
+      return (pkg?.serviceIds || []).map(Number);
+    }
+    return [];
+  })();
+
+  const filteredCabins = (() => {
+    const base = selectedBranch
+      ? cabins.filter((c) => {
+          if (String(c.branchId || c.branch_id) !== String(selectedBranch)) return false;
+          return c.is_available ?? c.available;
+        })
+      : cabins.filter((c) => c.is_available ?? c.available);
+    return base.filter((c) => {
+      const ids = (c.serviceIds || []).map(Number);
+      if (ids.length === 0) return false;
+      if (activeBookingServiceIds.length === 0) return true;
+      return activeBookingServiceIds.some((sid) => ids.includes(sid));
+    });
+  })();
 
   const filteredTherapists = (() => {
     let list = selectedBranch
@@ -140,6 +157,7 @@ export default function AdminBooking() {
       }
     }
     if (selectedCabin && cabinOccupied(selectedCabin)) setSelectedCabin('');
+    if (selectedCabin && !filteredCabins.some((c) => String(c.id) === String(selectedCabin))) setSelectedCabin('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedService, selectedPackage, bookingType]);
 
@@ -517,13 +535,22 @@ export default function AdminBooking() {
                   <option value="">Seleccionar cabina</option>
                   {filteredCabins.map((c) => {
                     const occupied = cabinOccupied(c.id);
+                    const svcNames = (c.serviceIds || [])
+                      .map((sid) => services.find((s) => String(s.id) === String(sid))?.name)
+                      .filter(Boolean)
+                      .join(', ');
                     return (
                       <option key={c.id} value={c.id} disabled={occupied}>
-                        {c.name} (Cap: {c.capacity}){occupied ? ' — Ocupada en ese horario' : ''}
+                        {c.name} (Cap: {c.capacity}){svcNames ? ` — ${svcNames}` : ''}{occupied ? ' — Ocupada en ese horario' : ''}
                       </option>
                     );
                   })}
                 </select>
+                {filteredCabins.length === 0 && (
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.72rem', color: '#B85C4C' }}>
+                    No hay cabinas configuradas para {activeBookingServiceIds.length > 0 ? 'el servicio seleccionado' : 'este servicio'}. Asigna servicios a las cabinas en el módulo de Cabinas.
+                  </p>
+                )}
               </div>
             )}
 

@@ -113,12 +113,23 @@ export default function Booking() {
       })
     : packages.filter((p) => p.active ?? p.is_active);
 
-  const branchCabins = selectedBranch
+  const selectedServiceIds = selectedServices.length > 0
+    ? selectedServices.map(Number)
+    : [];
+
+  const isCabinCompatible = (c) => {
+    const ids = (c.serviceIds || []).map(Number);
+    if (ids.length === 0) return false;
+    if (selectedServiceIds.length === 0) return true;
+    return selectedServiceIds.some((sid) => ids.includes(sid));
+  };
+
+  const branchCabins = (selectedBranch
     ? cabins.filter((c) => {
         if (c.branchId !== selectedBranch && c.branch_id !== selectedBranch) return false;
         return c.is_available ?? c.available;
       })
-    : cabins.filter((c) => c.is_available ?? c.available);
+    : cabins.filter((c) => c.is_available ?? c.available)).filter(isCabinCompatible);
 
   const branchTherapists = selectedBranch
     ? therapists.filter((t) => {
@@ -143,7 +154,7 @@ export default function Booking() {
 
   useEffect(() => {
     setSelectedCabin('');
-  }, [selectedDate, selectedTime, bookingType]);
+  }, [selectedDate, selectedTime, bookingType, selectedServices, selectedPackage]);
 
   useEffect(() => {
     if (!singleSessionWithTime || !selectedDate || !selectedTime) return;
@@ -161,7 +172,7 @@ export default function Booking() {
       .catch(() => {});
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, selectedTime, bookingType, sessionCount, singleSessionWithTime]);
+  }, [selectedDate, selectedTime, bookingType, sessionCount, singleSessionWithTime, selectedServices]);
 
   const hasSummaryData = step > 1 && (selectedServices.length > 0 || selectedPackage);
 
