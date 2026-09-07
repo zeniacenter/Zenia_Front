@@ -589,7 +589,6 @@ export default function AppointmentsAdmin() {
         appointment={detailTarget}
         allAppointments={appointments}
         onClose={() => setDetailTarget(null)}
-        onPaymentPropagate={handlePaymentPropagate}
         onSelectSession={(session) => setDetailTarget(session)}
       />
 

@@ -7,7 +7,7 @@ import { useApp } from '../../context/AppContext';
 import { CalendarDays, Clock, DollarSign, Hourglass, Home, User, Info } from 'lucide-react';
 import AppointmentDetailModal from '../../components/AppointmentDetailModal';
 import Skeleton from '../../components/Skeleton';
-import { buildHourRange, formatHour } from '../../utils/hours';
+import { buildQuarterRange, formatMinutes } from '../../utils/hours';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const locales = { es };
@@ -118,8 +118,8 @@ export default function Dashboard() {
 
   const cabinDayStr = toDateStr(currentDate);
 
-  const cabinHours = useMemo(
-    () => buildHourRange(settings.workStart, settings.workEnd),
+  const cabinSlots = useMemo(
+    () => buildQuarterRange(settings.workStart, settings.workEnd),
     [settings.workStart, settings.workEnd]
   );
 
@@ -127,8 +127,7 @@ export default function Dashboard() {
     filteredAppointments.filter((a) => toDateStr(a.date) === cabinDayStr && a.status !== 'cancelada'),
   [filteredAppointments, cabinDayStr]);
 
-  const getCabinSlotAppointment = (cabinId, hour) => {
-    const slotStart = hour * 60;
+  const getCabinSlotAppointment = (cabinId, slotStart) => {
     return cabinDayAppointments.find((a) => {
       const cid = a.cabinId || a.cabin_id;
       if (!cid || Number(cid) !== Number(cabinId)) return false;
@@ -367,16 +366,16 @@ export default function Dashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {cabinHours.map((hour) => {
-                      const timeStr = formatHour(hour);
+                    {cabinSlots.map((slotMin) => {
+                      const timeStr = formatMinutes(slotMin);
                       return (
-                        <tr key={hour}>
+                        <tr key={slotMin}>
                           <td style={{ border: '1px solid #E8E0D6', background: '#F5F0E8', padding: '0.4rem 0.5rem', fontSize: '0.78rem', fontWeight: 600, color: '#6B5B4E', textAlign: 'center' }}>
                             {timeStr}
                           </td>
                           {branchCabins.map((cabin) => {
                             const isAvailable = cabin.is_available ?? cabin.available ?? true;
-                            const apt = getCabinSlotAppointment(cabin.id, hour);
+                            const apt = getCabinSlotAppointment(cabin.id, slotMin);
                             if (apt) {
                               const clientName = apt.clientName || apt.person?.name || 'N/A';
                               return (

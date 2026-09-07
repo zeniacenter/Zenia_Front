@@ -1,5 +1,16 @@
-import { X, Package, CreditCard, Clock, MapPin, User, Phone, Scissors, AlertTriangle, Mail, Hash, Home } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  X, Package, CreditCard, Clock, MapPin, User, Phone, Scissors, AlertTriangle, Mail, Hash, Home,
+  Check, CheckCircle2, CalendarClock, XCircle, Receipt,
+} from 'lucide-react';
 import useEscClose from '../hooks/useEscClose';
+import { useApp } from '../context/AppContext';
+import { appointmentsAPI } from '../services/api';
+import { clearBusyCache } from '../utils/busyCache';
+import TimeSlotPicker from './TimeSlotPicker';
+import CancelAppointmentModal from './CancelAppointmentModal';
+import PaymentScopeModal from './PaymentScopeModal';
 
 const STATUS_CONFIG = {
   pendiente: { label: 'Pendiente', color: '#8B6520', bg: '#FDF6E9' },
@@ -25,18 +36,58 @@ const row = { display: 'flex', justifyContent: 'space-between', padding: '0.45re
 const label = { fontSize: '0.78rem', color: '#A89888', display: 'flex', alignItems: 'center', gap: '4px' };
 const value = { fontSize: '0.82rem', color: '#3D2E24', fontWeight: 500, textAlign: 'right', maxWidth: '60%' };
 
+const inputStyle = {
+  width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px',
+  border: '1px solid #E8E0D6', background: '#FFFFFF', color: '#3D2E24',
+  fontSize: '0.85rem', fontFamily: 'inherit', outline: 'none',
+};
+
+const ActionButton = ({ label, icon, onClick, danger }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    style={{
+      display: 'flex', alignItems: 'center', gap: '0.35rem',
+      padding: '0.4rem 0.65rem', borderRadius: '8px',
+      border: danger ? '1px solid #F5D5D0' : '1px solid #E8E0D6',
+      background: danger ? '#FCEEED' : '#FDFBF7',
+      color: danger ? '#B85C4C' : '#6B5B4E',
+      fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+    }}
+  >
+    {icon}
+    <span>{label}</span>
+  </button>
+);
+
 export default function AppointmentDetailModal({
   open,
   appointment,
   allAppointments,
   onClose,
-  onPaymentPropagate,
   onSelectSession,
 }) {
+  const { appointments, updateAppointment, hasModulePermission } = useApp();
+  const navigate = useNavigate();
+  const [postponing, setPostponing] = useState(false);
+  const [postponeDate, setPostponeDate] = useState('');
+  const [postponeTime, setPostponeTime] = useState('');
+  const [showCancel, setShowCancel] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+
   useEscClose(open, onClose);
+
+  useEffect(() => {
+    setPostponing(false);
+    setPostponeDate('');
+    setPostponeTime('');
+  }, [open, appointment?.id]);
+
   if (!open || !appointment) return null;
 
-  const apt = appointment;
+  const apt = (allAppointments || []).find((a) => a.id === appointment.id) || appointment;
+  const today = new Date().toISOString().split('T')[0];
+  const canEdit = hasModulePermission('citas', 'can_edit');
   const person = apt.person || {};
   const clientName = [person.name, person.last_name].filter(Boolean).join(' ') || apt.clientName || 'N/A';
   const clientPhone = person.phone || apt.clientPhone || 'N/A';
@@ -82,8 +133,93 @@ export default function AppointmentDetailModal({
   }
 
   const handlePropagatePayment = async () => {
-    if (!onPaymentPropagate) return;
-    await onPaymentPropagate(apt);
+    const isGroup = !!apt.group_id;
+
+    if (isGroup) {
+      const siblings = (appointments || []).filter(
+        (a) => a.group_id === apt.group_id && a.person_id === apt.person_id && a.payment_status !== 'pagado'
+      );
+      try {
+        await appointmentsAPI.propagatePaymentGroup(apt.group_id, apt.person_id);
+      } catch {}
+      for (const sib of [...siblings, apt]) {
+        if (sib.payment_status !== 'pagado') {
+          await updateAppointment(sib.id, { payment_status: 'pagado', paid_amount: sib.total_price });
+        }
+      }
+    } else if (apt.package_id) {
+      const siblings = (appointments || []).filter(
+        (a) => a.package_id === apt.package_id && a.person_id === apt.person_id && a.payment_status !== 'pagado'
+      );
+      try {
+        await appointmentsAPI.propagatePayment(apt.package_id, apt.person_id);
+      } catch {}
+      for (const sib of [...siblings, apt]) {
+        if (sib.payment_status !== 'pagado') {
+          await updateAppointment(sib.id, { payment_status: 'pagado', paid_amount: sib.total_price });
+        }
+      }
+    }
+  };
+
+  const handleConfirm = async () => {
+    await updateAppointment(apt.id, { status: 'confirmada' });
+  };
+
+  const handleMarkDone = async () => {
+    await updateAppointment(apt.id, { status: 'realizada' });
+  };
+
+  const openPostpone = () => {
+    setPostponeDate(apt.date || '');
+    setPostponeTime(apt.start_time || apt.time || '');
+    setPostponing(true);
+  };
+
+  const confirmPostpone = async () => {
+    if (!postponeDate || !postponeTime) return;
+    const hours = apt.hours || 1;
+    const startMins = parseInt(postponeTime.split(':')[0]) * 60 + parseInt(postponeTime.split(':')[1]);
+    const endMins = startMins + hours * 60;
+    const endH = Math.floor(endMins / 60);
+    const endM = endMins % 60;
+    const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+
+    const newStatus = apt.status === 'postergada' ? 'pendiente' : 'postergada';
+    await updateAppointment(apt.id, {
+      status: newStatus,
+      date: postponeDate,
+      start_time: postponeTime,
+      end_time: endTime,
+    });
+    clearBusyCache();
+    setPostponing(false);
+  };
+
+  const handleCancelConfirm = async (reason) => {
+    if (!apt.id) return;
+    await updateAppointment(apt.id, {
+      status: 'cancelada',
+      cancellation_reason: reason,
+    });
+    setShowCancel(false);
+  };
+
+  const handlePaySession = async () => {
+    await updateAppointment(apt.id, {
+      payment_status: 'pagado',
+      paid_amount: apt.total_price,
+    });
+    setShowPayment(false);
+  };
+
+  const handlePayAllSessions = async () => {
+    await handlePropagatePayment();
+    setShowPayment(false);
+  };
+
+  const handleEmitBoleta = () => {
+    navigate(`/admin/boletas/${apt.id}`);
   };
 
   return (
@@ -104,6 +240,46 @@ export default function AppointmentDetailModal({
         </div>
 
         <div style={{ padding: '1rem 1.25rem' }}>
+          {postponing && canEdit ? (
+            <div>
+              <h3 style={{ margin: '0 0 0.25rem', fontSize: '1.1rem', color: '#3D2E24' }}>
+                {apt.status === 'postergada' ? 'Reprogramar Cita' : 'Postergar Cita'}
+              </h3>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: '#A89888' }}>
+                {clientName} — {serviceName}
+              </p>
+
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>Nueva fecha</label>
+                <input type="date" value={postponeDate} min={today} onChange={(e) => { setPostponeDate(e.target.value); setPostponeTime(''); }} style={inputStyle} />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>Nueva hora</label>
+                {apt.therapist_id && postponeDate ? (
+                  <TimeSlotPicker
+                    therapistId={apt.therapist_id}
+                    date={postponeDate}
+                    value={postponeTime}
+                    onChange={setPostponeTime}
+                    excludeAppointmentId={apt.id}
+                    hours={apt.hours || 1}
+                    compact
+                  />
+                ) : (
+                  <div style={{ padding: '0.5rem', textAlign: 'center', color: '#A89888', fontSize: '0.8rem' }}>
+                    Selecciona una fecha primero
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button className="btn btn-secondary" onClick={() => setPostponing(false)}>Volver</button>
+                <button className="btn btn-primary" disabled={!postponeDate || !postponeTime} onClick={confirmPostpone}>Confirmar</button>
+              </div>
+            </div>
+          ) : (
+            <>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
             <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#F5EDE5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8B6A50', fontWeight: 700, fontSize: '1rem' }}>
               {clientName.charAt(0)}
@@ -274,7 +450,7 @@ export default function AppointmentDetailModal({
                 <div style={{ marginTop: '0.6rem', padding: '0.4rem 0.6rem', borderRadius: '6px', background: '#E8F5E9', color: '#2D7A3A', fontSize: '0.75rem', fontWeight: 600, textAlign: 'center' }}>
                   Paquete pagado completamente
                 </div>
-              ) : onPaymentPropagate ? (
+              ) : canEdit ? (
                 <div style={{ marginTop: '0.6rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
                     <span style={{ fontSize: '0.75rem', color: '#A89888' }}>
@@ -305,7 +481,51 @@ export default function AppointmentDetailModal({
               </p>
             </div>
           )}
+
+          {canEdit && (
+            <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #E8E0D6' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#A89888', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acciones</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                {apt.status === 'pendiente' && (
+                  <ActionButton label="Confirmar" icon={<Check size={14} />} onClick={handleConfirm} />
+                )}
+                {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
+                  <ActionButton label="Marcar como realizada" icon={<CheckCircle2 size={14} />} onClick={handleMarkDone} />
+                )}
+                {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
+                  <ActionButton label="Postergar" icon={<CalendarClock size={14} />} onClick={openPostpone} />
+                )}
+                {apt.status === 'postergada' && (
+                  <ActionButton label="Reprogramar" icon={<CalendarClock size={14} />} onClick={openPostpone} />
+                )}
+                {(apt.status === 'pendiente' || apt.status === 'confirmada' || apt.status === 'postergada') && (
+                  <ActionButton label="Cancelar" icon={<XCircle size={14} />} danger onClick={() => setShowCancel(true)} />
+                )}
+                {apt.payment_status !== 'pagado' && (
+                  <ActionButton label="Registrar pago" icon={<CreditCard size={14} />} onClick={() => setShowPayment(true)} />
+                )}
+                <ActionButton label="Emitir boleta" icon={<Receipt size={14} />} onClick={handleEmitBoleta} />
+              </div>
+            </div>
+          )}
+            </>
+          )}
         </div>
+
+        <CancelAppointmentModal
+          open={showCancel}
+          appointment={apt}
+          onConfirm={handleCancelConfirm}
+          onCancel={() => setShowCancel(false)}
+        />
+
+        <PaymentScopeModal
+          open={showPayment}
+          appointment={apt}
+          onClose={() => setShowPayment(false)}
+          onPaySession={handlePaySession}
+          onPayAllSessions={handlePayAllSessions}
+        />
 
         <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid #E8E0D6', display: 'flex', justifyContent: 'flex-end' }}>
           <button className="btn btn-secondary" onClick={onClose}>Cerrar</button>

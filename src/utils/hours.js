@@ -17,6 +17,30 @@ export function formatHour(h) {
   return `${String(h).padStart(2, '0')}:00`;
 }
 
+export function formatMinutes(totalMinutes) {
+  const n = Math.max(0, Number(totalMinutes) || 0);
+  const h = Math.floor(n / 60);
+  const m = Math.floor(n % 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+export function buildQuarterRange(startStr, endStr) {
+  const toMin = (s) => {
+    const parts = String(s || '').slice(0, 5).split(':').map(Number);
+    if (parts.length < 2 || !Number.isFinite(parts[0]) || !Number.isFinite(parts[1])) return null;
+    return parts[0] * 60 + parts[1];
+  };
+  let start = toMin(startStr);
+  let end = toMin(endStr);
+  if (start === null) start = 8 * 60;
+  if (end === null) end = 19 * 60;
+  if (end <= start) [start, end] = [end, start];
+  const hi = Math.min(end, 23 * 60 + 45);
+  const slots = [];
+  for (let t = Math.max(0, start); t <= hi; t += 15) slots.push(t);
+  return slots;
+}
+
 export function buildSlotOptions(startStr, endStr) {
   const toMin = (s) => {
     const parts = String(s || '').slice(0, 5).split(':').map(Number);
