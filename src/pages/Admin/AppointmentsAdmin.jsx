@@ -95,10 +95,18 @@ export default function AppointmentsAdmin() {
 
   useEffect(() => { setPage(0); }, [filter]);
 
+  // ✅ Forzar carga al montar el componente:
   useEffect(() => {
-    if (!token) return;
+    // Carga inmediata al entrar
     refreshAppointments();
-  }, [refreshAppointments, token]);
+
+    // Consulta automática cada 30 segundos
+    const interval = setInterval(() => {
+      refreshAppointments();
+    }, 30000);
+
+    return () => clearInterval(interval); // Limpia el timer al salir de la pantalla
+  }, []);
 
   useEffect(() => {
     if (!menuFor) return;
@@ -224,7 +232,7 @@ export default function AppointmentsAdmin() {
       );
       try {
         await appointmentsAPI.propagatePaymentGroup(apt.group_id, apt.person_id);
-      } catch {}
+      } catch { }
       for (const sib of [...siblings, apt]) {
         if (sib.payment_status !== 'pagado') {
           await updateAppointment(sib.id, { payment_status: 'pagado', paid_amount: sib.total_price });
@@ -236,7 +244,7 @@ export default function AppointmentsAdmin() {
       );
       try {
         await appointmentsAPI.propagatePayment(apt.package_id, apt.person_id);
-      } catch {}
+      } catch { }
       for (const sib of [...siblings, apt]) {
         if (sib.payment_status !== 'pagado') {
           await updateAppointment(sib.id, { payment_status: 'pagado', paid_amount: sib.total_price });
@@ -265,7 +273,7 @@ export default function AppointmentsAdmin() {
   };
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - var(--sp-8) * 2)' }}>
       <div className="admin-header">
         <h2>Gestión de Citas</h2>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -346,194 +354,194 @@ export default function AppointmentsAdmin() {
       {loading ? (
         <TableSkeleton columns={7} rows={8} />
       ) : (
-      <div style={{ background: '#FFFFFF', border: '1px solid #E8E0D6', borderRadius: '14px', overflow: 'visible', opacity: refreshing ? 0.6 : 1, transition: 'opacity 0.15s ease' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #E8E0D6' }}>
-                {['Cliente', 'Servicio / Paquete', 'Fecha', 'Hora', 'Estado', 'Estado de pago', 'Acciones'].map((h) => (
-                  <th key={h} style={thStyle}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {paged.map((apt) => {
-                const st = STATUS_CONFIG[apt.status] || STATUS_CONFIG.pendiente;
-                const svc = getServiceLabel(apt);
-                return (
-                  <tr
-                    key={apt.id}
-                    style={{ borderBottom: '1px solid #F0EBE3', transition: 'background 0.15s' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#FDFCFA'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <td style={{ padding: '0.65rem 1rem', fontWeight: 600, fontSize: '0.85rem', color: '#3D2E24' }}>
-                      {getName(apt)}
-                    </td>
-                    <td style={{ padding: '0.65rem 1rem', fontSize: '0.8rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{
-                          display: 'inline-block', fontSize: '0.55rem', fontWeight: 700, padding: '1px 5px',
-                          borderRadius: '4px', width: 'fit-content',
-                          background: svc.type === 'PAQUETE' ? '#F5EDE5' : svc.type === 'MULTI-SESIÓN' ? '#E8F5E9' : '#EBF3F8',
-                          color: svc.type === 'PAQUETE' ? '#8B6A50' : svc.type === 'MULTI-SESIÓN' ? '#2D7A3A' : '#4A7A9A',
-                        }}>{svc.type}</span>
-                        <span style={{ fontWeight: 600, color: '#3D2E24', fontSize: '0.82rem' }}>{svc.name}</span>
-                        {svc.detail && <span style={{ fontSize: '0.7rem', color: '#A89888' }}>{svc.detail}</span>}
-                      </div>
-                    </td>
-                    <td style={{ padding: '0.65rem 1rem', fontSize: '0.8rem', color: '#3D2E24', whiteSpace: 'nowrap' }}>
-                      {apt.date ? new Date(apt.date).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
-                    </td>
-                    <td style={{ padding: '0.65rem 1rem', fontSize: '0.8rem', color: '#3D2E24', whiteSpace: 'nowrap' }}>
-                      {getTime(apt)} - {getEndTime(apt)}
-                    </td>
-                    <td style={{ padding: '0.65rem 1rem' }}>
-                      <span style={{
-                        display: 'inline-block', fontSize: '0.7rem', fontWeight: 600,
-                        padding: '0.2rem 0.6rem', borderRadius: '12px',
-                        background: st.bg, color: st.color, whiteSpace: 'nowrap',
-                      }}>
-                        {st.label}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.65rem 1rem' }}>
-                      {(() => {
-                        const ps = PAYMENT_CONFIG[apt.payment_status] || PAYMENT_CONFIG.pendiente;
-                        return (
+        <div style={{ background: '#FFFFFF', border: '1px solid #E8E0D6', borderRadius: '14px', overflow: 'visible', opacity: refreshing ? 0.6 : 1, transition: 'opacity 0.15s ease', display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <div style={{ overflowX: 'auto', flex: 1 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #E8E0D6' }}>
+                  {['Cliente', 'Servicio / Paquete', 'Fecha', 'Hora', 'Estado', 'Estado de pago', 'Acciones'].map((h) => (
+                    <th key={h} style={thStyle}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {paged.map((apt) => {
+                  const st = STATUS_CONFIG[apt.status] || STATUS_CONFIG.pendiente;
+                  const svc = getServiceLabel(apt);
+                  return (
+                    <tr
+                      key={apt.id}
+                      style={{ borderBottom: '1px solid #F0EBE3', transition: 'background 0.15s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#FDFCFA'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '0.65rem 1rem', fontWeight: 600, fontSize: '0.85rem', color: '#3D2E24' }}>
+                        {getName(apt)}
+                      </td>
+                      <td style={{ padding: '0.65rem 1rem', fontSize: '0.8rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                           <span style={{
-                            display: 'inline-block', fontSize: '0.7rem', fontWeight: 600,
-                            padding: '0.2rem 0.6rem', borderRadius: '12px',
-                            background: ps.bg, color: ps.color, whiteSpace: 'nowrap', cursor: 'pointer',
-                          }} onClick={() => setPaymentScopeTarget(apt)}>
-                            {ps.label}
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td style={{ padding: '0.65rem 0.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', position: 'relative' }} ref={(el) => { menuRefs.current[apt.id] = el; }}>
-                        <button
-                          title="Ver detalle"
-                          onClick={() => setDetailTarget(apt)}
-                          style={{
-                            background: 'none', border: '1px solid #E8E0D6', borderRadius: '6px',
-                            cursor: 'pointer', padding: '0.3rem 0.4rem', color: '#6B5B4E',
-                            display: 'flex', alignItems: 'center', transition: 'all 0.15s',
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#C9944A'; e.currentTarget.style.color = '#8B6520'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E8E0D6'; e.currentTarget.style.color = '#6B5B4E'; }}
-                        >
-                          <Info size={14} />
-                        </button>
-                        {hasModulePermission('citas', 'can_edit') && (
-                          <>
-                            <button
-                              title="Acciones"
-                              onClick={() => setMenuFor((m) => (m === apt.id ? null : apt.id))}
-                              style={{
-                                background: menuFor === apt.id ? '#FDF6E9' : 'none',
-                                border: menuFor === apt.id ? '1px solid #C9944A' : '1px solid #E8E0D6',
-                                borderRadius: '6px', cursor: 'pointer', padding: '0.3rem 0.4rem',
-                                color: menuFor === apt.id ? '#8B6520' : '#6B5B4E',
-                                display: 'flex', alignItems: 'center', transition: 'all 0.15s',
-                              }}
-                              onMouseEnter={(e) => { if (menuFor !== apt.id) { e.currentTarget.style.borderColor = '#C9944A'; e.currentTarget.style.color = '#8B6520'; } }}
-                              onMouseLeave={(e) => { if (menuFor !== apt.id) { e.currentTarget.style.borderColor = '#E8E0D6'; e.currentTarget.style.color = '#6B5B4E'; } }}
-                            >
-                              <MoreVertical size={14} />
-                            </button>
+                            display: 'inline-block', fontSize: '0.55rem', fontWeight: 700, padding: '1px 5px',
+                            borderRadius: '4px', width: 'fit-content',
+                            background: svc.type === 'PAQUETE' ? '#F5EDE5' : svc.type === 'MULTI-SESIÓN' ? '#E8F5E9' : '#EBF3F8',
+                            color: svc.type === 'PAQUETE' ? '#8B6A50' : svc.type === 'MULTI-SESIÓN' ? '#2D7A3A' : '#4A7A9A',
+                          }}>{svc.type}</span>
+                          <span style={{ fontWeight: 600, color: '#3D2E24', fontSize: '0.82rem' }}>{svc.name}</span>
+                          {svc.detail && <span style={{ fontSize: '0.7rem', color: '#A89888' }}>{svc.detail}</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding: '0.65rem 1rem', fontSize: '0.8rem', color: '#3D2E24', whiteSpace: 'nowrap' }}>
+                        {apt.date ? new Date(apt.date).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
+                      </td>
+                      <td style={{ padding: '0.65rem 1rem', fontSize: '0.8rem', color: '#3D2E24', whiteSpace: 'nowrap' }}>
+                        {getTime(apt)} - {getEndTime(apt)}
+                      </td>
+                      <td style={{ padding: '0.65rem 1rem' }}>
+                        <span style={{
+                          display: 'inline-block', fontSize: '0.7rem', fontWeight: 600,
+                          padding: '0.2rem 0.6rem', borderRadius: '12px',
+                          background: st.bg, color: st.color, whiteSpace: 'nowrap',
+                        }}>
+                          {st.label}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.65rem 1rem' }}>
+                        {(() => {
+                          const ps = PAYMENT_CONFIG[apt.payment_status] || PAYMENT_CONFIG.pendiente;
+                          return (
+                            <span style={{
+                              display: 'inline-block', fontSize: '0.7rem', fontWeight: 600,
+                              padding: '0.2rem 0.6rem', borderRadius: '12px',
+                              background: ps.bg, color: ps.color, whiteSpace: 'nowrap', cursor: 'pointer',
+                            }} onClick={() => setPaymentScopeTarget(apt)}>
+                              {ps.label}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td style={{ padding: '0.65rem 0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', position: 'relative' }} ref={(el) => { menuRefs.current[apt.id] = el; }}>
+                          <button
+                            title="Ver detalle"
+                            onClick={() => setDetailTarget(apt)}
+                            style={{
+                              background: 'none', border: '1px solid #E8E0D6', borderRadius: '6px',
+                              cursor: 'pointer', padding: '0.3rem 0.4rem', color: '#6B5B4E',
+                              display: 'flex', alignItems: 'center', transition: 'all 0.15s',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#C9944A'; e.currentTarget.style.color = '#8B6520'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E8E0D6'; e.currentTarget.style.color = '#6B5B4E'; }}
+                          >
+                            <Info size={14} />
+                          </button>
+                          {hasModulePermission('citas', 'can_edit') && (
+                            <>
+                              <button
+                                title="Acciones"
+                                onClick={() => setMenuFor((m) => (m === apt.id ? null : apt.id))}
+                                style={{
+                                  background: menuFor === apt.id ? '#FDF6E9' : 'none',
+                                  border: menuFor === apt.id ? '1px solid #C9944A' : '1px solid #E8E0D6',
+                                  borderRadius: '6px', cursor: 'pointer', padding: '0.3rem 0.4rem',
+                                  color: menuFor === apt.id ? '#8B6520' : '#6B5B4E',
+                                  display: 'flex', alignItems: 'center', transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={(e) => { if (menuFor !== apt.id) { e.currentTarget.style.borderColor = '#C9944A'; e.currentTarget.style.color = '#8B6520'; } }}
+                                onMouseLeave={(e) => { if (menuFor !== apt.id) { e.currentTarget.style.borderColor = '#E8E0D6'; e.currentTarget.style.color = '#6B5B4E'; } }}
+                              >
+                                <MoreVertical size={14} />
+                              </button>
 
-                            {menuFor === apt.id && (
-                              <div style={{
-                                position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 50,
-                                background: '#FFFFFF', border: '1px solid #E8E0D6', borderRadius: '10px',
-                                boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: '190px',
-                                padding: '0.3rem', display: 'flex', flexDirection: 'column',
-                              }}>
-                                {apt.status === 'pendiente' && (
-                                  <MenuItem label="Confirmar" icon={<Check size={14} />} onClick={() => { setMenuFor(null); updateAppointment(apt.id, { status: 'confirmada' }); }} />
-                                )}
-                                {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
-                                  <MenuItem label="Marcar como realizada" icon={<CheckCircle2 size={14} />} onClick={() => { setMenuFor(null); updateAppointment(apt.id, { status: 'realizada' }); }} />
-                                )}
-                                {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
-                                  <MenuItem label="Postergar" icon={<CalendarClock size={14} />} onClick={() => { setMenuFor(null); openPostpone(apt); }} />
-                                )}
-                                {apt.status === 'postergada' && (
-                                  <MenuItem label="Reprogramar" icon={<CalendarClock size={14} />} onClick={() => { setMenuFor(null); openPostpone(apt); }} />
-                                )}
-                                {(apt.status === 'pendiente' || apt.status === 'confirmada' || apt.status === 'postergada') && (
-                                  <MenuItem label="Cancelar" icon={<XCircle size={14} />} danger onClick={() => { setMenuFor(null); setCancelTarget(apt); }} />
-                                )}
-                                {apt.payment_status !== 'pagado' && (
-                                  <MenuItem label="Registrar pago" icon={<CreditCard size={14} />} onClick={() => { setMenuFor(null); setPaymentScopeTarget(apt); }} />
-                                )}
-                                <MenuItemDivider />
-                                <MenuItem label="Ver detalle" icon={<Info size={14} />} onClick={() => { setMenuFor(null); setDetailTarget(apt); }} />
-                                <MenuItem label="Emitir boleta" icon={<Receipt size={14} />} onClick={() => { setMenuFor(null); navigate(`/admin/boletas/${apt.id}`); }} />
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                              {menuFor === apt.id && (
+                                <div style={{
+                                  position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 50,
+                                  background: '#FFFFFF', border: '1px solid #E8E0D6', borderRadius: '10px',
+                                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: '190px',
+                                  padding: '0.3rem', display: 'flex', flexDirection: 'column',
+                                }}>
+                                  {apt.status === 'pendiente' && (
+                                    <MenuItem label="Confirmar" icon={<Check size={14} />} onClick={() => { setMenuFor(null); updateAppointment(apt.id, { status: 'confirmada' }); }} />
+                                  )}
+                                  {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
+                                    <MenuItem label="Marcar como realizada" icon={<CheckCircle2 size={14} />} onClick={() => { setMenuFor(null); updateAppointment(apt.id, { status: 'realizada' }); }} />
+                                  )}
+                                  {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
+                                    <MenuItem label="Postergar" icon={<CalendarClock size={14} />} onClick={() => { setMenuFor(null); openPostpone(apt); }} />
+                                  )}
+                                  {apt.status === 'postergada' && (
+                                    <MenuItem label="Reprogramar" icon={<CalendarClock size={14} />} onClick={() => { setMenuFor(null); openPostpone(apt); }} />
+                                  )}
+                                  {(apt.status === 'pendiente' || apt.status === 'confirmada' || apt.status === 'postergada') && (
+                                    <MenuItem label="Cancelar" icon={<XCircle size={14} />} danger onClick={() => { setMenuFor(null); setCancelTarget(apt); }} />
+                                  )}
+                                  {apt.payment_status !== 'pagado' && (
+                                    <MenuItem label="Registrar pago" icon={<CreditCard size={14} />} onClick={() => { setMenuFor(null); setPaymentScopeTarget(apt); }} />
+                                  )}
+                                  <MenuItemDivider />
+                                  <MenuItem label="Ver detalle" icon={<Info size={14} />} onClick={() => { setMenuFor(null); setDetailTarget(apt); }} />
+                                  <MenuItem label="Emitir boleta" icon={<Receipt size={14} />} onClick={() => { setMenuFor(null); navigate(`/admin/boletas/${apt.id}`); }} />
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-        {filtered.length > 0 && (
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '0.75rem 1rem', borderTop: '1px solid #E8E0D6', flexWrap: 'wrap', gap: '0.5rem',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#6B5B4E' }}>
-              <span>Filas:</span>
-              <select
-                value={rowsPerPage}
-                onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
-                style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #E8E0D6', background: '#FFFFFF', color: '#3D2E24', fontSize: '0.8rem', cursor: 'pointer' }}
-              >
-                {[5, 10, 15, 20].map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem', color: '#6B5B4E' }}>
-              <span>{page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, filtered.length)} de {filtered.length}</span>
-              <div style={{ display: 'flex', gap: '0.25rem' }}>
-                <button
-                  disabled={page === 0}
-                  onClick={() => setPage((p) => p - 1)}
-                  style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: '1px solid #E8E0D6', background: page === 0 ? '#F5F0E8' : '#FFFFFF', color: page === 0 ? '#C8C0BA' : '#3D2E24', cursor: page === 0 ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 500 }}
-                >← Ant</button>
-                <button
-                  disabled={page >= totalPages - 1}
-                  onClick={() => setPage((p) => p + 1)}
-                  style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: '1px solid #E8E0D6', background: page >= totalPages - 1 ? '#F5F0E8' : '#FFFFFF', color: page >= totalPages - 1 ? '#C8C0BA' : '#3D2E24', cursor: page >= totalPages - 1 ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 500 }}
-                >Sig →</button>
+          {filtered.length > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '0.75rem 1rem', borderTop: '1px solid #E8E0D6', flexWrap: 'wrap', gap: '0.5rem',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#6B5B4E' }}>
+                <span>Filas:</span>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
+                  style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #E8E0D6', background: '#FFFFFF', color: '#3D2E24', fontSize: '0.8rem', cursor: 'pointer' }}
+                >
+                  {[5, 10, 15, 20].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem', color: '#6B5B4E' }}>
+                <span>{page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, filtered.length)} de {filtered.length}</span>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  <button
+                    disabled={page === 0}
+                    onClick={() => setPage((p) => p - 1)}
+                    style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: '1px solid #E8E0D6', background: page === 0 ? '#F5F0E8' : '#FFFFFF', color: page === 0 ? '#C8C0BA' : '#3D2E24', cursor: page === 0 ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 500 }}
+                  >← Ant</button>
+                  <button
+                    disabled={page >= totalPages - 1}
+                    onClick={() => setPage((p) => p + 1)}
+                    style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', border: '1px solid #E8E0D6', background: page >= totalPages - 1 ? '#F5F0E8' : '#FFFFFF', color: page >= totalPages - 1 ? '#C8C0BA' : '#3D2E24', cursor: page >= totalPages - 1 ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 500 }}
+                  >Sig →</button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {filtered.length === 0 && !loading && !refreshing && (
-          <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#A89888' }}>
-            <div style={{ marginBottom: '0.75rem' }}><Inbox size={40} /></div>
-            <p style={{ margin: '0 0 1.25rem', fontSize: '0.9rem' }}>
-              {search
-                ? 'No se encontraron citas para la búsqueda'
-                : `No hay citas ${filter !== 'todas' ? 'con este estado' : 'activas'}`}
-            </p>
-            {!search && hasModulePermission('citas', 'can_create') && (
-              <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => navigate('/admin/agendar')}>
-                + Agendar cita
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+          {filtered.length === 0 && !loading && !refreshing && (
+            <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#A89888', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ marginBottom: '0.75rem' }}><Inbox size={40} /></div>
+              <p style={{ margin: '0 0 1.25rem', fontSize: '0.9rem' }}>
+                {search
+                  ? 'No se encontraron citas para la búsqueda'
+                  : `No hay citas ${filter !== 'todas' ? 'con este estado' : 'activas'}`}
+              </p>
+              {!search && hasModulePermission('citas', 'can_create') && (
+                <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => navigate('/admin/agendar')}>
+                  + Agendar cita
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {postponeTarget && (

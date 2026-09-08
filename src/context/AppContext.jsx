@@ -7,7 +7,8 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 const API_BASE = API_URL.replace(/\/api\/?$/, '');
 
 // eslint-disable-next-line react/only-export-components
-export const getImageUrl = (path) => {  if (!path) return '';
+export const getImageUrl = (path) => {
+  if (!path) return '';
   if (path.startsWith('http') || path.startsWith('blob:')) return path;
   return API_BASE + path;
 };
@@ -76,8 +77,8 @@ export function AppProvider({ children }) {
   const transformPackage = (pkg) => {
     const sessions = Array.isArray(pkg.services)
       ? pkg.services
-          .filter((s) => s && typeof s === 'object')
-          .map((s) => ({ id: s.id, name: s.name, hours: parseFloat(s.pivot?.hours) || 1 }))
+        .filter((s) => s && typeof s === 'object')
+        .map((s) => ({ id: s.id, name: s.name, hours: parseFloat(s.pivot?.hours) || 1 }))
       : [];
     return {
       ...pkg,
@@ -135,7 +136,7 @@ export function AppProvider({ children }) {
           setSettings((prev) => ({ ...prev, ...s }));
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -154,7 +155,7 @@ export function AppProvider({ children }) {
         setCabins(c.data.map(transformCabin));
         setPackages(p.data.map(transformPackage));
         setBranches(b.data.map(transformBranch));
-      }).catch(() => {}).finally(() => setLoading(false));
+      }).catch(() => { }).finally(() => setLoading(false));
     };
 
     load();
@@ -203,7 +204,7 @@ export function AppProvider({ children }) {
   }, [token]);
 
   useEffect(() => {
-    if (!token || !selectedBranchId) return;
+    if (!token) return;
 
     appointmentsAPI.list(appointmentRange()).then((a) => {
       const aData = a?.data;
@@ -290,7 +291,7 @@ export function AppProvider({ children }) {
 
   const logoutAdmin = useCallback(async () => {
     if (token) {
-      try { await authAPI.logout(); } catch {}
+      try { await authAPI.logout(); } catch { }
     }
     setUser(null);
     setToken(null);
@@ -692,7 +693,7 @@ export function AppProvider({ children }) {
     setSettings((prev) => {
       const next = { ...prev, ...updates };
       if (token) {
-        settingsAPI.save(next).catch(() => {});
+        settingsAPI.save(next).catch(() => { });
       }
       return next;
     });
