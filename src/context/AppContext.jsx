@@ -74,8 +74,10 @@ export function AppProvider({ children }) {
   const isAdminLoggedIn = !!token && !!user;
 
   const transformPackage = (pkg) => {
-    const sessions = pkg.services
-      ? pkg.services.map((s) => ({ id: s.id, name: s.name, hours: parseFloat(s.pivot?.hours) || 1 }))
+    const sessions = Array.isArray(pkg.services)
+      ? pkg.services
+          .filter((s) => s && typeof s === 'object')
+          .map((s) => ({ id: s.id, name: s.name, hours: parseFloat(s.pivot?.hours) || 1 }))
       : [];
     return {
       ...pkg,
@@ -215,7 +217,6 @@ export function AppProvider({ children }) {
     const ok = (r) => r.status === 'fulfilled' ? r.value.data : null;
 
     const poll = () => {
-      if (document.hidden) return;
       Promise.allSettled([
         appointmentsAPI.list(appointmentRange()),
         usersAPI.list(),
@@ -227,8 +228,15 @@ export function AppProvider({ children }) {
       });
     };
 
-    const intervalId = setInterval(poll, 300000);
-    return () => clearInterval(intervalId);
+    const intervalId = setInterval(poll, 60000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') poll();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [token]);
 
   const hasPermission = useCallback((permission) => {

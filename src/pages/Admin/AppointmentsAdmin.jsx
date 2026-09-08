@@ -67,7 +67,7 @@ const MenuItemDivider = () => (
 );
 
 export default function AppointmentsAdmin() {
-  const { appointments, services, cabins, branches, updateAppointment, hasModulePermission, loading, refreshAppointments } = useApp();
+  const { appointments, services, cabins, branches, updateAppointment, hasModulePermission, loading, refreshAppointments, token } = useApp();
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => {
@@ -94,6 +94,11 @@ export default function AppointmentsAdmin() {
   const menuRefs = useRef({});
 
   useEffect(() => { setPage(0); }, [filter]);
+
+  useEffect(() => {
+    if (!token) return;
+    refreshAppointments();
+  }, [refreshAppointments, token]);
 
   useEffect(() => {
     if (!menuFor) return;

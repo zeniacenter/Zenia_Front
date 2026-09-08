@@ -288,7 +288,7 @@ export default function Booking() {
 
   const selectPackageHandler = (pkg) => {
     setSelectedPackage(pkg.id);
-    const sessions = pkg.sessions || [];
+    const sessions = (pkg.sessions || []).filter((s) => s && typeof s === 'object');
     setSelectedServices(sessions.map((s) => s.id));
     setServiceDurations(Object.fromEntries(sessions.map((s) => [s.id, s.hours])));
     setSessionSchedules(sessions.map(() => ({ date: '', time: '' })));
@@ -343,7 +343,7 @@ export default function Booking() {
       case 'Paquetes': return selectedPackage !== null;
       case 'Terapeuta': return selectedTherapist !== '';
       case 'Fecha':
-        if ((bookingType === 'packages' && sessionSchedules.length > 0) || (bookingType === 'services' && sessionCount > 1 && sessionSchedules.length > 0)) {
+        if ((bookingType === 'packages' && sessionSchedules.length > 1) || (bookingType === 'services' && sessionCount > 1 && sessionSchedules.length > 0)) {
           return sessionSchedules.every((s) => s.date && s.time);
         }
         return selectedDate !== '' && selectedTime !== '';

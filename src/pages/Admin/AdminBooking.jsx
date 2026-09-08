@@ -72,6 +72,10 @@ export default function AdminBooking() {
     });
   })();
 
+  const getSelectedServiceObj = () => services.find((s) => String(s.id) === String(selectedService));
+  const getSelectedPackageObj = () => (packages || []).find((p) => String(p.id) === String(selectedPackage));
+  const getSelectedTherapistObj = () => therapists.find((t) => String(t.id) === String(selectedTherapist));
+
   const filteredTherapists = (() => {
     let list = selectedBranch
       ? therapists.filter((t) => {
@@ -96,10 +100,6 @@ export default function AdminBooking() {
 
     return list;
   })();
-
-  const getSelectedServiceObj = () => services.find((s) => String(s.id) === String(selectedService));
-  const getSelectedPackageObj = () => (packages || []).find((p) => String(p.id) === String(selectedPackage));
-  const getSelectedTherapistObj = () => therapists.find((t) => String(t.id) === String(selectedTherapist));
 
   const toMinLocal = (t) => {
     const parts = String(t || '').slice(0, 5).split(':').map(Number);

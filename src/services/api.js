@@ -4,7 +4,6 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 const api = axios.create({
   baseURL: API_BASE,
-  headers: { 'Content-Type': 'application/json' },
 });
 
 let currentBranchId = null;
@@ -19,6 +18,9 @@ api.interceptors.request.use((config) => {
   }
   if (currentBranchId) {
     config.headers['X-Branch-Id'] = currentBranchId;
+  }
+  if (config.data !== undefined && !(config.data instanceof FormData) && !config.headers['Content-Type']) {
+    config.headers['Content-Type'] = 'application/json';
   }
   return config;
 });
