@@ -125,7 +125,7 @@ export default function Dashboard() {
 
   const cabinDayAppointments = useMemo(() =>
     filteredAppointments.filter((a) => toDateStr(a.date) === cabinDayStr && a.status !== 'cancelada'),
-  [filteredAppointments, cabinDayStr]);
+    [filteredAppointments, cabinDayStr]);
 
   const getCabinSlotAppointment = (cabinId, slotStart) => {
     return cabinDayAppointments.find((a) => {
