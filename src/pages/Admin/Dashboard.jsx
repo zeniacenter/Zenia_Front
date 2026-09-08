@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
@@ -40,13 +40,24 @@ function toDateStr(d) {
 }
 
 export default function Dashboard() {
-  const { appointments, therapists, services, cabins, branches, settings, hasDashboardCard, loading } = useApp();
+  const { appointments, therapists, services, cabins, branches, settings, hasDashboardCard, loading, refreshAppointments } = useApp();
   const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState(null);
   const [detailApt, setDetailApt] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState('month');
   const [filterBranch, setFilterBranch] = useState('');
+
+  // ✅ Carga las citas automáticamente cada vez que entras al Dashboard
+  useEffect(() => {
+    refreshAppointments();
+
+    const interval = setInterval(() => {
+      refreshAppointments();
+    }, 30000); // Consulta datos frescos cada 30 segundos
+
+    return () => clearInterval(interval);
+  }, [refreshAppointments]);
 
   const filteredAppointments = useMemo(() => {
     if (!filterBranch) return appointments;
