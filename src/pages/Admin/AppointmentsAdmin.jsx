@@ -67,7 +67,7 @@ const MenuItemDivider = () => (
 );
 
 export default function AppointmentsAdmin() {
-  const { appointments, services, cabins, branches, updateAppointment, hasModulePermission, loading, refreshAppointments, token } = useApp();
+  const { appointments, services, cabins, branches, updateAppointment, hasModulePermission, loading, refreshAppointments } = useApp();
   const navigate = useNavigate();
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => {
@@ -106,7 +106,7 @@ export default function AppointmentsAdmin() {
     }, 30000);
 
     return () => clearInterval(interval); // Limpia el timer al salir de la pantalla
-  }, []);
+  }, [refreshAppointments]);
 
   useEffect(() => {
     if (!menuFor) return;
@@ -273,7 +273,7 @@ export default function AppointmentsAdmin() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - var(--sp-8) * 2)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 56px - var(--sp-8))' }}>
       <div className="admin-header">
         <h2>Gestión de Citas</h2>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
