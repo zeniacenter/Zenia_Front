@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authAPI, usersAPI, servicesAPI, packagesAPI, therapistsAPI, cabinsAPI, appointmentsAPI, branchesAPI, settingsAPI, setBranchId } from '../services/api';
 import { BarChart3, Calendar, Users, Home, Sparkles, Package, TrendingUp, Plus, User, MapPin } from 'lucide-react';
 
@@ -139,35 +140,39 @@ export function AppProvider({ children }) {
       .catch(() => { });
   }, []);
 
-  useEffect(() => {
-    if (token) return;
+  const queryClient = useQueryClient();
 
-    const load = () => {
-      Promise.all([
+  // Catálogo público (visitante sin sesión). Solamente se refresca si los datos
+  // están obsoletos, evitando descargas innecesarias y el refetch de 60s previo.
+  const publicCatalog = useQuery({
+    queryKey: ['catalog', 'public'],
+    queryFn: async () => {
+      const [s, t, c, p, b] = await Promise.all([
         servicesAPI.list(),
         therapistsAPI.list(),
         cabinsAPI.list(),
         packagesAPI.list(),
         branchesAPI.list(),
-      ]).then(([s, t, c, p, b]) => {
-        setServices(s.data.map(transformService));
-        setTherapists(t.data.map(transformTherapist));
-        setCabins(c.data.map(transformCabin));
-        setPackages(p.data.map(transformPackage));
-        setBranches(b.data.map(transformBranch));
-      }).catch(() => { }).finally(() => setLoading(false));
-    };
+      ]);
+      return {
+        services: s.data.map(transformService),
+        therapists: t.data.map(transformTherapist),
+        cabins: c.data.map(transformCabin),
+        packages: p.data.map(transformPackage),
+        branches: b.data.map(transformBranch),
+      };
+    },
+    enabled: !token,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
 
-    load();
-    const intervalId = setInterval(load, 60000);
-    return () => clearInterval(intervalId);
-  }, [token]);
-
-  useEffect(() => {
-    if (token) {
-      const ok = (r) => r.status === 'fulfilled' ? r.value.data : null;
-
-      Promise.allSettled([
+  // Catálogo admin + permisos. Las peticiones se resuelven en paralelo y cada
+  // dato se sincroniza conforme llega (sin bloquear el primer pintado).
+  const adminData = useQuery({
+    queryKey: ['catalog', 'admin', token],
+    queryFn: async () => {
+      const [u, s, t, c, p, b, perms] = await Promise.allSettled([
         usersAPI.list(),
         servicesAPI.listAll(),
         loadTherapistsForAdmin(),
@@ -175,70 +180,91 @@ export function AppProvider({ children }) {
         packagesAPI.listAll(),
         branchesAPI.listAll(),
         usersAPI.myPermissions(),
-      ]).then(([u, s, t, c, p, b, perms]) => {
-        const uData = ok(u);
-        const sData = ok(s);
-        const tData = ok(t);
-        const cData = ok(c);
-        const pData = ok(p);
-        const bData = ok(b);
-        const permsData = ok(perms);
+      ]);
+      const ok = (r) => r.status === 'fulfilled' ? r.value.data : null;
+      return {
+        users: ok(u),
+        services: ok(s),
+        therapists: ok(t),
+        cabins: ok(c),
+        packages: ok(p),
+        branches: ok(b),
+        permissions: ok(perms),
+      };
+    },
+    enabled: !!token,
+    staleTime: 60 * 1000,
+  });
 
-        if (uData) setUsers(uData);
-        if (sData) setServices(sData.map(transformService));
-        if (tData) setTherapists(tData.map(transformTherapist));
-        if (cData) setCabins(cData.map(transformCabin));
-        if (pData) setPackages(pData.map(transformPackage));
-        if (bData) setBranches(bData.map(transformBranch));
-        if (permsData) {
-          setUserPermissions(permsData);
-
-          if (!permsData?.is_admin && permsData?.branches?.length > 0) {
-            const firstBranchId = permsData.branches[0].id;
-            setSelectedBranchId(firstBranchId);
-            setBranchId(firstBranchId);
-          }
-        }
-      }).finally(() => setLoading(false));
+  const syncCatalog = useCallback((d, perms) => {
+    if (!d) return;
+    if (Array.isArray(d.services) && d.services.length > 0) setServices(d.services);
+    if (Array.isArray(d.therapists) && d.therapists.length > 0) setTherapists(d.therapists);
+    if (Array.isArray(d.cabins) && d.cabins.length > 0) setCabins(d.cabins);
+    if (Array.isArray(d.packages) && d.packages.length > 0) setPackages(d.packages);
+    if (Array.isArray(d.branches) && d.branches.length > 0) setBranches(d.branches);
+    if (Array.isArray(d.users) && d.users.length > 0) setUsers(d.users);
+    if (perms) {
+      setUserPermissions(perms);
+      if (!perms.is_admin && perms.branches?.length > 0 && !selectedBranchId) {
+        const firstBranchId = perms.branches[0].id;
+        setSelectedBranchId(firstBranchId);
+        setBranchId(firstBranchId);
+      }
     }
-  }, [token]);
+  }, [selectedBranchId]);
+
+  // Sincroniza el catálogo admin a medida que llega.
+  useEffect(() => {
+    if (!adminData.data) return;
+    syncCatalog(adminData.data, adminData.data.permissions);
+    // Marca "listo" apenas llega el catálogo mínimo que necesitan las pantallas
+    // principales (Dashboard/Citas), sin esperar a usuarios/permisos lentos.
+    if (
+      Array.isArray(adminData.data.services) && adminData.data.services.length > 0 &&
+      Array.isArray(adminData.data.therapists) && adminData.data.therapists.length > 0
+    ) {
+      setLoading(false);
+    }
+  }, [adminData.data, syncCatalog]);
+
+  // Sincroniza el catálogo público a medida que llega.
+  useEffect(() => {
+    if (!publicCatalog.data) return;
+    syncCatalog(publicCatalog.data, null);
+    setLoading(false);
+  }, [publicCatalog.data, syncCatalog]);
+
+  // Citas (solo admin): una sola fuente de revalidación. Al tener staleTime,
+  // los remounts de Dashboard/Citas reutilizan el dato cacheado al instante.
+  const appointmentsQuery = useQuery({
+    queryKey: ['appointments', selectedBranchId, token],
+    queryFn: async () => {
+      const a = await appointmentsAPI.list(appointmentRange());
+      return a?.data ?? [];
+    },
+    enabled: !!token,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
 
   useEffect(() => {
-    if (!token) return;
+    if (Array.isArray(appointmentsQuery.data)) setAppointments(appointmentsQuery.data);
+  }, [appointmentsQuery.data]);
 
-    appointmentsAPI.list(appointmentRange()).then((a) => {
-      const aData = a?.data;
-      if (aData) setAppointments(aData);
-    });
-  }, [token, selectedBranchId]);
+  // Usuarios (solo admin): refresco ligero respaldado por caché.
+  const usersQuery = useQuery({
+    queryKey: ['users', token],
+    queryFn: async () => (await usersAPI.list())?.data ?? [],
+    enabled: !!token,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
 
   useEffect(() => {
-    if (!token) return;
-
-    const ok = (r) => r.status === 'fulfilled' ? r.value.data : null;
-
-    const poll = () => {
-      Promise.allSettled([
-        appointmentsAPI.list(appointmentRange()),
-        usersAPI.list(),
-      ]).then(([a, u]) => {
-        const aData = ok(a);
-        const uData = ok(u);
-        if (aData) setAppointments(aData);
-        if (uData) setUsers(uData);
-      });
-    };
-
-    const intervalId = setInterval(poll, 60000);
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') poll();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  }, [token]);
+    if (Array.isArray(usersQuery.data) && usersQuery.data.length > 0) setUsers(usersQuery.data);
+  }, [usersQuery.data]);
 
   const hasPermission = useCallback((permission) => {
     if (!user) return false;
@@ -514,15 +540,19 @@ export function AppProvider({ children }) {
 
   const refreshAppointments = useCallback(async (params = {}) => {
     if (!token) return null;
+    const key = ['appointments', selectedBranchId, token];
     try {
       const res = await appointmentsAPI.list({ ...appointmentRange(), ...params });
-      if (res?.data) setAppointments(res.data);
+      if (res?.data) {
+        setAppointments(res.data);
+        queryClient.setQueryData(key, res.data);
+      }
       return res?.data ?? null;
     } catch (err) {
       console.error('Error actualizando citas:', err);
       return null;
     }
-  }, [token]);
+  }, [token, selectedBranchId, queryClient]);
 
   const addCabin = useCallback(async (cabin) => {
     const payload = {

@@ -91,7 +91,7 @@ export const cabinsAPI = {
 };
 
 export const appointmentsAPI = {
-  list: (params) => api.get('/admin/appointments', { params }),
+  list: (params, config = {}) => api.get('/admin/appointments', { params, ...config }),
   get: (id) => api.get(`/admin/appointments/${id}`),
   create: (data) => api.post('/appointments', data),
   update: (id, data) => api.put(`/admin/appointments/${id}`, data),

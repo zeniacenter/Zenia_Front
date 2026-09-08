@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import useEscClose from '../../hooks/useEscClose';
@@ -67,17 +67,25 @@ const MenuItemDivider = () => (
 );
 
 export default function AppointmentsAdmin() {
-  const { appointments, services, cabins, branches, updateAppointment, hasModulePermission, loading, refreshAppointments } = useApp();
+  const { services, branches, updateAppointment, hasModulePermission, loading } = useApp();
   const navigate = useNavigate();
-  const [refreshing, setRefreshing] = useState(false);
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await refreshAppointments();
-    } finally {
-      setRefreshing(false);
-    }
+  const [data, setData] = useState([]);
+  const [meta, setMeta] = useState({ page: 1, per_page: 10, total: 0, last_page: 1 });
+  const [serverCounts, setServerCounts] = useState(null);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  const appointmentRange = () => {
+    const to = new Date();
+    to.setDate(to.getDate() + 30);
+    const from = new Date();
+    from.setDate(from.getDate() - 30);
+    return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
   };
+
+  const refetch = () => setReloadKey((k) => k + 1);
+
   const [filter, setFilter] = useState('todas');
   const [postponeTarget, setPostponeTarget] = useState(null);
   const [postponeDate, setPostponeDate] = useState('');
@@ -93,20 +101,49 @@ export default function AppointmentsAdmin() {
   const [menuFor, setMenuFor] = useState(null);
   const menuRefs = useRef({});
 
-  useEffect(() => { setPage(0); }, [filter]);
+  useEffect(() => { setPage(0); }, [filter, filterBranch, rowsPerPage]);
 
-  // ✅ Forzar carga al montar el componente:
+  // Debounce el buscador para no disparar consultas por cada tecla.
   useEffect(() => {
-    // Carga inmediata al entrar
-    refreshAppointments();
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-    // Consulta automática cada 30 segundos
-    const interval = setInterval(() => {
-      refreshAppointments();
-    }, 30000);
+  // Carga paginada desde el servidor. Es la única fuente de verdad de la
+  // pantalla (ya no descarga los 60 días completos y filtra en el navegador).
+  useEffect(() => {
+    const controller = new AbortController();
+    setDataLoading(true);
+    const params = {
+      ...appointmentRange(),
+      status: filter,
+      per_page: rowsPerPage,
+      page: page + 1,
+      with_counts: 1,
+    };
+    if (filterBranch) params.branch_id = filterBranch;
+    if (debouncedSearch) params.search = debouncedSearch;
+    appointmentsAPI
+      .list(params, { signal: controller.signal })
+      .then((res) => {
+        setData(res.data?.data || []);
+        setMeta(res.data?.meta || { page: 1, per_page: rowsPerPage, total: 0, last_page: 1 });
+        if (res.data?.counts) setServerCounts(res.data.counts);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setData([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDataLoading(false);
+      });
+    return () => controller.abort();
+  }, [page, rowsPerPage, filter, filterBranch, debouncedSearch, reloadKey]);
 
-    return () => clearInterval(interval); // Limpia el timer al salir de la pantalla
-  }, [refreshAppointments]);
+  const counts = serverCounts || {
+    todas: 0, pendiente: 0, confirmada: 0, realizada: 0, postergada: 0, cancelada: 0,
+  };
+
+  const totalPages = Math.max(1, meta.last_page || 1);
 
   useEffect(() => {
     if (!menuFor) return;
@@ -122,46 +159,6 @@ export default function AppointmentsAdmin() {
       document.removeEventListener('keydown', onKey);
     };
   }, [menuFor]);
-
-  const counts = useMemo(() => ({
-    todas: appointments.filter((a) => a.status !== 'cancelada').length,
-    pendiente: appointments.filter((a) => a.status === 'pendiente').length,
-    confirmada: appointments.filter((a) => a.status === 'confirmada').length,
-    realizada: appointments.filter((a) => a.status === 'realizada').length,
-    postergada: appointments.filter((a) => a.status === 'postergada').length,
-    cancelada: appointments.filter((a) => a.status === 'cancelada').length,
-  }), [appointments]);
-
-  const filtered = useMemo(() => {
-    let list = filter === 'todas'
-      ? appointments.filter((a) => a.status !== 'cancelada')
-      : appointments.filter((a) => a.status === filter);
-    if (filterBranch) {
-      list = list.filter((a) => {
-        const cabinId = a.cabinId || a.cabin_id;
-        if (!cabinId) return false;
-        const cabin = cabins.find((c) => c.id === cabinId);
-        return cabin && String(c.branchId || c.branch_id) === String(filterBranch);
-      });
-    }
-    if (search) {
-      const q = search.trim().toLowerCase();
-      list = list.filter((a) => {
-        const client = [a.person?.name, a.person?.last_name, a.clientName].filter(Boolean).join(' ').toLowerCase();
-        const svc = (a.services?.map((s) => s.name) || []).join(' ').toLowerCase();
-        const pkg = a.package?.name || '';
-        return client.includes(q) || svc.includes(q) || pkg.toLowerCase().includes(q);
-      });
-    }
-    return [...list].sort((a, b) => {
-      const d = (a.date || '').localeCompare(b.date || '');
-      if (d !== 0) return d;
-      return (a.start_time || '').localeCompare(b.start_time || '');
-    });
-  }, [appointments, filter, filterBranch, cabins, search]);
-
-  const totalPages = Math.ceil(filtered.length / rowsPerPage);
-  const paged = filtered.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
 
   const getName = (apt) => apt.person?.name || apt.clientName || 'N/A';
   const getTime = (apt) => apt.start_time || 'N/A';
@@ -212,6 +209,7 @@ export default function AppointmentsAdmin() {
     });
     clearBusyCache();
     setPostponeTarget(null);
+    refetch();
   };
 
   const handleCancelConfirm = async (reason) => {
@@ -221,36 +219,22 @@ export default function AppointmentsAdmin() {
       cancellation_reason: reason,
     });
     setCancelTarget(null);
+    refetch();
   };
 
   const handlePaymentPropagate = async (apt) => {
-    const isGroup = !!apt.group_id;
-
-    if (isGroup) {
-      const siblings = appointments.filter(
-        (a) => a.group_id === apt.group_id && a.person_id === apt.person_id && a.payment_status !== 'pagado'
-      );
-      try {
+    try {
+      if (apt.group_id) {
         await appointmentsAPI.propagatePaymentGroup(apt.group_id, apt.person_id);
-      } catch { }
-      for (const sib of [...siblings, apt]) {
-        if (sib.payment_status !== 'pagado') {
-          await updateAppointment(sib.id, { payment_status: 'pagado', paid_amount: sib.total_price });
-        }
-      }
-    } else if (apt.package_id) {
-      const siblings = appointments.filter(
-        (a) => a.package_id === apt.package_id && a.person_id === apt.person_id && a.payment_status !== 'pagado'
-      );
-      try {
+      } else if (apt.package_id) {
         await appointmentsAPI.propagatePayment(apt.package_id, apt.person_id);
-      } catch { }
-      for (const sib of [...siblings, apt]) {
-        if (sib.payment_status !== 'pagado') {
-          await updateAppointment(sib.id, { payment_status: 'pagado', paid_amount: sib.total_price });
-        }
+      } else {
+        await updateAppointment(apt.id, { payment_status: 'pagado', paid_amount: apt.total_price });
       }
+    } catch (err) {
+      console.error('Error propagando pago:', err);
     }
+    refetch();
   };
 
   const handlePaySession = async (apt) => {
@@ -258,6 +242,7 @@ export default function AppointmentsAdmin() {
       payment_status: 'pagado',
       paid_amount: apt.total_price,
     });
+    refetch();
   };
 
   const handlePayAllSessions = async (apt) => {
@@ -279,17 +264,17 @@ export default function AppointmentsAdmin() {
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <button
             className="btn"
-            onClick={handleRefresh}
-            disabled={refreshing || loading}
+            onClick={refetch}
+            disabled={dataLoading || loading}
             style={{
               display: 'flex', alignItems: 'center', gap: '0.35rem',
-              background: refreshing || loading ? '#F5F0E8' : '#FFFFFF',
+              background: dataLoading || loading ? '#F5F0E8' : '#FFFFFF',
               border: '1px solid #E8E0D6', color: '#6B5B4E',
-              cursor: refreshing || loading ? 'default' : 'pointer',
+              cursor: dataLoading || loading ? 'default' : 'pointer',
             }}
           >
-            <RefreshCw size={14} style={refreshing ? { animation: 'spin 1s linear infinite' } : undefined} />
-            {refreshing ? 'Actualizando...' : 'Actualizar'}
+            <RefreshCw size={14} style={dataLoading ? { animation: 'spin 1s linear infinite' } : undefined} />
+            {dataLoading ? 'Actualizando...' : 'Actualizar'}
           </button>
           {hasModulePermission('citas', 'can_create') && (
             <button className="btn btn-primary" onClick={() => navigate('/admin/agendar')}>
@@ -351,10 +336,10 @@ export default function AppointmentsAdmin() {
         ))}
       </div>
 
-      {loading ? (
+      {loading || (dataLoading && data.length === 0) ? (
         <TableSkeleton columns={7} rows={8} />
       ) : (
-        <div style={{ background: '#FFFFFF', border: '1px solid #E8E0D6', borderRadius: '14px', overflow: 'visible', opacity: refreshing ? 0.6 : 1, transition: 'opacity 0.15s ease', display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <div style={{ background: '#FFFFFF', border: '1px solid #E8E0D6', borderRadius: '14px', overflow: 'visible', opacity: dataLoading ? 0.6 : 1, transition: 'opacity 0.15s ease', display: 'flex', flexDirection: 'column', flex: 1 }}>
           <div style={{ overflowX: 'auto', flex: 1 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -365,7 +350,7 @@ export default function AppointmentsAdmin() {
                 </tr>
               </thead>
               <tbody>
-                {paged.map((apt) => {
+                {data.map((apt) => {
                   const st = STATUS_CONFIG[apt.status] || STATUS_CONFIG.pendiente;
                   const svc = getServiceLabel(apt);
                   return (
@@ -460,10 +445,10 @@ export default function AppointmentsAdmin() {
                                   padding: '0.3rem', display: 'flex', flexDirection: 'column',
                                 }}>
                                   {apt.status === 'pendiente' && (
-                                    <MenuItem label="Confirmar" icon={<Check size={14} />} onClick={() => { setMenuFor(null); updateAppointment(apt.id, { status: 'confirmada' }); }} />
+                                    <MenuItem label="Confirmar" icon={<Check size={14} />} onClick={() => { setMenuFor(null); updateAppointment(apt.id, { status: 'confirmada' }).then(refetch); }} />
                                   )}
                                   {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
-                                    <MenuItem label="Marcar como realizada" icon={<CheckCircle2 size={14} />} onClick={() => { setMenuFor(null); updateAppointment(apt.id, { status: 'realizada' }); }} />
+                                    <MenuItem label="Marcar como realizada" icon={<CheckCircle2 size={14} />} onClick={() => { setMenuFor(null); updateAppointment(apt.id, { status: 'realizada' }).then(refetch); }} />
                                   )}
                                   {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
                                     <MenuItem label="Postergar" icon={<CalendarClock size={14} />} onClick={() => { setMenuFor(null); openPostpone(apt); }} />
@@ -493,7 +478,7 @@ export default function AppointmentsAdmin() {
             </table>
           </div>
 
-          {filtered.length > 0 && (
+          {meta.total > 0 && (
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '0.75rem 1rem', borderTop: '1px solid #E8E0D6', flexWrap: 'wrap', gap: '0.5rem',
@@ -509,7 +494,7 @@ export default function AppointmentsAdmin() {
                 </select>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem', color: '#6B5B4E' }}>
-                <span>{page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, filtered.length)} de {filtered.length}</span>
+                <span>{page * rowsPerPage + 1}–{Math.min((page + 1) * rowsPerPage, meta.total)} de {meta.total}</span>
                 <div style={{ display: 'flex', gap: '0.25rem' }}>
                   <button
                     disabled={page === 0}
@@ -526,7 +511,7 @@ export default function AppointmentsAdmin() {
             </div>
           )}
 
-          {filtered.length === 0 && !loading && !refreshing && (
+          {data.length === 0 && !loading && !dataLoading && (
             <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#A89888', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ marginBottom: '0.75rem' }}><Inbox size={40} /></div>
               <p style={{ margin: '0 0 1.25rem', fontSize: '0.9rem' }}>
@@ -600,7 +585,7 @@ export default function AppointmentsAdmin() {
       <AppointmentDetailModal
         open={!!detailTarget}
         appointment={detailTarget}
-        allAppointments={appointments}
+        allAppointments={data}
         onClose={() => setDetailTarget(null)}
         onSelectSession={(session) => setDetailTarget(session)}
       />
