@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { appointmentsAPI, invoicesAPI } from '../../services/api';
 import useEscClose from '../../hooks/useEscClose';
+import { Monitor, Send } from 'lucide-react';
+
+const RAPIFAC_PANEL_URL =
+  import.meta.env.VITE_RAPIFAC_PANEL_URL || 'https://sistema-p1.rapifac.com/';
 
 const formatMoney = (n) => Number(n || 0).toFixed(2);
 
@@ -21,12 +25,20 @@ export default function BoletasPlaceholder() {
   const [clientName, setClientName] = useState('');
   const [clientAddress, setClientAddress] = useState('');
   const [clientEmail, setClientEmail] = useState('');
-  const [sendEmail, setSendEmail] = useState(false);
+  const [promptRapifac, setPromptRapifac] = useState(false);
+  const [panelUsed, setPanelUsed] = useState(false);
+  const [notice, setNotice] = useState('');
   const [emitting, setEmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [confirmDuplicate, setConfirmDuplicate] = useState(null);
 
   useEscClose(!!confirmDuplicate, () => setConfirmDuplicate(null));
+  useEscClose(promptRapifac, () => setPromptRapifac(false));
+
+  const openRapifacPanel = () => {
+    setPanelUsed(true);
+    window.open(RAPIFAC_PANEL_URL, '_blank', 'noopener,noreferrer');
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -131,6 +143,7 @@ export default function BoletasPlaceholder() {
 
   const doEmit = async () => {
     setError('');
+    setPanelUsed(false);
     setEmitting(true);
     try {
       const res = await invoicesAPI.emit({
@@ -140,10 +153,10 @@ export default function BoletasPlaceholder() {
         client_document: clientDocument,
         client_name: clientName,
         client_address: clientAddress,
-        client_email: sendEmail ? clientEmail : undefined,
-        send_email: sendEmail,
+        client_email: clientEmail,
       });
       setResult(res.data);
+      setPromptRapifac(true);
     } catch (e) {
       setError(e.response?.data?.message || 'Ocurrió un error al emitir el comprobante');
     } finally {
@@ -154,6 +167,15 @@ export default function BoletasPlaceholder() {
   const confirmDuplicateYes = () => {
     setConfirmDuplicate(null);
     doEmit();
+  };
+
+  const confirmAfterPrompt = () => {
+    if (panelUsed) {
+      setNotice('Paciente registrado en RapiFac. Los próximos comprobantes se enviarán automáticamente al correo del paciente.');
+    } else {
+      setNotice('RapiFac ya envió el comprobante al correo del paciente');
+    }
+    setPromptRapifac(false);
   };
 
   if (loading) {
@@ -187,6 +209,11 @@ export default function BoletasPlaceholder() {
           <p style={{ color: 'var(--text-muted)' }}>
             {result.invoice?.cdr_mensaje || (result.raifac_response?.cdr?.Mensaje) || 'Documento procesado'}
           </p>
+          {notice && (
+            <p style={{ color: '#2E7D32', background: '#E8F5E9', padding: '0.75rem', borderRadius: '6px', marginTop: '1rem' }}>
+              {notice}
+            </p>
+          )}
           <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
             <button className="btn btn-primary" onClick={() => window.location.reload()}>Emitir otro</button>
             <Link to="/admin/comprobantes" className="btn btn-secondary">Ver Comprobantes</Link>
@@ -294,15 +321,7 @@ export default function BoletasPlaceholder() {
               </label>
             </div>
 
-            <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '1rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={sendEmail}
-                onChange={(e) => setSendEmail(e.target.checked)}
-              />
-              <span>Enviar comprobante por correo al cliente tras emitir</span>
-            </label>
-          </section>
+            </section>
 
           <section className="card" style={{ padding: '1.5rem', marginTop: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -356,6 +375,49 @@ export default function BoletasPlaceholder() {
               <button className="btn btn-primary" onClick={confirmDuplicateYes}>
                 Sí, emitir {confirmDuplicate.type === 'factura' ? 'factura' : 'boleta'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {promptRapifac && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: '540px' }}>
+            <div className="modal-header">
+              <h3>{panelUsed ? 'Confirmar registro' : 'Paciente nuevo'}</h3>
+              <button className="modal-close" onClick={() => setPromptRapifac(false)}>&times;</button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ fontWeight: 600, margin: '0 0 0.5rem 0' }}>
+                {result?.invoice?.documento_id || 'Comprobante'}
+              </p>
+              <p style={{ margin: 0 }}>
+                {panelUsed ? '¿Ya registraste al paciente en RapiFac?' : '¿Es un paciente nuevo?'}
+              </p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0.4rem 0 1rem 0' }}>
+                {panelUsed
+                  ? 'Al registrarlo, RapiFac queda a cargo del envío del correo automáticamente. Si aún no lo registraste, ábrelo de nuevo.'
+                  : 'Si es nuevo, ábrelo aquí (RapiFac) para registrarlo una sola vez y RapiFac enviará el comprobante automáticamente. Si ya está registrado, RapiFac ya lo envió.'}
+              </p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '0 0 1rem 0' }}>
+                Cliente: {clientName || ''} · {clientDocType === 'ruc' ? 'RUC' : 'DNI'} {clientDocument}
+                {clientEmail ? ' · ' + clientEmail : ''}
+              </p>
+              {error && (
+                <p style={{ color: '#B85C4C', background: '#FCEEED', padding: '0.65rem', borderRadius: '6px', fontSize: '0.85rem' }}>
+                  {error}
+                </p>
+              )}
+              <div className="modal-actions" style={{ borderTop: '1px solid var(--adm-border)', padding: '1rem 0 0 0', justifyContent: 'space-between' }}>
+                <button className="btn btn-outline" onClick={openRapifacPanel}>
+                  <Monitor size={15} style={{ marginRight: 6 }} />
+                  {panelUsed ? 'Aún no · Abrir RapiFac' : 'Sí, es nuevo · Abrir RapiFac'}
+                </button>
+                <button className="btn btn-primary" onClick={confirmAfterPrompt}>
+                  <Send size={15} style={{ marginRight: 6 }} />
+                  {panelUsed ? 'Sí · Listo' : 'No, ya está registrado'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

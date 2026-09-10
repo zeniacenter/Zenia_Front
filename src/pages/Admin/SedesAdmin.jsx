@@ -168,7 +168,7 @@ export default function SedesAdmin() {
           </div>
         </div>
       )}
-      <ConfirmModal open={!!deleteTarget} title="Eliminar sede" message="¿Estás seguro de que deseas eliminar esta sede? Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar sede" message="¿Estás seguro de que deseas eliminar esta sede? Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
     </div>
   );
 }

@@ -299,7 +299,7 @@ export default function ServicesAdmin() {
           </div>
         </div>
       )}
-      <ConfirmModal open={!!deleteTarget} title="Eliminar servicio" message="¿Estás seguro de que deseas eliminar este servicio? Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar servicio" message="¿Estás seguro de que deseas eliminar este servicio? Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
     </div>
   );
 }

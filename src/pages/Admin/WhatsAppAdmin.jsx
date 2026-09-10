@@ -3,6 +3,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { LogOut, RefreshCw, Wifi, WifiOff, Send, MessageSquare, User, Save } from 'lucide-react';
 import { getWhatsAppSocket } from '../../services/whatsappSocket';
 import { whatsappAPI } from '../../services/api';
+import ConfirmModal from '../../components/ConfirmModal';
+import NotificationModal from '../../components/NotificationModal';
 
 const labels = { Iniciando: 'Iniciando conexión', QR_Listo: 'Escanea el código QR', Conectado: 'WhatsApp conectado', Desconectado: 'WhatsApp desconectado' };
 
@@ -30,6 +32,9 @@ export default function WhatsAppAdmin() {
 
   const [humanChats, setHumanChats] = useState([]);
   const [releasingPhone, setReleasingPhone] = useState(null);
+  const [releaseTarget, setReleaseTarget] = useState(null);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [notify, setNotify] = useState(null);
   const [takePhone, setTakePhone] = useState('');
   const [takingPhone, setTakingPhone] = useState(false);
   const [takeResult, setTakeResult] = useState(null);
@@ -79,9 +84,8 @@ export default function WhatsAppAdmin() {
   }, []);
 
   const logout = () => {
-    if (window.confirm('¿Cerrar la sesión de WhatsApp vinculada?')) {
-      getWhatsAppSocket().emit('bot:logout');
-    }
+    setConfirmLogout(false);
+    getWhatsAppSocket().emit('bot:logout');
   };
 
   const handleSend = async (e) => {
@@ -127,14 +131,15 @@ export default function WhatsAppAdmin() {
     }
   };
 
-  const releaseChat = async (chatPhone) => {
-    if (!window.confirm(`¿Liberar este chat del modo humano y devolverlo al bot?\nNúmero: ${chatPhone}`)) return;
-    setReleasingPhone(chatPhone);
+  const confirmReleaseChat = async () => {
+    if (!releaseTarget) return;
+    setReleasingPhone(releaseTarget);
+    setReleaseTarget(null);
     try {
-      await whatsappAPI.releaseHumanChat(chatPhone);
+      await whatsappAPI.releaseHumanChat(releaseTarget);
       loadHumanChats();
     } catch (error) {
-      alert(error.response?.data?.message || 'Error al liberar el chat');
+      setNotify({ type: 'error', title: 'Error al liberar el chat', message: error.response?.data?.message || 'Error al liberar el chat' });
     } finally {
       setReleasingPhone(null);
     }
@@ -200,7 +205,7 @@ export default function WhatsAppAdmin() {
           <button type="button" className="btn btn-secondary" onClick={() => getWhatsAppSocket().connect()} aria-label="Reconectar al servidor de WhatsApp">
             <RefreshCw size={18} aria-hidden="true" /> Reconectar
           </button>
-          <button type="button" className="btn btn-danger" onClick={logout} disabled={!connected}>
+          <button type="button" className="btn btn-danger" onClick={() => setConfirmLogout(true)} disabled={!connected}>
             <LogOut size={18} aria-hidden="true" /> Cerrar sesión
           </button>
         </div>
@@ -355,7 +360,7 @@ export default function WhatsAppAdmin() {
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => releaseChat(chat.phone)}
+                  onClick={() => setReleaseTarget(chat.phone)}
                   disabled={releasingPhone === chat.phone}
                   style={{ fontSize: '0.85rem' }}
                 >
@@ -423,6 +428,30 @@ export default function WhatsAppAdmin() {
           </p>
         )}
       </section>
+
+      <ConfirmModal
+        open={confirmLogout}
+        title="Cerrar sesión de WhatsApp"
+        message="¿Deseas cerrar la sesión de WhatsApp vinculada?"
+        confirmLabel="Sí, cerrar"
+        onConfirm={logout}
+        onCancel={() => setConfirmLogout(false)}
+      />
+      <ConfirmModal
+        open={!!releaseTarget}
+        title="Liberar chat en modo humano"
+        message={releaseTarget ? `¿Liberar este chat del modo humano y devolverlo al bot?\nNúmero: ${releaseTarget}` : ''}
+        confirmLabel="Sí, liberar"
+        onConfirm={confirmReleaseChat}
+        onCancel={() => setReleaseTarget(null)}
+      />
+      <NotificationModal
+        open={!!notify}
+        type={notify?.type || 'info'}
+        title={notify?.title || ''}
+        message={notify?.message || ''}
+        onClose={() => setNotify(null)}
+      />
     </div>
   );
 }

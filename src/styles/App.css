@@ -917,6 +917,12 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   margin-top: var(--sp-6);
 }
 
+/* ============ NOTIFICATION CARD ============ */
+.notification-card {
+  position: relative;
+  padding: var(--sp-8);
+}
+
 /* Views Grid */
 .views-grid {
   display: grid;

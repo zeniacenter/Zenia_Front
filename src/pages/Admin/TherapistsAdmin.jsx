@@ -269,7 +269,7 @@ export default function TherapistsAdmin() {
           </div>
         </div>
       )}
-      <ConfirmModal open={!!deleteTarget} title="Eliminar terapeuta" message="¿Estás seguro de que deseas eliminar este terapeuta? Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar terapeuta" message="¿Estás seguro de que deseas eliminar este terapeuta? Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
     </div>
   );
 }

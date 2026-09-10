@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { personAPI } from '../../services/api';
 import { ArrowLeft } from 'lucide-react';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
+import NotificationModal from '../../components/NotificationModal';
 import { clearBusyCache } from '../../utils/busyCache';
 
 export default function AdminBooking() {
@@ -24,6 +25,8 @@ export default function AdminBooking() {
   const [priceInput, setPriceInput] = useState('');
   const [dniLoading, setDniLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [notify, setNotify] = useState(null);
+  const [afterNotify, setAfterNotify] = useState(null);
 
   const [clientName, setClientName] = useState('');
   const [clientLastName, setClientLastName] = useState('');
@@ -236,27 +239,27 @@ export default function AdminBooking() {
     if (submitting) return;
 
     if (!selectedTherapist || !selectedDate || !selectedTime) {
-      alert('Completa todos los campos obligatorios');
+      setNotify({ type: 'warning', title: 'Campos incompletos', message: 'Completa todos los campos obligatorios' });
       return;
     }
     if (!clientName || !clientLastName || !clientPhone) {
-      alert('Los campos de nombre, apellido y teléfono son obligatorios');
+      setNotify({ type: 'warning', title: 'Campos incompletos', message: 'Los campos de nombre, apellido y teléfono son obligatorios' });
       return;
     }
     if (settings.branchRequired && !selectedBranch) {
-      alert('Selecciona una sede');
+      setNotify({ type: 'warning', title: 'Sede requerida', message: 'Selecciona una sede' });
       return;
     }
     if (settings.cabinRequired && !selectedCabin) {
-      alert('Selecciona una cabina');
+      setNotify({ type: 'warning', title: 'Cabina requerida', message: 'Selecciona una cabina' });
       return;
     }
     if (bookingType === 'service' && !selectedService) {
-      alert('Selecciona un servicio');
+      setNotify({ type: 'warning', title: 'Servicio requerido', message: 'Selecciona un servicio' });
       return;
     }
     if (bookingType === 'package' && !selectedPackage) {
-      alert('Selecciona un paquete');
+      setNotify({ type: 'warning', title: 'Paquete requerido', message: 'Selecciona un paquete' });
       return;
     }
 
@@ -285,11 +288,15 @@ export default function AdminBooking() {
         status: 'pendiente',
         session_count: sessionCount,
       });
-      alert(sessionCount > 1 ? `${sessionCount} sesiones agendadas exitosamente` : 'Cita agendada exitosamente');
-      clearBusyCache();
-      navigate('/admin/citas');
+      const successMsg = sessionCount > 1 ? `${sessionCount} sesiones agendadas exitosamente` : 'Cita agendada exitosamente';
+      setNotify({
+        type: 'success',
+        title: sessionCount > 1 ? `${sessionCount} sesiones agendadas` : 'Cita agendada exitosamente',
+        message: successMsg,
+      });
+      setAfterNotify(() => () => { clearBusyCache(); navigate('/admin/citas'); });
     } catch (err) {
-      alert('Error al agendar: ' + (err.response?.data?.message || err.message));
+      setNotify({ type: 'error', title: 'Error al agendar', message: (err.response?.data?.message || err.message) });
     } finally {
       setSubmitting(false);
     }
@@ -709,6 +716,19 @@ export default function AdminBooking() {
           )}
         </div>
       </div>
+
+      <NotificationModal
+        open={!!notify}
+        type={notify?.type || 'info'}
+        title={notify?.title || ''}
+        message={notify?.message || ''}
+        onClose={() => {
+          setNotify(null);
+          const fn = afterNotify;
+          setAfterNotify(null);
+          if (fn) fn();
+        }}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import {
 import { reportsAPI } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import Skeleton from '../../components/Skeleton';
+import NotificationModal from '../../components/NotificationModal';
 import {
   BarChart3, DollarSign, Clock, Timer,
   Download, FileText, FileSpreadsheet, Filter, X, Search, CloudUpload
@@ -86,6 +87,7 @@ export default function Reports() {
   const [filters, setFilters] = useState(INITIAL_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
+  const [notify, setNotify] = useState(null);
 
   const baseParams = useMemo(() => {
     const params = {};
@@ -209,7 +211,7 @@ export default function Reports() {
     } catch (err) {
       const msg = err.response?.data?.message || 'Error al subir a Google Drive';
       setDriveMessage('');
-      alert(msg);
+      setNotify({ type: 'error', title: 'Error al subir a Google Drive', message: msg });
     } finally {
       setTimeout(() => setDriveMessage(''), 4000);
     }
@@ -664,6 +666,14 @@ export default function Reports() {
           </div>
         </>
       )}
+
+      <NotificationModal
+        open={!!notify}
+        type={notify?.type || 'info'}
+        title={notify?.title || ''}
+        message={notify?.message || ''}
+        onClose={() => setNotify(null)}
+      />
     </div>
   );
 }

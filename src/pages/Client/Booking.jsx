@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { Sparkles, Gift, ArrowLeft, MapPin } from 'lucide-react';
 import { personAPI, appointmentsAPI } from '../../services/api';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
+import NotificationModal from '../../components/NotificationModal';
 import { clearBusyCache } from '../../utils/busyCache';
 
 const BASE_STEPS = [
@@ -71,6 +72,7 @@ export default function Booking() {
   const [sessionCount, setSessionCount] = useState(1);
   const [dniLoading, setDniLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [notify, setNotify] = useState(null);
 
   const handleDniBlur = useCallback(async () => {
     const dni = clientDni.trim();
@@ -421,7 +423,7 @@ export default function Booking() {
         });
       } catch (err) {
         console.error('Error al agendar:', err);
-        alert('Error al agendar cita: ' + (err.response?.data?.message || err.message || 'Error desconocido'));
+        setNotify({ type: 'error', title: 'Error al agendar cita', message: (err.response?.data?.message || err.message || 'Error desconocido') });
       } finally {
         setSubmitting(false);
       }
@@ -490,7 +492,7 @@ export default function Booking() {
         });
       } catch (err) {
         console.error('Error al agendar:', err);
-        alert('Error al agendar cita: ' + (err.response?.data?.message || err.message || 'Error desconocido'));
+        setNotify({ type: 'error', title: 'Error al agendar cita', message: (err.response?.data?.message || err.message || 'Error desconocido') });
       } finally {
         setSubmitting(false);
       }
@@ -542,7 +544,7 @@ export default function Booking() {
       });
     } catch (err) {
       console.error('Error al agendar:', err);
-      alert('Error al agendar cita: ' + (err.response?.data?.message || err.message || 'Error desconocido'));
+      setNotify({ type: 'error', title: 'Error al agendar cita', message: (err.response?.data?.message || err.message || 'Error desconocido') });
     } finally {
       setSubmitting(false);
     }
@@ -1126,6 +1128,14 @@ export default function Booking() {
           </button>
         )}
       </div>
+
+      <NotificationModal
+        open={!!notify}
+        type={notify?.type || 'info'}
+        title={notify?.title || ''}
+        message={notify?.message || ''}
+        onClose={() => setNotify(null)}
+      />
     </div>
   );
 }

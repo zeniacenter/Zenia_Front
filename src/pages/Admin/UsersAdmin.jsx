@@ -482,6 +482,7 @@ export default function UsersAdmin() {
         </div>
       )}
       <ConfirmModal
+        confirmLabel="Eliminar"
         open={!!deleteTarget}
         title="Eliminar usuario"
         message="¿Estás seguro de que deseas eliminar esta cuenta? Esta acción no se puede deshacer."

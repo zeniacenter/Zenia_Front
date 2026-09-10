@@ -440,6 +440,7 @@ export default function PackagesAdmin() {
         </div>
       )}
       <ConfirmModal
+        confirmLabel="Eliminar"
         open={!!deleteTarget}
         title="Eliminar paquete"
         message="¿Estás seguro de que deseas eliminar este paquete? Esta acción no se puede deshacer."

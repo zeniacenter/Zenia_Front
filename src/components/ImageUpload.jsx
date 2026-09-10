@@ -2,12 +2,14 @@ import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 're
 import { uploadAPI } from '../services/api';
 import { getImageUrl } from '../context/AppContext';
 import { Camera } from 'lucide-react';
+import NotificationModal from './NotificationModal';
 
 const ImageUpload = forwardRef(function ImageUpload({ value, onChange, imageableType, imageableId, label = 'Imagen' }, ref) {
   const [preview, setPreview] = useState(() => getImageUrl(value) || '');
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [pendingFile, setPendingFile] = useState(null);
+  const [notify, setNotify] = useState(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -37,11 +39,11 @@ const ImageUpload = forwardRef(function ImageUpload({ value, onChange, imageable
   const handleFile = (file) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      alert('Solo se permiten imágenes');
+      setNotify({ type: 'error', title: 'Imagen no válida', message: 'Solo se permiten imágenes' });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert('La imagen no debe superar 5MB');
+      setNotify({ type: 'error', title: 'Imagen muy pesada', message: 'La imagen no debe superar 5MB' });
       return;
     }
 
@@ -56,7 +58,7 @@ const ImageUpload = forwardRef(function ImageUpload({ value, onChange, imageable
           onChange(getImageUrl(res.data.url));
         })
         .catch(() => {
-          alert('Error al subir imagen');
+          setNotify({ type: 'error', title: 'Error', message: 'Error al subir imagen' });
           setPreview(value || '');
         })
         .finally(() => setUploading(false));
@@ -89,7 +91,8 @@ const ImageUpload = forwardRef(function ImageUpload({ value, onChange, imageable
   const hasImage = preview || pendingFile;
 
   return (
-    <div className="form-group">
+    <>
+      <div className="form-group">
       <label>{label}</label>
       <div
         onDrop={handleDrop}
@@ -170,6 +173,14 @@ const ImageUpload = forwardRef(function ImageUpload({ value, onChange, imageable
         )}
       </div>
     </div>
+    <NotificationModal
+      open={!!notify}
+      type={notify?.type || 'info'}
+      title={notify?.title || ''}
+      message={notify?.message || ''}
+      onClose={() => setNotify(null)}
+    />
+    </>
   );
 });
 
