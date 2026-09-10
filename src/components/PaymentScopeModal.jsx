@@ -1,9 +1,22 @@
+import { useState } from 'react';
 import { CreditCard, Package } from 'lucide-react';
 import useEscClose from '../hooks/useEscClose';
 
 export default function PaymentScopeModal({ open, onClose, appointment, onPaySession, onPayAllSessions }) {
+  const [busy, setBusy] = useState(false);
   useEscClose(open, onClose);
   if (!open || !appointment) return null;
+
+  const runAction = async (fn) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await fn(appointment);
+    } finally {
+      setBusy(false);
+      onClose();
+    }
+  };
 
   const apt = appointment;
   const isGroupSession = !!apt.group_id && apt.session_number && apt.total_sessions;
@@ -54,12 +67,11 @@ export default function PaymentScopeModal({ open, onClose, appointment, onPaySes
               gap: '0.75rem',
               padding: '1rem',
               textAlign: 'left',
-              justifyContent: 'flex-start'
+              justifyContent: 'flex-start',
+              opacity: busy ? 0.6 : 1,
+              cursor: busy ? 'wait' : 'pointer',
             }}
-            onClick={() => {
-              onPaySession(appointment);
-              onClose();
-            }}
+            onClick={() => runAction(onPaySession)}
           >
             <CreditCard size={20} />
             <div>
@@ -79,12 +91,11 @@ export default function PaymentScopeModal({ open, onClose, appointment, onPaySes
                 gap: '0.75rem',
                 padding: '1rem',
                 textAlign: 'left',
-                justifyContent: 'flex-start'
+                justifyContent: 'flex-start',
+                opacity: busy ? 0.6 : 1,
+                cursor: busy ? 'wait' : 'pointer',
               }}
-              onClick={() => {
-                onPayAllSessions(appointment);
-                onClose();
-              }}
+              onClick={() => runAction(onPayAllSessions)}
             >
               <Package size={20} />
               <div>

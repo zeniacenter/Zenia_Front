@@ -40,7 +40,7 @@ function ModuleRoute({ module, children }) {
 function AppContent() {
   const location = useLocation();
   const isHome = location.pathname === '/';
-  const isLogin = location.pathname === '/login';
+  const isLogin = location.pathname === '/login' || location.pathname === '/admin/login';
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>

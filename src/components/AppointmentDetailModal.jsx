@@ -11,6 +11,7 @@ import { clearBusyCache } from '../utils/busyCache';
 import TimeSlotPicker from './TimeSlotPicker';
 import CancelAppointmentModal from './CancelAppointmentModal';
 import PaymentScopeModal from './PaymentScopeModal';
+import LoadingButton from './LoadingButton';
 
 const STATUS_CONFIG = {
   pendiente: { label: 'Pendiente', color: '#8B6520', bg: '#FDF6E9' },
@@ -42,17 +43,19 @@ const inputStyle = {
   fontSize: '0.85rem', fontFamily: 'inherit', outline: 'none',
 };
 
-const ActionButton = ({ label, icon, onClick, danger }) => (
+const ActionButton = ({ label, icon, onClick, danger, disabled }) => (
   <button
     type="button"
     onClick={onClick}
+    disabled={disabled}
     style={{
       display: 'flex', alignItems: 'center', gap: '0.35rem',
       padding: '0.4rem 0.65rem', borderRadius: '8px',
       border: danger ? '1px solid #F5D5D0' : '1px solid #E8E0D6',
       background: danger ? '#FCEEED' : '#FDFBF7',
       color: danger ? '#B85C4C' : '#6B5B4E',
-      fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+      fontSize: '0.75rem', fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer',
+      opacity: disabled ? 0.5 : 1, transition: 'all 0.15s',
     }}
   >
     {icon}
@@ -72,6 +75,8 @@ export default function AppointmentDetailModal({
   const [postponing, setPostponing] = useState(false);
   const [postponeDate, setPostponeDate] = useState('');
   const [postponeTime, setPostponeTime] = useState('');
+  const [savingPostpone, setSavingPostpone] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
 
@@ -163,11 +168,23 @@ export default function AppointmentDetailModal({
   };
 
   const handleConfirm = async () => {
-    await updateAppointment(apt.id, { status: 'confirmada' });
+    if (actionLoading) return;
+    setActionLoading(true);
+    try {
+      await updateAppointment(apt.id, { status: 'confirmada' });
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleMarkDone = async () => {
-    await updateAppointment(apt.id, { status: 'realizada' });
+    if (actionLoading) return;
+    setActionLoading(true);
+    try {
+      await updateAppointment(apt.id, { status: 'realizada' });
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const openPostpone = () => {
@@ -177,23 +194,28 @@ export default function AppointmentDetailModal({
   };
 
   const confirmPostpone = async () => {
-    if (!postponeDate || !postponeTime) return;
-    const hours = apt.hours || 1;
-    const startMins = parseInt(postponeTime.split(':')[0]) * 60 + parseInt(postponeTime.split(':')[1]);
-    const endMins = startMins + hours * 60;
-    const endH = Math.floor(endMins / 60);
-    const endM = endMins % 60;
-    const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+    if (!postponeDate || !postponeTime || savingPostpone) return;
+    setSavingPostpone(true);
+    try {
+      const hours = apt.hours || 1;
+      const startMins = parseInt(postponeTime.split(':')[0]) * 60 + parseInt(postponeTime.split(':')[1]);
+      const endMins = startMins + hours * 60;
+      const endH = Math.floor(endMins / 60);
+      const endM = endMins % 60;
+      const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
 
-    const newStatus = apt.status === 'postergada' ? 'pendiente' : 'postergada';
-    await updateAppointment(apt.id, {
-      status: newStatus,
-      date: postponeDate,
-      start_time: postponeTime,
-      end_time: endTime,
-    });
-    clearBusyCache();
-    setPostponing(false);
+      const newStatus = apt.status === 'postergada' ? 'pendiente' : 'postergada';
+      await updateAppointment(apt.id, {
+        status: newStatus,
+        date: postponeDate,
+        start_time: postponeTime,
+        end_time: endTime,
+      });
+      clearBusyCache();
+      setPostponing(false);
+    } finally {
+      setSavingPostpone(false);
+    }
   };
 
   const handleCancelConfirm = async (reason) => {
@@ -275,7 +297,7 @@ export default function AppointmentDetailModal({
 
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                 <button className="btn btn-secondary" onClick={() => setPostponing(false)}>Volver</button>
-                <button className="btn btn-primary" disabled={!postponeDate || !postponeTime} onClick={confirmPostpone}>Confirmar</button>
+                <LoadingButton className="btn btn-primary" loading={savingPostpone} loadingText="Guardando..." disabled={!postponeDate || !postponeTime} onClick={confirmPostpone}>Confirmar</LoadingButton>
               </div>
             </div>
           ) : (
@@ -487,10 +509,10 @@ export default function AppointmentDetailModal({
               <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#A89888', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acciones</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                 {apt.status === 'pendiente' && (
-                  <ActionButton label="Confirmar" icon={<Check size={14} />} onClick={handleConfirm} />
+                  <ActionButton label="Confirmar" icon={<Check size={14} />} onClick={handleConfirm} disabled={actionLoading} />
                 )}
                 {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
-                  <ActionButton label="Marcar como realizada" icon={<CheckCircle2 size={14} />} onClick={handleMarkDone} />
+                  <ActionButton label="Marcar como realizada" icon={<CheckCircle2 size={14} />} onClick={handleMarkDone} disabled={actionLoading} />
                 )}
                 {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
                   <ActionButton label="Postergar" icon={<CalendarClock size={14} />} onClick={openPostpone} />

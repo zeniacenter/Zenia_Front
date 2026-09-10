@@ -28,7 +28,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const url = error.config?.url || '';
+    const isAuthEndpoint = url.includes('/login') || url.includes('/logout');
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       sessionStorage.removeItem('zenia_token');
       sessionStorage.removeItem('zenia_user');
       window.location.href = '/admin/login';

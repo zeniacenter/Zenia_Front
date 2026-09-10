@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import useEscClose from '../hooks/useEscClose';
+import LoadingButton from './LoadingButton';
 
 const CANCEL_REASONS = [
   { value: 'cliente_solicita', label: 'El cliente solicitó la cancelación' },
@@ -14,6 +15,7 @@ const CANCEL_REASONS = [
 export default function CancelAppointmentModal({ open, appointment, onConfirm, onCancel }) {
   const [reason, setReason] = useState('');
   const [customReason, setCustomReason] = useState('');
+  const [confirming, setConfirming] = useState(false);
 
   useEscClose(open, () => {
     setReason('');
@@ -28,12 +30,18 @@ export default function CancelAppointmentModal({ open, appointment, onConfirm, o
     ? appointment.services.map((s) => s.name).join(', ')
     : 'N/A';
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (confirming) return;
     const finalReason = reason === 'otro' ? customReason : reason;
     if (!finalReason.trim()) return;
-    onConfirm(finalReason.trim());
-    setReason('');
-    setCustomReason('');
+    setConfirming(true);
+    try {
+      await onConfirm(finalReason.trim());
+    } finally {
+      setConfirming(false);
+      setReason('');
+      setCustomReason('');
+    }
   };
 
   const handleClose = () => {
@@ -114,17 +122,19 @@ export default function CancelAppointmentModal({ open, appointment, onConfirm, o
           <button className="btn btn-secondary" onClick={handleClose}>
             Volver
           </button>
-          <button
+          <LoadingButton
             className="btn btn-danger"
+            loading={confirming}
+            loadingText="Cancelando..."
             disabled={!reason || (reason === 'otro' && !customReason.trim())}
-            style={{
-              opacity: (!reason || (reason === 'otro' && !customReason.trim())) ? 0.5 : 1,
-              cursor: (!reason || (reason === 'otro' && !customReason.trim())) ? 'not-allowed' : 'pointer',
-            }}
             onClick={handleConfirm}
+            style={{
+              opacity: (!reason || (reason === 'otro' && !customReason.trim())) && !confirming ? 0.5 : 1,
+              cursor: (!reason || (reason === 'otro' && !customReason.trim())) && !confirming ? 'not-allowed' : 'pointer',
+            }}
           >
             Confirmar Cancelación
-          </button>
+          </LoadingButton>
         </div>
       </div>
     </div>

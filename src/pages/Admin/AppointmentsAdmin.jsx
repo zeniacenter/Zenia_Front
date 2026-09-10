@@ -11,6 +11,7 @@ import { clearBusyCache } from '../../utils/busyCache';
 import CancelAppointmentModal from '../../components/CancelAppointmentModal';
 import AppointmentDetailModal from '../../components/AppointmentDetailModal';
 import PaymentScopeModal from '../../components/PaymentScopeModal';
+import LoadingButton from '../../components/LoadingButton';
 import { appointmentsAPI } from '../../services/api';
 import { TableSkeleton } from '../../components/Skeleton';
 
@@ -88,6 +89,7 @@ export default function AppointmentsAdmin() {
 
   const [filter, setFilter] = useState('todas');
   const [postponeTarget, setPostponeTarget] = useState(null);
+  const [postponing, setPostponing] = useState(false);
   const [postponeDate, setPostponeDate] = useState('');
   const [postponeTime, setPostponeTime] = useState('');
   useEscClose(!!postponeTarget, () => setPostponeTarget(null));
@@ -191,25 +193,30 @@ export default function AppointmentsAdmin() {
   };
 
   const confirmPostpone = async () => {
-    if (!postponeDate || !postponeTime) return;
-    const apt = postponeTarget;
-    const hours = apt.hours || 1;
-    const startMins = parseInt(postponeTime.split(':')[0]) * 60 + parseInt(postponeTime.split(':')[1]);
-    const endMins = startMins + hours * 60;
-    const endH = Math.floor(endMins / 60);
-    const endM = endMins % 60;
-    const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+    if (!postponeDate || !postponeTime || postponing) return;
+    setPostponing(true);
+    try {
+      const apt = postponeTarget;
+      const hours = apt.hours || 1;
+      const startMins = parseInt(postponeTime.split(':')[0]) * 60 + parseInt(postponeTime.split(':')[1]);
+      const endMins = startMins + hours * 60;
+      const endH = Math.floor(endMins / 60);
+      const endM = endMins % 60;
+      const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
 
-    const newStatus = apt.status === 'postergada' ? 'pendiente' : 'postergada';
-    await updateAppointment(apt.id, {
-      status: newStatus,
-      date: postponeDate,
-      start_time: postponeTime,
-      end_time: endTime,
-    });
-    clearBusyCache();
-    setPostponeTarget(null);
-    refetch();
+      const newStatus = apt.status === 'postergada' ? 'pendiente' : 'postergada';
+      await updateAppointment(apt.id, {
+        status: newStatus,
+        date: postponeDate,
+        start_time: postponeTime,
+        end_time: endTime,
+      });
+      clearBusyCache();
+      setPostponeTarget(null);
+      refetch();
+    } finally {
+      setPostponing(false);
+    }
   };
 
   const handleCancelConfirm = async (reason) => {
@@ -569,7 +576,7 @@ export default function AppointmentsAdmin() {
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button className="btn btn-secondary" onClick={() => setPostponeTarget(null)}>Cancelar</button>
-              <button className="btn btn-primary" disabled={!postponeDate || !postponeTime} onClick={confirmPostpone}>Confirmar</button>
+              <LoadingButton className="btn btn-primary" loading={postponing} loadingText="Guardando..." disabled={!postponeDate || !postponeTime} onClick={confirmPostpone}>Confirmar</LoadingButton>
             </div>
           </div>
         </div>

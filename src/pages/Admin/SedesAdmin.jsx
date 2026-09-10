@@ -3,11 +3,13 @@ import { useApp } from '../../context/AppContext';
 import useEscClose from '../../hooks/useEscClose';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
+import LoadingButton from '../../components/LoadingButton';
 import { TableSkeleton } from '../../components/Skeleton';
 
 export default function SedesAdmin() {
   const { branches, therapists, services, addBranch, updateBranch, deleteBranch, hasModulePermission, loading } = useApp();
   const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [form, setForm] = useState({
@@ -33,12 +35,18 @@ export default function SedesAdmin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingId) {
-      await updateBranch(editingId, form);
-    } else {
-      await addBranch(form);
+    if (saving) return;
+    setSaving(true);
+    try {
+      if (editingId) {
+        await updateBranch(editingId, form);
+      } else {
+        await addBranch(form);
+      }
+      setShowModal(false);
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
   };
 
   const handleDelete = (id) => setDeleteTarget(id);
@@ -162,7 +170,9 @@ export default function SedesAdmin() {
 
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary">{editingId ? 'Guardar Cambios' : 'Crear Sede'}</button>
+                <LoadingButton type="submit" className="btn btn-primary" loading={saving} loadingText="Guardando...">
+                  {editingId ? 'Guardar Cambios' : 'Crear Sede'}
+                </LoadingButton>
               </div>
             </form>
           </div>

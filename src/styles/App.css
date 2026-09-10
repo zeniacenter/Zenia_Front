@@ -1746,14 +1746,20 @@ select.form-control option { background: var(--land-bg-card); color: var(--adm-t
   cursor: wait;
 }
 
+.btn.is-loading {
+  cursor: wait;
+}
+
 .btn-spinner {
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #fff;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
+  opacity: 0.7;
+  flex-shrink: 0;
 }
 
 @keyframes spin {

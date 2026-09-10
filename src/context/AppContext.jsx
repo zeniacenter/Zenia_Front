@@ -317,15 +317,24 @@ export function AppProvider({ children }) {
 
   const logoutAdmin = useCallback(async () => {
     if (token) {
-      try { await authAPI.logout(); } catch { }
+      authAPI.logout().catch(() => { });
     }
     setUser(null);
     setToken(null);
+    setUserPermissions(null);
     setSelectedBranchId(null);
     setBranchId(null);
+    setServices([]);
+    setTherapists([]);
+    setAppointments([]);
+    setPackages([]);
+    setCabins([]);
+    setUsers([]);
+    setBranches([]);
     sessionStorage.removeItem('zenia_user');
     sessionStorage.removeItem('zenia_token');
-  }, [token]);
+    queryClient.clear();
+  }, [token, queryClient]);
 
   const selectBranch = useCallback((branchId) => {
     setSelectedBranchId(branchId);

@@ -5,6 +5,7 @@ import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
 import Pagination from '../../components/Pagination';
+import LoadingButton from '../../components/LoadingButton';
 import { formatDuration as fmtDuration } from '../../utils/hours';
 import { Camera } from 'lucide-react';
 import { TableSkeleton } from '../../components/Skeleton';
@@ -12,6 +13,7 @@ import { TableSkeleton } from '../../components/Skeleton';
 export default function ServicesAdmin() {
   const { services, branches, addService, updateService, deleteService, updateEntityImage, hasModulePermission, loading } = useApp();
   const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [filterBranch, setFilterBranch] = useState('');
@@ -51,23 +53,29 @@ export default function ServicesAdmin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const raw = Number(form.durationValue) || 0;
-    const durationMin = Math.max(5, form.durationUnit === 'hours' ? Math.round(raw * 60) : Math.round(raw));
-    const payload = { ...form, pricePerHour: form.price, durationMin };
-    if (editingId) {
-      await updateService(editingId, payload);
-      if (imageRef.current) {
-        const url = await imageRef.current.uploadPending(editingId);
-        if (url) updateEntityImage('service', editingId, url);
+    if (saving) return;
+    setSaving(true);
+    try {
+      const raw = Number(form.durationValue) || 0;
+      const durationMin = Math.max(5, form.durationUnit === 'hours' ? Math.round(raw * 60) : Math.round(raw));
+      const payload = { ...form, pricePerHour: form.price, durationMin };
+      if (editingId) {
+        await updateService(editingId, payload);
+        if (imageRef.current) {
+          const url = await imageRef.current.uploadPending(editingId);
+          if (url) updateEntityImage('service', editingId, url);
+        }
+      } else {
+        const newService = await addService(payload);
+        if (newService && newService.id && imageRef.current) {
+          const url = await imageRef.current.uploadPending(newService.id);
+          if (url) updateEntityImage('service', newService.id, url);
+        }
       }
-    } else {
-      const newService = await addService(payload);
-      if (newService && newService.id && imageRef.current) {
-        const url = await imageRef.current.uploadPending(newService.id);
-        if (url) updateEntityImage('service', newService.id, url);
-      }
+      setShowModal(false);
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
   };
 
   const handleDelete = (id) => setDeleteTarget(id);
@@ -293,7 +301,9 @@ export default function ServicesAdmin() {
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary">{editingId ? 'Guardar Cambios' : 'Crear Servicio'}</button>
+                <LoadingButton type="submit" className="btn btn-primary" loading={saving} loadingText="Guardando...">
+                  {editingId ? 'Guardar Cambios' : 'Crear Servicio'}
+                </LoadingButton>
               </div>
             </form>
           </div>

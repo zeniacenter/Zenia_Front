@@ -4,11 +4,13 @@ import useEscClose from '../../hooks/useEscClose';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import Pagination from '../../components/Pagination';
+import LoadingButton from '../../components/LoadingButton';
 import { CardGridSkeleton } from '../../components/Skeleton';
 
 export default function PackagesAdmin() {
   const { packages, services, branches, addPackage, updatePackage, deletePackage, updateEntityImage, hasModulePermission, loading } = useApp();
   const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [filterBranch, setFilterBranch] = useState('');
@@ -105,20 +107,26 @@ export default function PackagesAdmin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingId) {
-      await updatePackage(editingId, form);
-      if (imageRef.current) {
-        const url = await imageRef.current.uploadPending(editingId);
-        if (url) updateEntityImage('package', editingId, url);
+    if (saving) return;
+    setSaving(true);
+    try {
+      if (editingId) {
+        await updatePackage(editingId, form);
+        if (imageRef.current) {
+          const url = await imageRef.current.uploadPending(editingId);
+          if (url) updateEntityImage('package', editingId, url);
+        }
+      } else {
+        const newPkg = await addPackage(form);
+        if (newPkg && newPkg.id && imageRef.current) {
+          const url = await imageRef.current.uploadPending(newPkg.id);
+          if (url) updateEntityImage('package', newPkg.id, url);
+        }
       }
-    } else {
-      const newPkg = await addPackage(form);
-      if (newPkg && newPkg.id && imageRef.current) {
-        const url = await imageRef.current.uploadPending(newPkg.id);
-        if (url) updateEntityImage('package', newPkg.id, url);
-      }
+      setShowModal(false);
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
   };
 
   const handleDelete = (id) => {
@@ -431,9 +439,9 @@ export default function PackagesAdmin() {
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary">
+                <LoadingButton type="submit" className="btn btn-primary" loading={saving} loadingText="Guardando...">
                   {editingId ? 'Guardar Cambios' : 'Crear Paquete'}
-                </button>
+                </LoadingButton>
               </div>
             </form>
           </div>

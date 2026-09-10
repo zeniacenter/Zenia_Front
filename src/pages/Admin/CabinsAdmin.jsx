@@ -5,11 +5,13 @@ import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
 import Pagination from '../../components/Pagination';
+import LoadingButton from '../../components/LoadingButton';
 import { CardGridSkeleton } from '../../components/Skeleton';
 
 export default function CabinsAdmin() {
   const { cabins, services, branches, addCabin, updateCabin, deleteCabin, updateEntityImage, hasModulePermission, loading } = useApp();
   const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [filterBranch, setFilterBranch] = useState('');
@@ -59,20 +61,26 @@ export default function CabinsAdmin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingId) {
-      await updateCabin(editingId, form);
-      if (imageRef.current) {
-        const url = await imageRef.current.uploadPending(editingId);
-        if (url) updateEntityImage('cabin', editingId, url);
+    if (saving) return;
+    setSaving(true);
+    try {
+      if (editingId) {
+        await updateCabin(editingId, form);
+        if (imageRef.current) {
+          const url = await imageRef.current.uploadPending(editingId);
+          if (url) updateEntityImage('cabin', editingId, url);
+        }
+      } else {
+        const newCabin = await addCabin(form);
+        if (newCabin && newCabin.id && imageRef.current) {
+          const url = await imageRef.current.uploadPending(newCabin.id);
+          if (url) updateEntityImage('cabin', newCabin.id, url);
+        }
       }
-    } else {
-      const newCabin = await addCabin(form);
-      if (newCabin && newCabin.id && imageRef.current) {
-        const url = await imageRef.current.uploadPending(newCabin.id);
-        if (url) updateEntityImage('cabin', newCabin.id, url);
-      }
+      setShowModal(false);
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
   };
 
   const handleDelete = (id) => setDeleteTarget(id);
@@ -221,7 +229,9 @@ export default function CabinsAdmin() {
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary">{editingId ? 'Guardar Cambios' : 'Crear Cabina'}</button>
+                <LoadingButton type="submit" className="btn btn-primary" loading={saving} loadingText="Guardando...">
+                  {editingId ? 'Guardar Cambios' : 'Crear Cabina'}
+                </LoadingButton>
               </div>
             </form>
           </div>

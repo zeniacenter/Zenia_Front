@@ -2,6 +2,7 @@ import { useState, Fragment } from 'react';
 import { useApp } from '../../context/AppContext';
 import useEscClose from '../../hooks/useEscClose';
 import ConfirmModal from '../../components/ConfirmModal';
+import LoadingButton from '../../components/LoadingButton';
 import { Plus, Trash2 } from 'lucide-react';
 import { TableSkeleton } from '../../components/Skeleton';
 
@@ -37,6 +38,7 @@ const ALL_CARD_IDS = DASHBOARD_CARDS.map((c) => c.id);
 export default function UsersAdmin() {
   const { users, addUser, updateUser, deleteUser, branches, hasModulePermission, loading } = useApp();
   const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [form, setForm] = useState({
@@ -79,23 +81,29 @@ export default function UsersAdmin() {
     setShowModal(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingId) {
-      const updates = {
-        name: form.name,
-        email: form.email,
-        role: form.role,
-        permissions: form.permissions,
-        module_permissions: form.module_permissions,
-        dashboard_cards: form.dashboard_cards,
-      };
-      if (form.password) updates.password = form.password;
-      updateUser(editingId, updates);
-    } else {
-      addUser(form);
+    if (saving) return;
+    setSaving(true);
+    try {
+      if (editingId) {
+        const updates = {
+          name: form.name,
+          email: form.email,
+          role: form.role,
+          permissions: form.permissions,
+          module_permissions: form.module_permissions,
+          dashboard_cards: form.dashboard_cards,
+        };
+        if (form.password) updates.password = form.password;
+        await updateUser(editingId, updates);
+      } else {
+        await addUser(form);
+      }
+      setShowModal(false);
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
   };
 
   const toggleDashboardCard = (cardId) => {
@@ -474,9 +482,9 @@ export default function UsersAdmin() {
                 <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary">
+                <LoadingButton type="submit" className="btn btn-primary" loading={saving} loadingText="Guardando...">
                   {editingId ? 'Guardar Cambios' : 'Crear Usuario'}
-                </button>
+                </LoadingButton>
               </div>
             </form>
           </div>

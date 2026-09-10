@@ -5,6 +5,7 @@ import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
 import Pagination from '../../components/Pagination';
+import LoadingButton from '../../components/LoadingButton';
 import { buildSlotOptions } from '../../utils/hours';
 import { CardGridSkeleton } from '../../components/Skeleton';
 
@@ -32,6 +33,7 @@ export default function TherapistsAdmin() {
   const { therapists, services, branches, addTherapist, updateTherapist, deleteTherapist, updateEntityImage, hasModulePermission, settings, loading } = useApp();
   const timeOptions = buildSlotOptions(settings.workStart, settings.workEnd);
   const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [filterBranch, setFilterBranch] = useState('');
@@ -102,20 +104,26 @@ export default function TherapistsAdmin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (editingId) {
-      await updateTherapist(editingId, form);
-      if (imageRef.current) {
-        const url = await imageRef.current.uploadPending(editingId);
-        if (url) updateEntityImage('therapist', editingId, url);
+    if (saving) return;
+    setSaving(true);
+    try {
+      if (editingId) {
+        await updateTherapist(editingId, form);
+        if (imageRef.current) {
+          const url = await imageRef.current.uploadPending(editingId);
+          if (url) updateEntityImage('therapist', editingId, url);
+        }
+      } else {
+        const newTh = await addTherapist(form);
+        if (newTh && newTh.id && imageRef.current) {
+          const url = await imageRef.current.uploadPending(newTh.id);
+          if (url) updateEntityImage('therapist', newTh.id, url);
+        }
       }
-    } else {
-      const newTh = await addTherapist(form);
-      if (newTh && newTh.id && imageRef.current) {
-        const url = await imageRef.current.uploadPending(newTh.id);
-        if (url) updateEntityImage('therapist', newTh.id, url);
-      }
+      setShowModal(false);
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
   };
 
   const handleDelete = (id) => setDeleteTarget(id);
@@ -263,7 +271,9 @@ export default function TherapistsAdmin() {
 
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary">{editingId ? 'Guardar Cambios' : 'Crear Terapeuta'}</button>
+                <LoadingButton type="submit" className="btn btn-primary" loading={saving} loadingText="Guardando...">
+                  {editingId ? 'Guardar Cambios' : 'Crear Terapeuta'}
+                </LoadingButton>
               </div>
             </form>
           </div>

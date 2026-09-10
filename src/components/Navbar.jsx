@@ -10,6 +10,17 @@ export default function Navbar() {
   const isHome = location.pathname === '/';
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logoutAdmin();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -28,8 +39,14 @@ export default function Navbar() {
           <img src="/logo_zenia.jpeg" alt="Zenia" className="brand-logo-admin" />
         </NavLink>
         <div className="navbar-admin-right">
-          <button className="btn btn-sm btn-admin-logout" onClick={logoutAdmin}>
-            Cerrar Sesión
+          <button className="btn btn-sm btn-admin-logout" onClick={handleLogout} disabled={loggingOut}>
+            {loggingOut ? (
+              <>
+                <span className="btn-spinner" aria-hidden="true" /> Cerrando...
+              </>
+            ) : (
+              'Cerrar Sesión'
+            )}
           </button>
         </div>
       </nav>
