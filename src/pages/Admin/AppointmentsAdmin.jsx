@@ -405,7 +405,7 @@ export default function AppointmentsAdmin() {
                               display: 'inline-block', fontSize: '0.7rem', fontWeight: 600,
                               padding: '0.2rem 0.6rem', borderRadius: '12px',
                               background: ps.bg, color: ps.color, whiteSpace: 'nowrap', cursor: 'pointer',
-                            }} onClick={() => setPaymentScopeTarget(apt)}>
+                            }} onClick={() => { if (apt.payment_status !== 'pagado') setPaymentScopeTarget(apt); }}>
                               {ps.label}
                             </span>
                           );
@@ -471,7 +471,9 @@ export default function AppointmentsAdmin() {
                                   )}
                                   <MenuItemDivider />
                                   <MenuItem label="Ver detalle" icon={<Info size={14} />} onClick={() => { setMenuFor(null); setDetailTarget(apt); }} />
-                                  <MenuItem label="Emitir boleta" icon={<Receipt size={14} />} onClick={() => { setMenuFor(null); navigate(`/admin/boletas/${apt.id}`); }} />
+                                  {apt.payment_status === 'pagado' && (
+                                    <MenuItem label="Emitir comprobante" icon={<Receipt size={14} />} onClick={() => { setMenuFor(null); navigate(`/admin/boletas/${apt.id}`); }} />
+                                  )}
                                 </div>
                               )}
                             </>

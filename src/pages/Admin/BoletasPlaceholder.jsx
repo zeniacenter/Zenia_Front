@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { appointmentsAPI, invoicesAPI } from '../../services/api';
 import useEscClose from '../../hooks/useEscClose';
 import { Monitor, Send } from 'lucide-react';
@@ -11,13 +11,15 @@ const formatMoney = (n) => Number(n || 0).toFixed(2);
 
 export default function BoletasPlaceholder() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const urlType = searchParams.get('type') === 'factura' ? 'factura' : 'boleta';
 
   const [appointment, setAppointment] = useState(null);
   const [clientAppointments, setClientAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [type, setType] = useState('boleta');
+  const [type, setType] = useState(urlType);
   const [mode, setMode] = useState('individual');
   const [selectedIds, setSelectedIds] = useState([]);
   const [clientDocType, setClientDocType] = useState('dni');

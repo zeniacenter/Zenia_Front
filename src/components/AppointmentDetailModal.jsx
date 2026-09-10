@@ -526,7 +526,9 @@ export default function AppointmentDetailModal({
                 {apt.payment_status !== 'pagado' && (
                   <ActionButton label="Registrar pago" icon={<CreditCard size={14} />} onClick={() => setShowPayment(true)} />
                 )}
-                <ActionButton label="Emitir boleta" icon={<Receipt size={14} />} onClick={handleEmitBoleta} />
+                {apt.payment_status === 'pagado' && (
+                  <ActionButton label="Emitir comprobante" icon={<Receipt size={14} />} onClick={handleEmitBoleta} />
+                )}
               </div>
             </div>
           )}
