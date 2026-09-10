@@ -24,6 +24,7 @@ const UsersAdmin = lazy(() => import('./pages/Admin/UsersAdmin'));
 const SettingsAdmin = lazy(() => import('./pages/Admin/SettingsAdmin'));
 const WhatsAppAdmin = lazy(() => import('./pages/Admin/WhatsAppAdmin'));
 const SedesAdmin = lazy(() => import('./pages/Admin/SedesAdmin'));
+const ClientsAdmin = lazy(() => import('./pages/Admin/ClientsAdmin'));
 const BoletasPlaceholder = lazy(() => import('./pages/Admin/BoletasPlaceholder'));
 const InvoicesAdmin = lazy(() => import('./pages/Admin/InvoicesAdmin'));
 
@@ -63,6 +64,7 @@ function AppContent() {
               <Route path="paquetes" element={<ModuleRoute module="paquetes"><PackagesAdmin /></ModuleRoute>} />
               <Route path="reportes" element={<ModuleRoute module="reportes"><Reports /></ModuleRoute>} />
               <Route path="agendar" element={<ModuleRoute module="citas"><AdminBooking /></ModuleRoute>} />
+              <Route path="clientes" element={<ModuleRoute module="clientes"><ClientsAdmin /></ModuleRoute>} />
               <Route path="usuarios" element={<ModuleRoute module="usuarios"><UsersAdmin /></ModuleRoute>} />
               <Route path="whatsapp" element={<ModuleRoute module="usuarios"><WhatsAppAdmin /></ModuleRoute>} />
               <Route path="sedas" element={<ModuleRoute module="sedas"><SedesAdmin /></ModuleRoute>} />

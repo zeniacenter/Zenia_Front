@@ -80,6 +80,7 @@ export default function Reports() {
   const [data, setData] = useState(null);
   const [detail, setDetail] = useState(null);
   const [breakdowns, setBreakdowns] = useState(null);
+  const [clientDiscounts, setClientDiscounts] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [exporting, setExporting] = useState(null);
@@ -99,20 +100,23 @@ export default function Reports() {
     setLoading(true);
     setError(false);
     try {
-      const [dashRes, filteredRes, brkRes] = await Promise.all([
+      const [dashRes, filteredRes, brkRes, cdRes] = await Promise.all([
         reportsAPI.dashboardData(filterParams),
         reportsAPI.filtered({ ...filterParams, page: targetPage }),
         reportsAPI.breakdowns(filterParams),
+        reportsAPI.clientDiscounts(filterParams),
       ]);
       setData(dashRes.data);
       setDetail(filteredRes.data);
       setBreakdowns(brkRes.data);
+      setClientDiscounts(cdRes.data);
       setPage(targetPage);
     } catch {
       setError(true);
       setData(null);
       setDetail(null);
       setBreakdowns(null);
+      setClientDiscounts(null);
     } finally {
       setLoading(false);
     }
@@ -515,6 +519,8 @@ export default function Reports() {
                       <th style={detailTh}>Cabina</th>
                       <th style={detailTh}>Horas</th>
                       <th style={detailTh} className="text-right">Total</th>
+                      <th style={detailTh} className="text-right">Desc. %</th>
+                      <th style={detailTh} className="text-right">Dcto.</th>
                       <th style={detailTh}>Estado</th>
                       <th style={detailTh}>Pago</th>
                     </tr>
@@ -536,6 +542,8 @@ export default function Reports() {
                           <td style={detailTd}>{a.cabin_name || '-'}</td>
                           <td style={detailTd}>{Number(a.hours)}</td>
                           <td style={{ ...detailTd, textAlign: 'right', fontWeight: 600, color: '#3D2E24' }}>{fmtMoney(a.total_price)}</td>
+                          <td style={detailTd} className="text-right">{Number(a.discount_percent) > 0 ? `${Number(a.discount_percent)}%` : '-'}</td>
+                          <td style={{ ...detailTd, textAlign: 'right', color: '#B85C4C' }}>{Number(a.discount_amount) > 0 ? `-${fmtMoney(a.discount_amount)}` : '-'}</td>
                           <td style={detailTd}><span style={badge(st)}>{st.label}</span></td>
                           <td style={detailTd}><span style={badge(ps)}>{ps.label}</span></td>
                         </tr>
@@ -548,7 +556,10 @@ export default function Reports() {
                         <td colSpan="8" style={{ ...detailTd, fontWeight: 700, color: '#3D2E24' }}>Totales (rango filtrado)</td>
                         <td style={{ ...detailTd, fontWeight: 700, color: '#3D2E24' }}>{Number(detail.totals.total_horas)}h</td>
                         <td style={{ ...detailTd, textAlign: 'right', fontWeight: 700, color: '#3D2E24' }}>{fmtMoney(detail.totals.total_ingresos)}</td>
+                        <td style={{ ...detailTd, textAlign: 'right', fontWeight: 700, color: '#3D2E24' }}>{Number(detail.totals.total_descuentos) > 0 ? `-${fmtMoney(detail.totals.total_descuentos)}` : '-'}</td>
                         <td style={{ ...detailTd, fontWeight: 700, color: '#3D2E24' }}>{detail.totals.total_citas} citas</td>
+                        <td style={detailTd}></td>
+                        <td style={detailTd}></td>
                         <td style={detailTd}></td>
                       </tr>
                     </tfoot>
@@ -662,6 +673,68 @@ export default function Reports() {
                   </div>
                 )}
               </div>
+            </div>
+
+            <div className="card" style={CHART_CARD}>
+              <h3 style={CHART_TITLE}>Descuentos por Cliente</h3>
+              {clientDiscounts && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <div style={{ flex: '1', minWidth: '140px', padding: '0.6rem 0.75rem', borderRadius: '8px', background: '#E8F5E9' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#2D7A3A', textTransform: 'uppercase' }}>Con descuento</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#2D7A3A' }}>{clientDiscounts.totals.clientes_con_descuento}</div>
+                  </div>
+                  <div style={{ flex: '1', minWidth: '140px', padding: '0.6rem 0.75rem', borderRadius: '8px', background: '#F0EBE3' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#6B5B4E', textTransform: 'uppercase' }}>Sin descuento</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#6B5B4E' }}>{clientDiscounts.totals.clientes_sin_descuento}</div>
+                  </div>
+                  <div style={{ flex: '1', minWidth: '160px', padding: '0.6rem 0.75rem', borderRadius: '8px', background: '#FCEEED' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#B85C4C', textTransform: 'uppercase' }}>Total descontado</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#B85C4C' }}>{fmtMoney(clientDiscounts.totals.total_descontado)}</div>
+                  </div>
+                </div>
+              )}
+              {(!clientDiscounts || clientDiscounts.items.length === 0) ? (
+                <p style={{ color: '#B5A898', fontSize: '0.85rem' }}>Sin citas realizadas con clientes registrados</p>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #E8E0D6' }}>
+                        <th style={detailTh}>Cliente</th>
+                        <th style={detailTh}>DNI</th>
+                        <th style={detailTh}>Citas realizadas</th>
+                        <th style={detailTh}>Desc. actual</th>
+                        <th style={detailTh}>¿Aplica?</th>
+                        <th style={detailTh} className="text-right">Total descontado</th>
+                        <th style={detailTh} className="text-right">Total facturado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {clientDiscounts.items.map((c) => (
+                        <tr key={c.person_id} style={{ borderBottom: '1px solid #F0EBE3' }}>
+                          <td style={{ ...detailTd, color: '#3D2E24', fontWeight: 500 }}>
+                            {[c.client_name, c.client_last_name].filter(Boolean).join(' ')}
+                          </td>
+                          <td style={detailTd}>{c.client_dni || '-'}</td>
+                          <td style={detailTd}>{c.citas_realizadas}</td>
+                          <td style={detailTd}>{Number(c.current_discount_percent) > 0 ? `${Number(c.current_discount_percent)}%` : '–'}</td>
+                          <td style={detailTd}>
+                            {Number(c.current_discount_percent) > 0 ? (
+                              <span style={badge({ color: '#2D7A3A', bg: '#E8F5E9' })}>Sí</span>
+                            ) : (
+                              <span style={badge({ color: '#6B5B4E', bg: '#F0EBE3' })}>No</span>
+                            )}
+                          </td>
+                          <td style={{ ...detailTd, textAlign: 'right', color: '#B85C4C', fontWeight: 600 }}>
+                            {Number(c.total_descontado) > 0 ? `-${fmtMoney(c.total_descontado)}` : fmtMoney(0)}
+                          </td>
+                          <td style={{ ...detailTd, textAlign: 'right', fontWeight: 600, color: '#3D2E24' }}>{fmtMoney(c.total_facturado)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </>

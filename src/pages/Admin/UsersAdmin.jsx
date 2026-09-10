@@ -7,6 +7,7 @@ import { TableSkeleton } from '../../components/Skeleton';
 
 const MODULES = [
   { id: 'citas', label: 'Citas' },
+  { id: 'clientes', label: 'Clientes' },
   { id: 'servicios', label: 'Servicios' },
   { id: 'paquetes', label: 'Paquetes' },
   { id: 'terapeutas', label: 'Terapeutas' },

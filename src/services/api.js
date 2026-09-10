@@ -104,6 +104,16 @@ export const appointmentsAPI = {
 
 export const personAPI = {
   searchByDni: (dni) => api.get('/persons/search-by-dni', { params: { dni } }),
+  list: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.set('search', params.search);
+    if (params.page) query.set('page', params.page);
+    if (params.per_page) query.set('per_page', params.per_page);
+    const qs = query.toString();
+    return api.get(`/admin/persons${qs ? `?${qs}` : ''}`);
+  },
+  create: (data) => api.post('/admin/persons', data),
+  updateDiscount: (id, discountPercent) => api.put(`/admin/persons/${id}`, { discount_percent: discountPercent }),
 };
 
 export const invoicesAPI = {
@@ -138,6 +148,7 @@ export const reportsAPI = {
   revenueByCategory: () => api.get('/admin/reports/revenue-by-category'),
   filtered: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/filtered')),
   breakdowns: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/breakdowns')),
+  clientDiscounts: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/client-discounts')),
   exportPdf: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/pdf'), { responseType: 'blob' }),
   exportExcel: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/excel'), { responseType: 'blob' }),
   uploadToDrive: (params = {}) => api.post('/admin/reports/export/drive', params),

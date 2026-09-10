@@ -34,6 +34,7 @@ export default function AdminBooking() {
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientAddress, setClientAddress] = useState('');
+  const [clientDiscount, setClientDiscount] = useState(0);
 
   const filteredServices = selectedBranch
     ? services.filter((s) => {
@@ -184,6 +185,10 @@ export default function AdminBooking() {
 
   const effectiveTotal = priceInput === '' ? getTotal() : (parseFloat(priceInput) || 0);
 
+  const discountPct = Math.max(0, Math.min(100, Number(clientDiscount) || 0));
+  const discountAmount = Math.round(effectiveTotal * discountPct) / 100;
+  const finalTotal = Math.round((effectiveTotal - discountAmount) * 100) / 100;
+
   useEffect(() => {
     setPriceInput(String(getTotal()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -203,8 +208,12 @@ export default function AdminBooking() {
         setClientPhone(p.phone || '');
         setClientEmail(p.email || '');
         setClientAddress(p.address || '');
+        setClientDiscount(Number(p.discount_percent) || 0);
       }
-    } catch {
+    } catch (err) {
+      if (err?.response?.status === 404) {
+        setClientDiscount(0);
+      }
     } finally {
       setDniLoading(false);
     }
@@ -505,6 +514,11 @@ export default function AdminBooking() {
               <p style={{ margin: '0.25rem 0 0', fontSize: '0.72rem', color: '#A89888' }}>
                 Se recalcula al cambiar servicio o duración; puedes editarlo manualmente.
               </p>
+              {discountPct > 0 && (
+                <p style={{ margin: '0.3rem 0 0', fontSize: '0.78rem', color: '#2E7D32', fontWeight: 600 }}>
+                  Total con {discountPct}% de descuento: <s style={{ color: '#A89888' }}>S/ {effectiveTotal}</s> → S/ {finalTotal}
+                </p>
+              )}
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
@@ -585,13 +599,24 @@ export default function AdminBooking() {
                     placeholder="45678912"
                     maxLength={15}
                     value={clientDni}
-                    onChange={(e) => setClientDni(e.target.value)}
+                    onChange={(e) => { setClientDni(e.target.value); if (!e.target.value.trim()) setClientDiscount(0); }}
                     onBlur={handleDniBlur}
                   />
                   {dniLoading && (
                     <span style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.75rem', color: '#C9944A' }}>...</span>
                   )}
                 </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Descuento del cliente</label>
+                <div style={{ padding: '0.55rem 0.75rem', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#FDFBF7', color: '#3D2E24', fontSize: '0.85rem', fontWeight: 600 }}>
+                  {discountPct > 0 ? `${discountPct}%` : '0%'}
+                </div>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.72rem', color: discountPct > 0 ? '#2E7D32' : '#A89888' }}>
+                  {discountPct > 0
+                    ? `Se aplica descuento activo del cliente.`
+                    : 'Sin descuento configurado. Se gestiona en la sección Clientes.'}
+                </p>
               </div>
               <div>
                 <label style={labelStyle}>Nombre *</label>
@@ -710,7 +735,17 @@ export default function AdminBooking() {
                 <span style={{ color: '#A89888' }}>Sesiones</span>
                 <span style={{ color: '#3D2E24', fontWeight: 600 }}>{sessionCount}</span>
                 <span style={{ color: '#A89888' }}>Total</span>
-                <span style={{ color: '#3D2E24', fontWeight: 700, fontSize: '0.95rem' }}>S/ {effectiveTotal}</span>
+                <span style={{ color: '#3D2E24', fontWeight: 700, fontSize: '0.95rem' }}>
+                  {discountPct > 0 ? (
+                    <>
+                      <s style={{ color: '#A89888', fontSize: '0.8rem', fontWeight: 400 }}>S/ {effectiveTotal}</s>{' '}
+                      <span style={{ color: '#2E7D32' }}>S/ {finalTotal}</span>{' '}
+                      <span style={{ fontSize: '0.7rem', color: '#2E7D32', background: '#E8F5E9', padding: '2px 6px', borderRadius: '6px' }}>{discountPct}% dcto</span>
+                    </>
+                  ) : (
+                    <>S/ {effectiveTotal}</>
+                  )}
+                </span>
               </div>
             </div>
           )}

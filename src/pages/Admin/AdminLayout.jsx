@@ -7,6 +7,7 @@ const SIDEBAR_LINKS = [
   { to: '/admin/dashboard', icon: BarChart3, label: 'Dashboard', module: null },
   { to: '/admin/citas', icon: Calendar, label: 'Citas', module: 'citas', children: [
       { to: '/admin/comprobantes', icon: FileText, label: 'Comprobantes', module: 'citas' },
+      { to: '/admin/clientes', icon: Users, label: 'Clientes', module: 'clientes' },
   ]},
   { to: '/admin/terapeutas', icon: Users, label: 'Terapeutas', module: 'terapeutas' },
   { to: '/admin/cabinas', icon: Home, label: 'Cabinas', module: 'cabinas' },
