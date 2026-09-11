@@ -8,7 +8,6 @@ import Pagination from '../../components/Pagination';
 import LoadingButton from '../../components/LoadingButton';
 import { buildSlotOptions } from '../../utils/hours';
 import { CardGridSkeleton } from '../../components/Skeleton';
-import NotificationModal from '../../components/NotificationModal';
 
 const defaultSchedule = {
   lunes: ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'],
@@ -23,10 +22,10 @@ const defaultSchedule = {
 const dayLabels = {
   lunes: 'Lunes',
   martes: 'Martes',
-  miercoles: 'MiÃ©rcoles',
+  miercoles: 'Miércoles',
   jueves: 'Jueves',
   viernes: 'Viernes',
-  sabado: 'SÃ¡bado',
+  sabado: 'Sábado',
   domingo: 'Domingo',
 };
 
@@ -37,7 +36,6 @@ export default function TherapistsAdmin() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [notify, setNotify] = useState(null);
   const [filterBranch, setFilterBranch] = useState('');
   const imageRef = useRef(null);
   const [form, setForm] = useState({
@@ -123,28 +121,13 @@ export default function TherapistsAdmin() {
         }
       }
       setShowModal(false);
-    } catch (err) {
-      console.error('Error al guardar terapeuta:', err);
-      setNotify({
-        type: 'error',
-        title: 'Error al guardar terapeuta',
-        message: (err.response?.data?.message || err.message || 'No se pudo guardar. Revisa los datos e inténtalo de nuevo.'),
-      });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = (id) => setDeleteTarget(id);
-  const confirmDelete = () => {
-    deleteTherapist(deleteTarget)
-      .then(() => setDeleteTarget(null))
-      .catch((err) => {
-        console.error('Error al eliminar terapeuta:', err);
-        setNotify({ type: 'error', title: 'Error al eliminar', message: (err.response?.data?.message || err.message || 'No se pudo eliminar el terapeuta.') });
-        setDeleteTarget(null);
-      });
-  };
+  const confirmDelete = () => { deleteTherapist(deleteTarget); setDeleteTarget(null); };
 
   const getServiceNames = (ids) => (ids || []).map((id) => services.find((s) => s.id === id)?.name || 'N/A').join(', ');
   const getBranchNames = (ids) => (ids || []).map((id) => branches.find((b) => b.id === id)?.name || 'N/A').join(', ');
@@ -171,7 +154,7 @@ export default function TherapistsAdmin() {
   return (
     <div>
       <div className="admin-header">
-        <h2>GestiÃ³n de Terapeutas</h2>
+        <h2>Gestión de Terapeutas</h2>
         {hasModulePermission('terapeutas', 'can_create') && (
           <button className="btn btn-primary" onClick={openNew}>+ Nuevo Terapeuta</button>
         )}
@@ -241,7 +224,7 @@ export default function TherapistsAdmin() {
           <div className="modal">
             <div className="modal-header">
               <h3>{editingId ? 'Editar Terapeuta' : 'Nuevo Terapeuta'}</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}>Ã—</button>
+              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
@@ -254,7 +237,7 @@ export default function TherapistsAdmin() {
               </div>
               <div className="form-group">
                 <label>Experiencia</label>
-                <input type="text" className="form-control" placeholder="Ej: 5 aÃ±os de experiencia" value={form.experience} onChange={(e) => setForm({ ...form, experience: e.target.value })} required />
+                <input type="text" className="form-control" placeholder="Ej: 5 años de experiencia" value={form.experience} onChange={(e) => setForm({ ...form, experience: e.target.value })} required />
               </div>
               <ImageUpload ref={imageRef} value={form.image} onChange={(url) => setForm({ ...form, image: url })} imageableType="therapist" imageableId={editingId} label="Foto del terapeuta" />
               <div className="form-group">
@@ -296,15 +279,7 @@ export default function TherapistsAdmin() {
           </div>
         </div>
       )}
-      <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar terapeuta" message="Â¿EstÃ¡s seguro de que deseas eliminar este terapeuta? Esta acciÃ³n no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
-
-      <NotificationModal
-        open={!!notify}
-        type={notify?.type || 'info'}
-        title={notify?.title || ''}
-        message={notify?.message || ''}
-        onClose={() => setNotify(null)}
-      />
+      <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar terapeuta" message="¿Estás seguro de que deseas eliminar este terapeuta? Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
     </div>
   );
 }

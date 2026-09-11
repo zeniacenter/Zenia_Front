@@ -6,7 +6,6 @@ import ConfirmModal from '../../components/ConfirmModal';
 import Pagination from '../../components/Pagination';
 import LoadingButton from '../../components/LoadingButton';
 import { CardGridSkeleton } from '../../components/Skeleton';
-import NotificationModal from '../../components/NotificationModal';
 
 export default function PackagesAdmin() {
   const { packages, services, branches, addPackage, updatePackage, deletePackage, updateEntityImage, hasModulePermission, loading } = useApp();
@@ -14,7 +13,6 @@ export default function PackagesAdmin() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [notify, setNotify] = useState(null);
   const [filterBranch, setFilterBranch] = useState('');
   const imageRef = useRef(null);
   const [sessionMode, setSessionMode] = useState('services');
@@ -76,7 +74,7 @@ export default function PackagesAdmin() {
       const updated = [...prev.sessions, { id: Number(serviceId), hours: 1, qty: 1 }];
       const totalOriginal = updated.reduce((sum, sess) => {
         const s = services.find((sv) => sv.id === sess.id);
-        return sum + (s ? (s.pricePerHour || 0) * (sess.hours || 0) * (sess.qty || 1) : 0);
+        return sum + (s ? s.pricePerHour * sess.hours * (sess.qty || 1) : 0);
       }, 0);
       const totalHours = updated.reduce((sum, sess) => sum + sess.hours * (sess.qty || 1), 0);
       return { ...prev, sessions: updated, originalPrice: totalOriginal, hours: totalHours || 1 };
@@ -88,7 +86,7 @@ export default function PackagesAdmin() {
       const updated = prev.sessions.filter((s) => s.id !== Number(serviceId));
       const totalOriginal = updated.reduce((sum, sess) => {
         const s = services.find((sv) => sv.id === sess.id);
-        return sum + (s ? (s.pricePerHour || 0) * (sess.hours || 0) * (sess.qty || 1) : 0);
+        return sum + (s ? s.pricePerHour * sess.hours * (sess.qty || 1) : 0);
       }, 0);
       const totalHours = updated.reduce((sum, sess) => sum + sess.hours * (sess.qty || 1), 0);
       return { ...prev, sessions: updated, originalPrice: totalOriginal, hours: totalHours || 1 };
@@ -100,7 +98,7 @@ export default function PackagesAdmin() {
       const updated = prev.sessions.map((s) => s.id === Number(serviceId) ? { ...s, [field]: value } : s);
       const totalOriginal = updated.reduce((sum, sess) => {
         const s = services.find((sv) => sv.id === sess.id);
-        return sum + (s ? (s.pricePerHour || 0) * (sess.hours || 0) * (sess.qty || 1) : 0);
+        return sum + (s ? s.pricePerHour * sess.hours * (sess.qty || 1) : 0);
       }, 0);
       const totalHours = updated.reduce((sum, sess) => sum + sess.hours * (sess.qty || 1), 0);
       return { ...prev, sessions: updated, originalPrice: totalOriginal, hours: totalHours || 1 };
@@ -126,13 +124,6 @@ export default function PackagesAdmin() {
         }
       }
       setShowModal(false);
-    } catch (err) {
-      console.error('Error al guardar paquete:', err);
-      setNotify({
-        type: 'error',
-        title: 'Error al guardar paquete',
-        message: (err.response?.data?.message || err.message || 'No se pudo guardar. Revisa los datos e inténtalo de nuevo.'),
-      });
     } finally {
       setSaving(false);
     }
@@ -143,13 +134,8 @@ export default function PackagesAdmin() {
   };
 
   const confirmDelete = () => {
-    deletePackage(deleteTarget)
-      .then(() => setDeleteTarget(null))
-      .catch((err) => {
-        console.error('Error al eliminar paquete:', err);
-        setNotify({ type: 'error', title: 'Error al eliminar', message: (err.response?.data?.message || err.message || 'No se pudo eliminar el paquete.') });
-        setDeleteTarget(null);
-      });
+    deletePackage(deleteTarget);
+    setDeleteTarget(null);
   };
 
   const getServiceNames = (sessions) =>
@@ -205,63 +191,63 @@ export default function PackagesAdmin() {
       {loading ? (
         <CardGridSkeleton columns={3} rows={2} />
       ) : (
-        <>
-          <div className="services-grid">
-            {pagedPackages.map((pkg) => (
-              <div className="card" key={pkg.id}>
-                <img src={pkg.image || 'https://via.placeholder.com/400x300'} alt={pkg.name} className="card-image" loading="lazy" />
-                <div className="card-body">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                    <h3 className="card-title" style={{ margin: 0 }}>{pkg.name}</h3>
-                    {pkg.active ? (
-                      <span className="badge badge-confirmed">Activo</span>
-                    ) : (
-                      <span className="badge badge-cancelled">Inactivo</span>
-                    )}
-                  </div>
-                  <p className="card-text">{pkg.description}</p>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.5rem' }}>
-                    Servicios: {getServiceNames(pkg.sessions)}
-                  </p>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.5rem' }}>
-                    Sede: {getBranchName(pkg.branchId)}
-                  </p>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.75rem' }}>
-                    DuraciÃ³n: {pkg.hours} {pkg.hours === 1 ? 'hora' : 'horas'}
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                    <span style={{ textDecoration: 'line-through', color: 'var(--land-text-muted)' }}>
-                      S/ {pkg.originalPrice}
-                    </span>
-                    <span className="card-price">S/ {pkg.packagePrice}</span>
-                    <span className="badge badge-confirmed" style={{ fontSize: '0.7rem' }}>
-                      -{discount(pkg)}%
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {hasModulePermission('paquetes', 'can_edit') && (
-                      <button className="btn btn-sm btn-outline" onClick={() => openEdit(pkg)}>
-                        Editar
-                      </button>
-                    )}
-                    {hasModulePermission('paquetes', 'can_delete') && (
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(pkg.id)}>
-                        Eliminar
-                      </button>
-                    )}
-                  </div>
-                </div>
+      <>
+      <div className="services-grid">
+        {pagedPackages.map((pkg) => (
+          <div className="card" key={pkg.id}>
+            <img src={pkg.image || 'https://via.placeholder.com/400x300'} alt={pkg.name} className="card-image" loading="lazy" />
+            <div className="card-body">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                <h3 className="card-title" style={{ margin: 0 }}>{pkg.name}</h3>
+                {pkg.active ? (
+                  <span className="badge badge-confirmed">Activo</span>
+                ) : (
+                  <span className="badge badge-cancelled">Inactivo</span>
+                )}
               </div>
-            ))}
+              <p className="card-text">{pkg.description}</p>
+              <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.5rem' }}>
+                Servicios: {getServiceNames(pkg.sessions)}
+              </p>
+              <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.5rem' }}>
+                Sede: {getBranchName(pkg.branchId)}
+              </p>
+              <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.75rem' }}>
+                Duración: {pkg.hours} {pkg.hours === 1 ? 'hora' : 'horas'}
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                <span style={{ textDecoration: 'line-through', color: 'var(--land-text-muted)' }}>
+                  S/ {pkg.originalPrice}
+                </span>
+                <span className="card-price">S/ {pkg.packagePrice}</span>
+                <span className="badge badge-confirmed" style={{ fontSize: '0.7rem' }}>
+                  -{discount(pkg)}%
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {hasModulePermission('paquetes', 'can_edit') && (
+                  <button className="btn btn-sm btn-outline" onClick={() => openEdit(pkg)}>
+                    Editar
+                  </button>
+                )}
+                {hasModulePermission('paquetes', 'can_delete') && (
+                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(pkg.id)}>
+                    Eliminar
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-          <Pagination
-            total={filteredPackages.length}
-            page={page}
-            onPageChange={setPage}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={setRowsPerPage}
-          />
-        </>
+        ))}
+      </div>
+      <Pagination
+        total={filteredPackages.length}
+        page={page}
+        onPageChange={setPage}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={setRowsPerPage}
+      />
+      </>
       )}
 
       {!loading && filteredPackages.length === 0 && (
@@ -275,7 +261,7 @@ export default function PackagesAdmin() {
           <div className="modal" style={{ maxWidth: '600px' }}>
             <div className="modal-header">
               <h3>{editingId ? 'Editar Paquete' : 'Nuevo Paquete'}</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}>Ã—</button>
+              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
@@ -289,7 +275,7 @@ export default function PackagesAdmin() {
                 />
               </div>
               <div className="form-group">
-                <label>DescripciÃ³n</label>
+                <label>Descripción</label>
                 <textarea
                   className="form-control"
                   rows={2}
@@ -328,7 +314,7 @@ export default function PackagesAdmin() {
                             style={{ width: '60px', padding: '0.25rem 0.4rem', borderRadius: '6px', border: '1px solid var(--land-border)', fontSize: '0.82rem', textAlign: 'center' }}
                           />
                           <span style={{ fontSize: '0.78rem', color: 'var(--land-text-muted)' }}>h</span>
-                          <button type="button" onClick={() => removeServiceFromPackage(sess.id)} style={{ background: 'none', border: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1rem', padding: '0 0.25rem' }}>Ã—</button>
+                          <button type="button" onClick={() => removeServiceFromPackage(sess.id)} style={{ background: 'none', border: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1rem', padding: '0 0.25rem' }}>×</button>
                         </div>
                       );
                     })}
@@ -361,12 +347,12 @@ export default function PackagesAdmin() {
                           />
                           <span style={{ fontSize: '0.75rem', color: 'var(--land-text-muted)' }}>h</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', marginLeft: '0.25rem' }}>
-                            <button type="button" onClick={() => updateServiceField(sess.id, 'qty', Math.max(1, (sess.qty || 1) - 1))} style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1px solid var(--land-border)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>âˆ’</button>
+                            <button type="button" onClick={() => updateServiceField(sess.id, 'qty', Math.max(1, (sess.qty || 1) - 1))} style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1px solid var(--land-border)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>−</button>
                             <span style={{ minWidth: '18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 600 }}>{sess.qty || 1}</span>
                             <button type="button" onClick={() => updateServiceField(sess.id, 'qty', (sess.qty || 1) + 1)} style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1px solid var(--land-border)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>+</button>
                           </div>
                           <span style={{ fontSize: '0.72rem', color: 'var(--land-text-muted)' }}>ses</span>
-                          <button type="button" onClick={() => removeServiceFromPackage(sess.id)} style={{ background: 'none', border: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1rem', padding: '0 0.25rem' }}>Ã—</button>
+                          <button type="button" onClick={() => removeServiceFromPackage(sess.id)} style={{ background: 'none', border: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1rem', padding: '0 0.25rem' }}>×</button>
                         </div>
                       );
                     })}
@@ -397,7 +383,7 @@ export default function PackagesAdmin() {
                     <option key={b.id} value={b.id}>{b.name}</option>
                   ))}
                 </select>
-                <small style={{ color: 'var(--land-text-muted)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>Si no seleccionas ninguna, el paquete estarÃ¡ en todas.</small>
+                <small style={{ color: 'var(--land-text-muted)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>Si no seleccionas ninguna, el paquete estará en todas.</small>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -412,7 +398,7 @@ export default function PackagesAdmin() {
                     onChange={(e) => setForm({ ...form, originalPrice: Number(e.target.value) })}
                     required
                   />
-                  <small style={{ color: 'var(--land-text-muted)' }}>Calculo automÃ¡tico</small>
+                  <small style={{ color: 'var(--land-text-muted)' }}>Calculo automático</small>
                 </div>
                 <div className="form-group">
                   <label>Precio del paquete (S/)</label>
@@ -465,17 +451,9 @@ export default function PackagesAdmin() {
         confirmLabel="Eliminar"
         open={!!deleteTarget}
         title="Eliminar paquete"
-        message="Â¿EstÃ¡s seguro de que deseas eliminar este paquete? Esta acciÃ³n no se puede deshacer."
+        message="¿Estás seguro de que deseas eliminar este paquete? Esta acción no se puede deshacer."
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
-      />
-
-      <NotificationModal
-        open={!!notify}
-        type={notify?.type || 'info'}
-        title={notify?.title || ''}
-        message={notify?.message || ''}
-        onClose={() => setNotify(null)}
       />
     </div>
   );
