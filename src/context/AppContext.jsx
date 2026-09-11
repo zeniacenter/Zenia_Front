@@ -36,6 +36,27 @@ const getImagePath = (url) => {
   return url;
 };
 
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+
+const firstDefined = (...values) => values.find((v) => v !== undefined && v !== null);
+
+const toIdList = (items) => {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => (item && typeof item === 'object' && item.id !== undefined ? item.id : item))
+    .filter((id) => id !== undefined && id !== null);
+};
+
+const normalizeCategory = (value) => {
+  const prepared = String(value ?? '').trim();
+  return prepared !== '' ? prepared : 'general';
+};
+
+const halfPrice = (price) => {
+  const n = Number(price);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100 / 2) / 100 : null;
+};
+
 // eslint-disable-next-line react/only-export-components
 export const AVAILABLE_VIEWS = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -198,12 +219,12 @@ export function AppProvider({ children }) {
 
   const syncCatalog = useCallback((d, perms) => {
     if (!d) return;
-    if (Array.isArray(d.services) && d.services.length > 0) setServices(d.services);
-    if (Array.isArray(d.therapists) && d.therapists.length > 0) setTherapists(d.therapists);
-    if (Array.isArray(d.cabins) && d.cabins.length > 0) setCabins(d.cabins);
-    if (Array.isArray(d.packages) && d.packages.length > 0) setPackages(d.packages);
-    if (Array.isArray(d.branches) && d.branches.length > 0) setBranches(d.branches);
-    if (Array.isArray(d.users) && d.users.length > 0) setUsers(d.users);
+    if (Array.isArray(d.services)) setServices(d.services);
+    if (Array.isArray(d.therapists)) setTherapists(d.therapists);
+    if (Array.isArray(d.cabins)) setCabins(d.cabins);
+    if (Array.isArray(d.packages)) setPackages(d.packages);
+    if (Array.isArray(d.branches)) setBranches(d.branches);
+    if (Array.isArray(d.users)) setUsers(d.users);
     if (perms) {
       setUserPermissions(perms);
       if (!perms.is_admin && perms.branches?.length > 0 && !selectedBranchId) {
@@ -375,13 +396,14 @@ export function AppProvider({ children }) {
   const addService = useCallback(async (service) => {
     const payload = {
       name: service.name,
-      description: service.description,
-      price_per_hour: service.pricePerHour,
-      duration_min: service.durationMin ?? 60,
-      category: service.category,
+      description: service.description ?? '',
+      price_per_hour: firstDefined(service.pricePerHour, service.price),
+      price_per_half_hour: firstDefined(service.pricePerHalfHour, halfPrice(firstDefined(service.pricePerHour, service.price))),
+      duration_min: firstDefined(service.durationMin, service.duration_min, 60),
+      category: normalizeCategory(service.category),
       image: getImagePath(service.image) || '',
-      is_active: service.is_active ?? true,
-      branch_ids: service.branchIds || [],
+      is_active: firstDefined(service.is_active, service.active, true),
+      branch_ids: toIdList(firstDefined(service.branchIds, service.branch_ids, [])),
     };
     try {
       const res = await servicesAPI.create(payload);
@@ -418,7 +440,7 @@ export function AppProvider({ children }) {
             specialty: t.specialty,
             experience: t.experience,
             image: getImagePath(t.image) || '',
-            is_available: t.available ?? t.is_available ?? true,
+            is_available: firstDefined(t.available, t.is_available, true),
             schedule: t.schedule,
             service_ids: therapistServiceIds,
             branch_ids: t.branchIds || [],
@@ -432,7 +454,7 @@ export function AppProvider({ children }) {
       return res.data;
     } catch (err) {
       console.error('Error creando servicio:', err);
-      return null;
+      throw err;
     }
   }, [branches, therapists]);
 
@@ -442,16 +464,27 @@ export function AppProvider({ children }) {
       description: updates.description,
       price_per_hour: updates.pricePerHour,
       duration_min: updates.durationMin ?? 60,
-      category: updates.category,
+      category: normalizeCategory(updates.category),
       image: getImagePath(updates.image) || '',
-      is_active: updates.is_active ?? true,
-      branch_ids: updates.branchIds || [],
     };
+    if (hasOwn(updates, 'pricePerHour') || hasOwn(updates, 'price_per_hour')) {
+      payload.price_per_hour = firstDefined(updates.pricePerHour, updates.price_per_hour);
+    }
+    if (hasOwn(updates, 'pricePerHalfHour') || hasOwn(updates, 'price_per_half_hour')) {
+      payload.price_per_half_hour = firstDefined(updates.pricePerHalfHour, updates.price_per_half_hour);
+    }
+    if (hasOwn(updates, 'is_active') || hasOwn(updates, 'active')) {
+      payload.is_active = firstDefined(updates.is_active, updates.active);
+    }
+    if (hasOwn(updates, 'branchIds') || hasOwn(updates, 'branch_ids')) {
+      payload.branch_ids = toIdList(firstDefined(updates.branchIds, updates.branch_ids));
+    }
     try {
       const res = await servicesAPI.update(id, payload);
       setServices((prev) => prev.map((s) => (s.id === id ? transformService(res.data) : s)));
     } catch (err) {
       console.error('Error actualizando servicio:', err);
+      throw err;
     }
   }, []);
 
@@ -461,6 +494,7 @@ export function AppProvider({ children }) {
       setServices((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
       console.error('Error eliminando servicio:', err);
+      throw err;
     }
   }, []);
 
@@ -470,10 +504,10 @@ export function AppProvider({ children }) {
       specialty: therapist.specialty,
       experience: therapist.experience,
       image: getImagePath(therapist.image) || '',
-      is_available: therapist.available ?? true,
+      is_available: firstDefined(therapist.available, therapist.is_available, true),
       schedule: therapist.schedule,
-      service_ids: therapist.serviceIds || [],
-      branch_ids: therapist.branchIds || [],
+      service_ids: toIdList(firstDefined(therapist.serviceIds, therapist.service_ids)),
+      branch_ids: toIdList(firstDefined(therapist.branchIds, therapist.branch_ids)),
     };
     try {
       const res = await therapistsAPI.create(payload);
@@ -481,7 +515,7 @@ export function AppProvider({ children }) {
       return res.data;
     } catch (err) {
       console.error('Error creando terapeuta:', err);
-      return null;
+      throw err;
     }
   }, []);
 
@@ -491,16 +525,24 @@ export function AppProvider({ children }) {
       specialty: updates.specialty,
       experience: updates.experience,
       image: getImagePath(updates.image) || '',
-      is_available: updates.available ?? true,
       schedule: updates.schedule,
-      service_ids: updates.serviceIds || [],
-      branch_ids: updates.branchIds || [],
     };
+    if (hasOwn(updates, 'available') || hasOwn(updates, 'is_available')) {
+      payload.is_available = firstDefined(updates.available, updates.is_available);
+    }
+    if (hasOwn(updates, 'serviceIds') || hasOwn(updates, 'service_ids')) {
+      payload.service_ids = toIdList(firstDefined(updates.serviceIds, updates.service_ids));
+    }
+    if (hasOwn(updates, 'branchIds') || hasOwn(updates, 'branch_ids')) {
+      payload.branch_ids = toIdList(firstDefined(updates.branchIds, updates.branch_ids));
+    }
     try {
       const res = await therapistsAPI.update(id, payload);
       setTherapists((prev) => prev.map((t) => (t.id === id ? transformTherapist(res.data) : t)));
+      return res.data;
     } catch (err) {
       console.error('Error actualizando terapeuta:', err);
+      throw err;
     }
   }, []);
 
@@ -510,6 +552,7 @@ export function AppProvider({ children }) {
       setTherapists((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
       console.error('Error eliminando terapeuta:', err);
+      throw err;
     }
   }, []);
 
@@ -569,9 +612,9 @@ export function AppProvider({ children }) {
       description: cabin.description,
       capacity: cabin.capacity,
       image: getImagePath(cabin.image),
-      is_available: cabin.available ?? cabin.is_available ?? true,
-      branch_id: cabin.branchId || cabin.branch_id,
-      service_ids: cabin.serviceIds || [],
+      is_available: firstDefined(cabin.available, cabin.is_available, true),
+      branch_id: firstDefined(cabin.branchId, cabin.branch_id),
+      service_ids: toIdList(firstDefined(cabin.serviceIds, cabin.service_ids)),
     };
     try {
       const res = await cabinsAPI.create(payload);
@@ -579,7 +622,7 @@ export function AppProvider({ children }) {
       return res.data;
     } catch (err) {
       console.error('Error creando cabina:', err);
-      return null;
+      throw err;
     }
   }, []);
 
@@ -589,15 +632,23 @@ export function AppProvider({ children }) {
       description: updates.description,
       capacity: updates.capacity,
       image: getImagePath(updates.image),
-      is_available: updates.available ?? updates.is_available ?? true,
-      branch_id: updates.branchId || updates.branch_id,
-      service_ids: updates.serviceIds || [],
     };
+    if (hasOwn(updates, 'available') || hasOwn(updates, 'is_available')) {
+      payload.is_available = firstDefined(updates.available, updates.is_available);
+    }
+    if (hasOwn(updates, 'branchId') || hasOwn(updates, 'branch_id')) {
+      payload.branch_id = firstDefined(updates.branchId, updates.branch_id);
+    }
+    if (hasOwn(updates, 'serviceIds') || hasOwn(updates, 'service_ids')) {
+      payload.service_ids = toIdList(firstDefined(updates.serviceIds, updates.service_ids));
+    }
     try {
       const res = await cabinsAPI.update(id, payload);
       setCabins((prev) => prev.map((c) => (c.id === id ? transformCabin(res.data) : c)));
+      return res.data;
     } catch (err) {
       console.error('Error actualizando cabina:', err);
+      throw err;
     }
   }, []);
 
@@ -607,6 +658,7 @@ export function AppProvider({ children }) {
       setCabins((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
       console.error('Error eliminando cabina:', err);
+      throw err;
     }
   }, []);
 
@@ -634,12 +686,15 @@ export function AppProvider({ children }) {
       service_hours: expandedHours,
     };
     try {
+      if (expandedIds.length === 0) {
+        throw new Error('El paquete debe tener al menos un servicio. Agrega sesiones antes de guardar.');
+      }
       const res = await packagesAPI.create(payload);
       setPackages((prev) => [...prev, transformPackage(res.data)]);
       return res.data;
     } catch (err) {
       console.error('Error creando paquete:', err);
-      return null;
+      throw err;
     }
   }, []);
 
@@ -661,16 +716,24 @@ export function AppProvider({ children }) {
       original_price: updates.originalPrice,
       package_price: updates.packagePrice,
       image: getImagePath(updates.image) || '',
-      is_active: updates.active ?? true,
-      branch_id: updates.branchId || null,
-      service_ids: expandedIds,
-      service_hours: expandedHours,
     };
+    if (hasOwn(updates, 'active') || hasOwn(updates, 'is_active')) {
+      payload.is_active = firstDefined(updates.active, updates.is_active);
+    }
+    if (hasOwn(updates, 'branchId') || hasOwn(updates, 'branch_id')) {
+      payload.branch_id = firstDefined(updates.branchId, updates.branch_id);
+    }
+    if (hasOwn(updates, 'sessions')) {
+      payload.service_ids = expandedIds;
+      payload.service_hours = expandedHours;
+    }
     try {
       const res = await packagesAPI.update(id, payload);
       setPackages((prev) => prev.map((p) => (p.id === id ? transformPackage(res.data) : p)));
+      return res.data;
     } catch (err) {
       console.error('Error actualizando paquete:', err);
+      throw err;
     }
   }, []);
 
@@ -680,6 +743,7 @@ export function AppProvider({ children }) {
       setPackages((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
       console.error('Error eliminando paquete:', err);
+      throw err;
     }
   }, []);
 
@@ -688,9 +752,9 @@ export function AppProvider({ children }) {
       name: branch.name,
       address: branch.address,
       phone: branch.phone,
-      is_active: branch.is_active ?? true,
-      therapist_ids: branch.therapistIds || [],
-      service_ids: branch.serviceIds || [],
+      is_active: firstDefined(branch.is_active, branch.active, true),
+      therapist_ids: toIdList(firstDefined(branch.therapistIds, branch.therapist_ids)),
+      service_ids: toIdList(firstDefined(branch.serviceIds, branch.service_ids)),
     };
     try {
       const res = await branchesAPI.create(payload);
@@ -698,7 +762,7 @@ export function AppProvider({ children }) {
       return res.data;
     } catch (err) {
       console.error('Error creando sede:', err);
-      return null;
+      throw err;
     }
   }, []);
 
@@ -707,15 +771,17 @@ export function AppProvider({ children }) {
       name: updates.name,
       address: updates.address,
       phone: updates.phone,
-      is_active: updates.is_active ?? true,
-      therapist_ids: updates.therapistIds || [],
-      service_ids: updates.serviceIds || [],
+      is_active: firstDefined(updates.is_active, updates.active, true),
+      therapist_ids: toIdList(firstDefined(updates.therapistIds, updates.therapist_ids)),
+      service_ids: toIdList(firstDefined(updates.serviceIds, updates.service_ids)),
     };
     try {
       const res = await branchesAPI.update(id, payload);
       setBranches((prev) => prev.map((b) => (b.id === id ? transformBranch(res.data) : b)));
+      return res.data;
     } catch (err) {
       console.error('Error actualizando sede:', err);
+      throw err;
     }
   }, []);
 
@@ -725,6 +791,7 @@ export function AppProvider({ children }) {
       setBranches((prev) => prev.filter((b) => b.id !== id));
     } catch (err) {
       console.error('Error eliminando sede:', err);
+      throw err;
     }
   }, []);
 

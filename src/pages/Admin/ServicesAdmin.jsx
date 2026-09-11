@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import useEscClose from '../../hooks/useEscClose';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
+import NotificationModal from '../../components/NotificationModal';
 import MultiSelect from '../../components/MultiSelect';
 import Pagination from '../../components/Pagination';
 import LoadingButton from '../../components/LoadingButton';
@@ -19,6 +20,7 @@ export default function ServicesAdmin() {
   const [filterBranch, setFilterBranch] = useState('');
   const [tab, setTab] = useState('active');
   const [optimistic, setOptimistic] = useState({});
+  const [notify, setNotify] = useState(null);
   const imageRef = useRef(null);
   const [form, setForm] = useState({
     name: '', description: '', price: 30, durationValue: 1, durationUnit: 'hours', image: '', category: '', branchIds: [],
@@ -58,14 +60,25 @@ export default function ServicesAdmin() {
     try {
       const raw = Number(form.durationValue) || 0;
       const durationMin = Math.max(5, form.durationUnit === 'hours' ? Math.round(raw * 60) : Math.round(raw));
-      const payload = { ...form, pricePerHour: form.price, durationMin };
+      const payload = {
+        ...form,
+        name: form.name,
+        description: form.description,
+        pricePerHour: form.price,
+        durationMin,
+        category: (form.category || '').trim() || 'general',
+        branchIds: form.branchIds || [],
+      };
       if (editingId) {
+        const current = services.find((s) => s.id === editingId);
+        payload.is_active = current ? (optimistic[current.id] ?? current.is_active ?? current.active ?? true) : true;
         await updateService(editingId, payload);
         if (imageRef.current) {
           const url = await imageRef.current.uploadPending(editingId);
           if (url) updateEntityImage('service', editingId, url);
         }
       } else {
+        payload.is_active = true;
         const newService = await addService(payload);
         if (newService && newService.id && imageRef.current) {
           const url = await imageRef.current.uploadPending(newService.id);
@@ -73,27 +86,58 @@ export default function ServicesAdmin() {
         }
       }
       setShowModal(false);
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'No se pudo guardar el servicio. Verifica los datos e intenta de nuevo.';
+      setNotify({ type: 'error', title: 'No se pudo guardar', message });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = (id) => setDeleteTarget(id);
-  const confirmDelete = () => { deleteService(deleteTarget); setDeleteTarget(null); };
+  const confirmDelete = async () => {
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    try {
+      await deleteService(target);
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'No se pudo eliminar el servicio. Intenta de nuevo.';
+      setNotify({ type: 'error', title: 'No se pudo eliminar', message });
+    }
+  };
 
-  const toggleServiceActive = (service) => {
+  const toggleServiceActive = async (service) => {
     const next = !(service.is_active ?? service.active ?? true);
     setOptimistic((prev) => ({ ...prev, [service.id]: next }));
-    updateService(service.id, {
-      name: service.name,
-      description: service.description,
-      pricePerHour: service.pricePerHour,
-      durationMin: service.durationMin ?? 60,
-      category: service.category,
-      image: service.image,
-      branchIds: service.branchIds || [],
-      is_active: next,
-    });
+    try {
+      await updateService(service.id, {
+        name: service.name,
+        description: service.description,
+        pricePerHour: service.pricePerHour,
+        durationMin: service.durationMin ?? 60,
+        category: service.category,
+        image: service.image,
+        branchIds: service.branchIds || [],
+        is_active: next,
+      });
+    } catch (err) {
+      setOptimistic((prev) => {
+        const copy = { ...prev };
+        delete copy[service.id];
+        return copy;
+      });
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'No se pudo cambiar el estado del servicio. Intenta de nuevo.';
+      setNotify({ type: 'error', title: 'No se pudo actualizar', message });
+    }
   };
 
   const isActiveService = (s) => (optimistic[s.id] ?? s.is_active ?? s.active ?? true);
@@ -310,6 +354,13 @@ export default function ServicesAdmin() {
         </div>
       )}
       <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar servicio" message="¿Estás seguro de que deseas eliminar este servicio? Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+      <NotificationModal
+        open={!!notify}
+        type={notify?.type || 'info'}
+        title={notify?.title || ''}
+        message={notify?.message || ''}
+        onClose={() => setNotify(null)}
+      />
     </div>
   );
 }

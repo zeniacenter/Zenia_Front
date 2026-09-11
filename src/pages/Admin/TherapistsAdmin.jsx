@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import useEscClose from '../../hooks/useEscClose';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
+import NotificationModal from '../../components/NotificationModal';
 import MultiSelect from '../../components/MultiSelect';
 import Pagination from '../../components/Pagination';
 import LoadingButton from '../../components/LoadingButton';
@@ -37,6 +38,7 @@ export default function TherapistsAdmin() {
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [filterBranch, setFilterBranch] = useState('');
+  const [notify, setNotify] = useState(null);
   const imageRef = useRef(null);
   const [form, setForm] = useState({
     name: '',
@@ -121,13 +123,31 @@ export default function TherapistsAdmin() {
         }
       }
       setShowModal(false);
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'No se pudo guardar el terapeuta. Verifica los datos e intenta de nuevo.';
+      setNotify({ type: 'error', title: 'No se pudo guardar', message });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = (id) => setDeleteTarget(id);
-  const confirmDelete = () => { deleteTherapist(deleteTarget); setDeleteTarget(null); };
+  const confirmDelete = async () => {
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    try {
+      await deleteTherapist(target);
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'No se pudo eliminar el terapeuta. Intenta de nuevo.';
+      setNotify({ type: 'error', title: 'No se pudo eliminar', message });
+    }
+  };
 
   const getServiceNames = (ids) => (ids || []).map((id) => services.find((s) => s.id === id)?.name || 'N/A').join(', ');
   const getBranchNames = (ids) => (ids || []).map((id) => branches.find((b) => b.id === id)?.name || 'N/A').join(', ');
@@ -280,6 +300,13 @@ export default function TherapistsAdmin() {
         </div>
       )}
       <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar terapeuta" message="¿Estás seguro de que deseas eliminar este terapeuta? Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+      <NotificationModal
+        open={!!notify}
+        type={notify?.type || 'info'}
+        title={notify?.title || ''}
+        message={notify?.message || ''}
+        onClose={() => setNotify(null)}
+      />
     </div>
   );
 }

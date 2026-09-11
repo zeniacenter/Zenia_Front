@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import useEscClose from '../../hooks/useEscClose';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
+import NotificationModal from '../../components/NotificationModal';
 import MultiSelect from '../../components/MultiSelect';
 import Pagination from '../../components/Pagination';
 import LoadingButton from '../../components/LoadingButton';
@@ -15,6 +16,7 @@ export default function CabinsAdmin() {
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [filterBranch, setFilterBranch] = useState('');
+  const [notify, setNotify] = useState(null);
   const imageRef = useRef(null);
   const [form, setForm] = useState({
     name: '', description: '', capacity: 1, image: '', is_available: true, branchId: '', serviceIds: [],
@@ -78,13 +80,31 @@ export default function CabinsAdmin() {
         }
       }
       setShowModal(false);
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'No se pudo guardar la cabina. Verifica los datos e intenta de nuevo.';
+      setNotify({ type: 'error', title: 'No se pudo guardar', message });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = (id) => setDeleteTarget(id);
-  const confirmDelete = () => { deleteCabin(deleteTarget); setDeleteTarget(null); };
+  const confirmDelete = async () => {
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    try {
+      await deleteCabin(target);
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'No se pudo eliminar la cabina. Intenta de nuevo.';
+      setNotify({ type: 'error', title: 'No se pudo eliminar', message });
+    }
+  };
 
   const getServiceNames = (ids) => (ids || []).map((id) => services.find((s) => s.id === id)?.name || 'N/A').join(', ');
   const getBranchName = (branchId) => {
@@ -238,6 +258,13 @@ export default function CabinsAdmin() {
         </div>
       )}
       <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar cabina" message="¿Estás seguro de que deseas eliminar esta cabina? Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+      <NotificationModal
+        open={!!notify}
+        type={notify?.type || 'info'}
+        title={notify?.title || ''}
+        message={notify?.message || ''}
+        onClose={() => setNotify(null)}
+      />
     </div>
   );
 }

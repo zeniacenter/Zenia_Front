@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import useEscClose from '../../hooks/useEscClose';
 import ImageUpload from '../../components/ImageUpload';
 import ConfirmModal from '../../components/ConfirmModal';
+import NotificationModal from '../../components/NotificationModal';
 import Pagination from '../../components/Pagination';
 import LoadingButton from '../../components/LoadingButton';
 import { CardGridSkeleton } from '../../components/Skeleton';
@@ -14,6 +15,7 @@ export default function PackagesAdmin() {
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [filterBranch, setFilterBranch] = useState('');
+  const [notify, setNotify] = useState(null);
   const imageRef = useRef(null);
   const [sessionMode, setSessionMode] = useState('services');
   const [form, setForm] = useState({
@@ -108,6 +110,14 @@ export default function PackagesAdmin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (saving) return;
+    if (form.sessions.length === 0) {
+      setNotify({
+        type: 'warning',
+        title: 'Faltan servicios',
+        message: 'El paquete debe tener al menos un servicio. Agrega sesiones antes de guardar.',
+      });
+      return;
+    }
     setSaving(true);
     try {
       if (editingId) {
@@ -124,6 +134,12 @@ export default function PackagesAdmin() {
         }
       }
       setShowModal(false);
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'No se pudo guardar el paquete. Verifica los datos e intenta de nuevo.';
+      setNotify({ type: 'error', title: 'No se pudo guardar', message });
     } finally {
       setSaving(false);
     }
@@ -133,9 +149,18 @@ export default function PackagesAdmin() {
     setDeleteTarget(id);
   };
 
-  const confirmDelete = () => {
-    deletePackage(deleteTarget);
+  const confirmDelete = async () => {
+    const target = deleteTarget;
     setDeleteTarget(null);
+    try {
+      await deletePackage(target);
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        'No se pudo eliminar el paquete. Intenta de nuevo.';
+      setNotify({ type: 'error', title: 'No se pudo eliminar', message });
+    }
   };
 
   const getServiceNames = (sessions) =>
@@ -454,6 +479,13 @@ export default function PackagesAdmin() {
         message="¿Estás seguro de que deseas eliminar este paquete? Esta acción no se puede deshacer."
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+      <NotificationModal
+        open={!!notify}
+        type={notify?.type || 'info'}
+        title={notify?.title || ''}
+        message={notify?.message || ''}
+        onClose={() => setNotify(null)}
       />
     </div>
   );
