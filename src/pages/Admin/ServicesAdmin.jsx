@@ -9,6 +9,7 @@ import LoadingButton from '../../components/LoadingButton';
 import { formatDuration as fmtDuration } from '../../utils/hours';
 import { Camera } from 'lucide-react';
 import { TableSkeleton } from '../../components/Skeleton';
+import NotificationModal from '../../components/NotificationModal';
 
 export default function ServicesAdmin() {
   const { services, branches, addService, updateService, deleteService, updateEntityImage, hasModulePermission, loading } = useApp();
@@ -19,6 +20,7 @@ export default function ServicesAdmin() {
   const [filterBranch, setFilterBranch] = useState('');
   const [tab, setTab] = useState('active');
   const [optimistic, setOptimistic] = useState({});
+  const [notify, setNotify] = useState(null);
   const imageRef = useRef(null);
   const [form, setForm] = useState({
     name: '', description: '', price: 30, durationValue: 1, durationUnit: 'hours', image: '', category: '', branchIds: [],
@@ -73,13 +75,28 @@ export default function ServicesAdmin() {
         }
       }
       setShowModal(false);
+    } catch (err) {
+      console.error('Error al guardar servicio:', err);
+      setNotify({
+        type: 'error',
+        title: 'Error al guardar servicio',
+        message: (err.response?.data?.message || err.message || 'No se pudo guardar. Revisa los datos e inténtalo de nuevo.'),
+      });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = (id) => setDeleteTarget(id);
-  const confirmDelete = () => { deleteService(deleteTarget); setDeleteTarget(null); };
+  const confirmDelete = () => {
+    deleteService(deleteTarget)
+      .then(() => setDeleteTarget(null))
+      .catch((err) => {
+        console.error('Error al eliminar servicio:', err);
+        setNotify({ type: 'error', title: 'Error al eliminar', message: (err.response?.data?.message || err.message || 'No se pudo eliminar el servicio.') });
+        setDeleteTarget(null);
+      });
+  };
 
   const toggleServiceActive = (service) => {
     const next = !(service.is_active ?? service.active ?? true);
@@ -93,6 +110,14 @@ export default function ServicesAdmin() {
       image: service.image,
       branchIds: service.branchIds || [],
       is_active: next,
+    }).catch((err) => {
+      console.error('Error al cambiar estado del servicio:', err);
+      setOptimistic((prev) => ({ ...prev, [service.id]: service.is_active ?? service.active ?? true }));
+      setNotify({
+        type: 'error',
+        title: 'Error al cambiar estado',
+        message: (err.response?.data?.message || err.message || 'No se pudo actualizar el estado del servicio.'),
+      });
     });
   };
 
@@ -121,7 +146,7 @@ export default function ServicesAdmin() {
   return (
     <div>
       <div className="admin-header">
-        <h2>Gestión de Servicios</h2>
+        <h2>GestiÃ³n de Servicios</h2>
         {hasModulePermission('servicios', 'can_create') && (
           <button className="btn btn-primary" onClick={openNew}>+ Nuevo Servicio</button>
         )}
@@ -173,10 +198,10 @@ export default function ServicesAdmin() {
             <tr>
               <th>Imagen</th>
               <th>Nombre</th>
-              <th>Descripción</th>
-              <th>Duración</th>
+              <th>DescripciÃ³n</th>
+              <th>DuraciÃ³n</th>
               <th>Precio</th>
-              <th>Categoría</th>
+              <th>CategorÃ­a</th>
               <th>Sedes</th>
               <th>Estado</th>
               <th>Acciones</th>
@@ -261,7 +286,7 @@ export default function ServicesAdmin() {
           <div className="modal">
             <div className="modal-header">
               <h3>{editingId ? 'Editar Servicio' : 'Nuevo Servicio'}</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+              <button className="modal-close" onClick={() => setShowModal(false)}>Ã—</button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
@@ -269,12 +294,12 @@ export default function ServicesAdmin() {
                 <input type="text" className="form-control" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
               <div className="form-group">
-                <label>Descripción</label>
+                <label>DescripciÃ³n</label>
                 <textarea className="form-control" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
-                  <label>Duración *</label>
+                  <label>DuraciÃ³n *</label>
                   <input type="number" className="form-control" min={0} step={form.durationUnit === 'hours' ? 0.5 : 5} value={form.durationValue} onChange={(e) => setForm({ ...form, durationValue: Number(e.target.value) })} required />
                 </div>
                 <div className="form-group">
@@ -291,13 +316,13 @@ export default function ServicesAdmin() {
               </div>
               <ImageUpload ref={imageRef} value={form.image} onChange={(url) => setForm({ ...form, image: url })} imageableType="service" imageableId={editingId} label="Imagen del servicio" />
               <div className="form-group">
-                <label>Categoría</label>
-                <input type="text" className="form-control" placeholder="Ej: relajacion, terapeutico" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+                <label>CategorÃ­a</label>
+                <input type="text" className="form-control" placeholder="Ej: relajacion, terapeutico" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required />
               </div>
               <div className="form-group">
                 <label>Sedes donde se ofrece</label>
                 <MultiSelect options={branchOptions} value={form.branchIds} onChange={(selected) => setForm((prev) => ({ ...prev, branchIds: selected }))} placeholder="Buscar sede..." />
-                <small style={{ color: 'var(--land-text-muted)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>Si no seleccionas ninguna, el servicio estará en todas.</small>
+                <small style={{ color: 'var(--land-text-muted)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>Si no seleccionas ninguna, el servicio estarÃ¡ en todas.</small>
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
@@ -309,7 +334,15 @@ export default function ServicesAdmin() {
           </div>
         </div>
       )}
-      <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar servicio" message="¿Estás seguro de que deseas eliminar este servicio? Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar servicio" message="Â¿EstÃ¡s seguro de que deseas eliminar este servicio? Esta acciÃ³n no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+
+      <NotificationModal
+        open={!!notify}
+        type={notify?.type || 'info'}
+        title={notify?.title || ''}
+        message={notify?.message || ''}
+        onClose={() => setNotify(null)}
+      />
     </div>
   );
 }

@@ -175,7 +175,7 @@ export default function AdminBooking() {
   const getTotal = () => {
     if (bookingType === 'package' && selectedPackage) {
       const pkg = getSelectedPackageObj();
-      return pkg ? pkg.packagePrice * sessionCount : 0;
+      return pkg ? (pkg.packagePrice || 0) : 0;
     }
     const service = getSelectedServiceObj();
     if (!service) return 0;

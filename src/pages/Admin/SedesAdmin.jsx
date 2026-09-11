@@ -5,6 +5,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import MultiSelect from '../../components/MultiSelect';
 import LoadingButton from '../../components/LoadingButton';
 import { TableSkeleton } from '../../components/Skeleton';
+import NotificationModal from '../../components/NotificationModal';
 
 export default function SedesAdmin() {
   const { branches, therapists, services, addBranch, updateBranch, deleteBranch, hasModulePermission, loading } = useApp();
@@ -12,6 +13,7 @@ export default function SedesAdmin() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [notify, setNotify] = useState(null);
   const [form, setForm] = useState({
     name: '', address: '', phone: '', is_active: true, therapistIds: [], serviceIds: [],
   });
@@ -44,13 +46,28 @@ export default function SedesAdmin() {
         await addBranch(form);
       }
       setShowModal(false);
+    } catch (err) {
+      console.error('Error al guardar sede:', err);
+      setNotify({
+        type: 'error',
+        title: 'Error al guardar sede',
+        message: (err.response?.data?.message || err.message || 'No se pudo guardar. Revisa los datos e inténtalo de nuevo.'),
+      });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = (id) => setDeleteTarget(id);
-  const confirmDelete = () => { deleteBranch(deleteTarget); setDeleteTarget(null); };
+  const confirmDelete = () => {
+    deleteBranch(deleteTarget)
+      .then(() => setDeleteTarget(null))
+      .catch((err) => {
+        console.error('Error al eliminar sede:', err);
+        setNotify({ type: 'error', title: 'Error al eliminar', message: (err.response?.data?.message || err.message || 'No se pudo eliminar la sede.') });
+        setDeleteTarget(null);
+      });
+  };
 
   const getTherapistNames = (ids) => (ids || []).map((id) => therapists.find((t) => t.id === id)?.name || 'N/A').join(', ');
   const getServiceNames = (ids) => (ids || []).map((id) => services.find((s) => s.id === id)?.name || 'N/A').join(', ');
@@ -68,7 +85,7 @@ export default function SedesAdmin() {
   return (
     <div>
       <div className="admin-header">
-        <h2>Gestión de Sedes</h2>
+        <h2>GestiÃ³n de Sedes</h2>
         {hasModulePermission('sedas', 'can_create') && (
           <button className="btn btn-primary" onClick={openNew}>+ Nueva Sede</button>
         )}
@@ -82,8 +99,8 @@ export default function SedesAdmin() {
           <thead>
             <tr>
               <th>Nombre</th>
-              <th>Dirección</th>
-              <th>Teléfono</th>
+              <th>DirecciÃ³n</th>
+              <th>TelÃ©fono</th>
               <th>Terapeutas</th>
               <th>Servicios</th>
               <th>Estado</th>
@@ -136,7 +153,7 @@ export default function SedesAdmin() {
           <div className="modal">
             <div className="modal-header">
               <h3>{editingId ? 'Editar Sede' : 'Nueva Sede'}</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+              <button className="modal-close" onClick={() => setShowModal(false)}>Ã—</button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
@@ -144,11 +161,11 @@ export default function SedesAdmin() {
                 <input type="text" className="form-control" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
               <div className="form-group">
-                <label>Dirección</label>
+                <label>DirecciÃ³n</label>
                 <input type="text" className="form-control" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
               </div>
               <div className="form-group">
-                <label>Teléfono</label>
+                <label>TelÃ©fono</label>
                 <input type="text" className="form-control" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
               <div className="form-group">
@@ -178,7 +195,15 @@ export default function SedesAdmin() {
           </div>
         </div>
       )}
-      <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar sede" message="¿Estás seguro de que deseas eliminar esta sede? Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar sede" message="Â¿EstÃ¡s seguro de que deseas eliminar esta sede? Esta acciÃ³n no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+
+      <NotificationModal
+        open={!!notify}
+        type={notify?.type || 'info'}
+        title={notify?.title || ''}
+        message={notify?.message || ''}
+        onClose={() => setNotify(null)}
+      />
     </div>
   );
 }

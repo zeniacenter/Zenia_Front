@@ -7,6 +7,7 @@ import MultiSelect from '../../components/MultiSelect';
 import Pagination from '../../components/Pagination';
 import LoadingButton from '../../components/LoadingButton';
 import { CardGridSkeleton } from '../../components/Skeleton';
+import NotificationModal from '../../components/NotificationModal';
 
 export default function CabinsAdmin() {
   const { cabins, services, branches, addCabin, updateCabin, deleteCabin, updateEntityImage, hasModulePermission, loading } = useApp();
@@ -14,6 +15,7 @@ export default function CabinsAdmin() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [notify, setNotify] = useState(null);
   const [filterBranch, setFilterBranch] = useState('');
   const imageRef = useRef(null);
   const [form, setForm] = useState({
@@ -40,10 +42,10 @@ export default function CabinsAdmin() {
 
   const availableServices = form.branchId
     ? services.filter((s) => {
-        const branch = branches.find((b) => b.id === Number(form.branchId));
-        if (!branch || !branch.serviceIds || branch.serviceIds.length === 0) return true;
-        return branch.serviceIds.includes(s.id);
-      })
+      const branch = branches.find((b) => b.id === Number(form.branchId));
+      if (!branch || !branch.serviceIds || branch.serviceIds.length === 0) return true;
+      return branch.serviceIds.includes(s.id);
+    })
     : services;
 
   const handleBranchChange = (e) => {
@@ -78,13 +80,28 @@ export default function CabinsAdmin() {
         }
       }
       setShowModal(false);
+    } catch (err) {
+      console.error('Error al guardar cabina:', err);
+      setNotify({
+        type: 'error',
+        title: 'Error al guardar cabina',
+        message: (err.response?.data?.message || err.message || 'No se pudo guardar. Revisa los datos e inténtalo de nuevo.'),
+      });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = (id) => setDeleteTarget(id);
-  const confirmDelete = () => { deleteCabin(deleteTarget); setDeleteTarget(null); };
+  const confirmDelete = () => {
+    deleteCabin(deleteTarget)
+      .then(() => setDeleteTarget(null))
+      .catch((err) => {
+        console.error('Error al eliminar cabina:', err);
+        setNotify({ type: 'error', title: 'Error al eliminar', message: (err.response?.data?.message || err.message || 'No se pudo eliminar la cabina.') });
+        setDeleteTarget(null);
+      });
+  };
 
   const getServiceNames = (ids) => (ids || []).map((id) => services.find((s) => s.id === id)?.name || 'N/A').join(', ');
   const getBranchName = (branchId) => {
@@ -132,50 +149,50 @@ export default function CabinsAdmin() {
       {loading ? (
         <CardGridSkeleton columns={3} rows={2} />
       ) : (
-      <>
-      <div className="services-grid">
-        {pagedCabins.map((cabin) => (
-          <div className="card" key={cabin.id}>
-            {cabin.image && <img src={cabin.image} alt={cabin.name} className="card-image" loading="lazy" />}
-            <div className="card-body">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                <h3 className="card-title" style={{ margin: 0 }}>{cabin.name}</h3>
-                <span className={`badge ${cabin.is_available ?? cabin.available ? 'badge-confirmed' : 'badge-cancelled'}`}>
-                  {cabin.is_available ?? cabin.available ? 'Disponible' : 'No disponible'}
-                </span>
+        <>
+          <div className="services-grid">
+            {pagedCabins.map((cabin) => (
+              <div className="card" key={cabin.id}>
+                {cabin.image && <img src={cabin.image} alt={cabin.name} className="card-image" loading="lazy" />}
+                <div className="card-body">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                    <h3 className="card-title" style={{ margin: 0 }}>{cabin.name}</h3>
+                    <span className={`badge ${cabin.is_available ?? cabin.available ? 'badge-confirmed' : 'badge-cancelled'}`}>
+                      {cabin.is_available ?? cabin.available ? 'Disponible' : 'No disponible'}
+                    </span>
+                  </div>
+                  <p className="card-text">{cabin.description || 'Sin descripciÃ³n'}</p>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--land-text-muted)', marginBottom: '0.3rem' }}>
+                    Capacidad: {cabin.capacity} {cabin.capacity === 1 ? 'persona' : 'personas'}
+                  </p>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--land-text-muted)', marginBottom: '0.3rem' }}>
+                    Sede: {getBranchName(cabin.branchId)}
+                  </p>
+                  {cabin.serviceIds?.length > 0 && (
+                    <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '1rem' }}>
+                      Servicios: {getServiceNames(cabin.serviceIds)}
+                    </p>
+                  )}
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {hasModulePermission('cabinas', 'can_edit') && (
+                      <button className="btn btn-sm btn-outline" onClick={() => openEdit(cabin)}>Editar</button>
+                    )}
+                    {hasModulePermission('cabinas', 'can_delete') && (
+                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(cabin.id)}>Eliminar</button>
+                    )}
+                  </div>
+                </div>
               </div>
-              <p className="card-text">{cabin.description || 'Sin descripción'}</p>
-              <p style={{ fontSize: '0.85rem', color: 'var(--land-text-muted)', marginBottom: '0.3rem' }}>
-                Capacidad: {cabin.capacity} {cabin.capacity === 1 ? 'persona' : 'personas'}
-              </p>
-              <p style={{ fontSize: '0.85rem', color: 'var(--land-text-muted)', marginBottom: '0.3rem' }}>
-                Sede: {getBranchName(cabin.branchId)}
-              </p>
-              {cabin.serviceIds?.length > 0 && (
-                <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '1rem' }}>
-                  Servicios: {getServiceNames(cabin.serviceIds)}
-                </p>
-              )}
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {hasModulePermission('cabinas', 'can_edit') && (
-                  <button className="btn btn-sm btn-outline" onClick={() => openEdit(cabin)}>Editar</button>
-                )}
-                {hasModulePermission('cabinas', 'can_delete') && (
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(cabin.id)}>Eliminar</button>
-                )}
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <Pagination
-        total={filteredCabins.length}
-        page={page}
-        onPageChange={setPage}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={setRowsPerPage}
-      />
-      </>
+          <Pagination
+            total={filteredCabins.length}
+            page={page}
+            onPageChange={setPage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={setRowsPerPage}
+          />
+        </>
       )}
 
       {cabins.length === 0 && !loading && (
@@ -189,7 +206,7 @@ export default function CabinsAdmin() {
           <div className="modal">
             <div className="modal-header">
               <h3>{editingId ? 'Editar Cabina' : 'Nueva Cabina'}</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+              <button className="modal-close" onClick={() => setShowModal(false)}>Ã—</button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
@@ -197,7 +214,7 @@ export default function CabinsAdmin() {
                 <input type="text" className="form-control" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
               <div className="form-group">
-                <label>Descripción</label>
+                <label>DescripciÃ³n</label>
                 <textarea className="form-control" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
               <div className="form-group">
@@ -237,7 +254,15 @@ export default function CabinsAdmin() {
           </div>
         </div>
       )}
-      <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar cabina" message="¿Estás seguro de que deseas eliminar esta cabina? Esta acción no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmModal confirmLabel="Eliminar" open={!!deleteTarget} title="Eliminar cabina" message="Â¿EstÃ¡s seguro de que deseas eliminar esta cabina? Esta acciÃ³n no se puede deshacer." onConfirm={confirmDelete} onCancel={() => setDeleteTarget(null)} />
+
+      <NotificationModal
+        open={!!notify}
+        type={notify?.type || 'info'}
+        title={notify?.title || ''}
+        message={notify?.message || ''}
+        onClose={() => setNotify(null)}
+      />
     </div>
   );
 }

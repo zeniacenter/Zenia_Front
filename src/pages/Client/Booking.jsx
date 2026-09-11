@@ -373,7 +373,9 @@ export default function Booking() {
           const endM = endMinutes % 60;
           const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
 
-          const price = svc ? svc.pricePerHour || svc.price_per_hour || 0 : 0;
+          const pricePerSession = pkg && sessions.length > 0
+            ? (pkg.packagePrice || pkg.package_price || 0) / sessions.length
+            : (svc ? svc.pricePerHour || svc.price_per_hour || 0 : 0);
           await addAppointment({
             client_name: clientName,
             client_last_name: clientLastName,
@@ -390,7 +392,7 @@ export default function Booking() {
             start_time: sched.time,
             end_time: endTime,
             hours,
-            total_price: price,
+            total_price: pricePerSession,
             status: 'confirmada',
           });
         }
