@@ -7,6 +7,7 @@ import NotificationModal from '../../components/NotificationModal';
 import Pagination from '../../components/Pagination';
 import LoadingButton from '../../components/LoadingButton';
 import { CardGridSkeleton } from '../../components/Skeleton';
+import { FALLBACK_IMAGE_400 } from '../../utils/placeholders';
 
 export default function PackagesAdmin() {
   const { packages, services, branches, addPackage, updatePackage, deletePackage, updateEntityImage, hasModulePermission, loading } = useApp();
@@ -220,7 +221,7 @@ export default function PackagesAdmin() {
       <div className="services-grid">
         {pagedPackages.map((pkg) => (
           <div className="card" key={pkg.id}>
-            <img src={pkg.image || 'https://via.placeholder.com/400x300'} alt={pkg.name} className="card-image" loading="lazy" />
+            <img src={pkg.image || FALLBACK_IMAGE_400} alt={pkg.name} className="card-image" loading="lazy" />
             <div className="card-body">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
                 <h3 className="card-title" style={{ margin: 0 }}>{pkg.name}</h3>

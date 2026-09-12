@@ -9,6 +9,7 @@ import Pagination from '../../components/Pagination';
 import LoadingButton from '../../components/LoadingButton';
 import { buildSlotOptions } from '../../utils/hours';
 import { CardGridSkeleton } from '../../components/Skeleton';
+import { FALLBACK_IMAGE_100 } from '../../utils/placeholders';
 
 const defaultSchedule = {
   lunes: ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'],
@@ -201,7 +202,7 @@ export default function TherapistsAdmin() {
       <div className="therapists-grid">
         {pagedTherapists.map((therapist) => (
           <div className="card therapist-card" key={therapist.id}>
-            <img src={therapist.image || 'https://via.placeholder.com/100'} alt={therapist.name} loading="lazy" />
+            <img src={therapist.image || FALLBACK_IMAGE_100} alt={therapist.name} loading="lazy" />
             <h3>{therapist.name}</h3>
             <p className="specialty">{therapist.specialty}</p>
             <p className="experience">{therapist.experience}</p>

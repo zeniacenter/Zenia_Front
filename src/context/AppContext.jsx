@@ -203,13 +203,17 @@ export function AppProvider({ children }) {
         usersAPI.myPermissions(),
       ]);
       const ok = (r) => r.status === 'fulfilled' ? r.value.data : null;
+      const list = (r, transform) => {
+        const d = ok(r);
+        return Array.isArray(d) ? d.map(transform) : d;
+      };
       return {
         users: ok(u),
-        services: ok(s),
-        therapists: ok(t),
-        cabins: ok(c),
-        packages: ok(p),
-        branches: ok(b),
+        services: list(s, transformService),
+        therapists: list(t, transformTherapist),
+        cabins: list(c, transformCabin),
+        packages: list(p, transformPackage),
+        branches: list(b, transformBranch),
         permissions: ok(perms),
       };
     },
@@ -246,8 +250,11 @@ export function AppProvider({ children }) {
       Array.isArray(adminData.data.therapists) && adminData.data.therapists.length > 0
     ) {
       setLoading(false);
+    } else if (adminData.isSuccess) {
+      // Catálogo llegó pero puede estar vacío (sin datos o sin permisos): sal del skeleton.
+      setLoading(false);
     }
-  }, [adminData.data, syncCatalog]);
+  }, [adminData.data, adminData.isSuccess, syncCatalog]);
 
   // Sincroniza el catálogo público a medida que llega.
   useEffect(() => {
