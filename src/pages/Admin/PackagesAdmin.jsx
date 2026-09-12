@@ -18,6 +18,7 @@ export default function PackagesAdmin() {
   const [notify, setNotify] = useState(null);
   const imageRef = useRef(null);
   const [sessionMode, setSessionMode] = useState('services');
+  const [originalTouched, setOriginalTouched] = useState(false);
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -32,8 +33,30 @@ export default function PackagesAdmin() {
 
   useEscClose(showModal, () => setShowModal(false));
 
+  const resetPriceTouch = () => setOriginalTouched(false);
+
+  const computeTotals = (sessions) => {
+    const original = sessions.reduce((sum, sess) => {
+      const s = services.find((sv) => sv.id === sess.id);
+      return sum + (s ? s.pricePerHour * (sess.hours || 1) * (sess.qty || 1) : 0);
+    }, 0);
+    const hours = sessions.reduce((sum, sess) => sum + (sess.hours || 1) * (sess.qty || 1), 0);
+    return { originalPrice: Math.round(original * 100) / 100, hours: hours || 1 };
+  };
+
+  const applyTotals = (prev, updated) => {
+    const { originalPrice, hours } = computeTotals(updated);
+    return {
+      ...prev,
+      sessions: updated,
+      hours,
+      ...(originalTouched ? {} : { originalPrice }),
+    };
+  };
+
   const openNew = () => {
     setEditingId(null);
+    resetPriceTouch();
     setSessionMode('services');
     setForm({
       name: '',
@@ -51,6 +74,7 @@ export default function PackagesAdmin() {
 
   const openEdit = (pkg) => {
     setEditingId(pkg.id);
+    resetPriceTouch();
     const sessions = pkg.sessions ? [...pkg.sessions.map((s) => ({ ...s }))] : (pkg.serviceIds || []).map((id) => ({ id, hours: 1 }));
     const hasDifferentHours = sessions.length > 1 && new Set(sessions.map((s) => s.hours)).size > 1;
     setSessionMode(hasDifferentHours ? 'sessions' : 'services');
@@ -72,39 +96,15 @@ export default function PackagesAdmin() {
   const availableServices = services.filter((s) => (s.is_active ?? true) && !addedServiceIds.includes(s.id));
 
   const addServiceToPackage = (serviceId) => {
-    setForm((prev) => {
-      const updated = [...prev.sessions, { id: Number(serviceId), hours: 1, qty: 1 }];
-      const totalOriginal = updated.reduce((sum, sess) => {
-        const s = services.find((sv) => sv.id === sess.id);
-        return sum + (s ? s.pricePerHour * sess.hours * (sess.qty || 1) : 0);
-      }, 0);
-      const totalHours = updated.reduce((sum, sess) => sum + sess.hours * (sess.qty || 1), 0);
-      return { ...prev, sessions: updated, originalPrice: totalOriginal, hours: totalHours || 1 };
-    });
+    setForm((prev) => applyTotals(prev, [...prev.sessions, { id: Number(serviceId), hours: 1, qty: 1 }]));
   };
 
   const removeServiceFromPackage = (serviceId) => {
-    setForm((prev) => {
-      const updated = prev.sessions.filter((s) => s.id !== Number(serviceId));
-      const totalOriginal = updated.reduce((sum, sess) => {
-        const s = services.find((sv) => sv.id === sess.id);
-        return sum + (s ? s.pricePerHour * sess.hours * (sess.qty || 1) : 0);
-      }, 0);
-      const totalHours = updated.reduce((sum, sess) => sum + sess.hours * (sess.qty || 1), 0);
-      return { ...prev, sessions: updated, originalPrice: totalOriginal, hours: totalHours || 1 };
-    });
+    setForm((prev) => applyTotals(prev, prev.sessions.filter((s) => s.id !== Number(serviceId))));
   };
 
   const updateServiceField = (serviceId, field, value) => {
-    setForm((prev) => {
-      const updated = prev.sessions.map((s) => s.id === Number(serviceId) ? { ...s, [field]: value } : s);
-      const totalOriginal = updated.reduce((sum, sess) => {
-        const s = services.find((sv) => sv.id === sess.id);
-        return sum + (s ? s.pricePerHour * sess.hours * (sess.qty || 1) : 0);
-      }, 0);
-      const totalHours = updated.reduce((sum, sess) => sum + sess.hours * (sess.qty || 1), 0);
-      return { ...prev, sessions: updated, originalPrice: totalOriginal, hours: totalHours || 1 };
-    });
+    setForm((prev) => applyTotals(prev, prev.sessions.map((s) => s.id === Number(serviceId) ? { ...s, [field]: value } : s)));
   };
 
   const handleSubmit = async (e) => {
@@ -420,10 +420,15 @@ export default function PackagesAdmin() {
                     min={0}
                     step="0.01"
                     value={form.originalPrice}
-                    onChange={(e) => setForm({ ...form, originalPrice: Number(e.target.value) })}
+                    onChange={(e) => {
+                      setOriginalTouched(true);
+                      setForm({ ...form, originalPrice: Number(e.target.value) });
+                    }}
                     required
                   />
-                  <small style={{ color: 'var(--land-text-muted)' }}>Calculo automático</small>
+                  <small style={{ color: 'var(--land-text-muted)' }}>
+                    {originalTouched ? 'Precio editado manualmente' : 'Se suma automático según los servicios'}
+                  </small>
                 </div>
                 <div className="form-group">
                   <label>Precio del paquete (S/)</label>
