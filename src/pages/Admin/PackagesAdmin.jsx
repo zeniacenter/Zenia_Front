@@ -97,7 +97,12 @@ export default function PackagesAdmin() {
   const availableServices = services.filter((s) => (s.is_active ?? true) && !addedServiceIds.includes(s.id));
 
   const addServiceToPackage = (serviceId) => {
-    setForm((prev) => applyTotals(prev, [...prev.sessions, { id: Number(serviceId), hours: 1, qty: 1 }]));
+    setForm((prev) => {
+      const svc = services.find((sv) => sv.id === Number(serviceId));
+      const minutes = svc?.durationMin ?? 60;
+      const hours = Math.round((minutes / 60) * 10) / 10;
+      return applyTotals(prev, [...prev.sessions, { id: Number(serviceId), hours, qty: 1 }]);
+    });
   };
 
   const removeServiceFromPackage = (serviceId) => {
