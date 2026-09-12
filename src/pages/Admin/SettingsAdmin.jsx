@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { invoicesAPI } from '../../services/api';
+import { formatMinutes } from '../../utils/hours';
 
-const HOUR_SELECT_OPTIONS = Array.from({ length: 17 }, (_, i) => `${String(i + 6).padStart(2, '0')}:00`);
+const toMin = (s) => {
+  const [h, m] = String(s || '').slice(0, 5).split(':').map(Number);
+  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : 0;
+};
 
 export default function SettingsAdmin() {
   const { settings, updateSettings } = useApp();
@@ -35,13 +39,13 @@ export default function SettingsAdmin() {
 
   const handleWorkStart = (value) => {
     const updates = { workStart: value };
-    if (value >= settings.workEnd) updates.workEnd = `${String(Math.min(23, parseInt(value, 10) + 1)).padStart(2, '0')}:00`;
+    if (value >= settings.workEnd) updates.workEnd = formatMinutes(Math.min(23 * 60 + 59, toMin(value) + 1));
     updateSettings(updates);
   };
 
   const handleWorkEnd = (value) => {
     const updates = { workEnd: value };
-    if (value <= settings.workStart) updates.workStart = `${String(Math.max(0, parseInt(value, 10) - 1)).padStart(2, '0')}:00`;
+    if (value <= settings.workStart) updates.workStart = formatMinutes(Math.max(0, toMin(value) - 1));
     updateSettings(updates);
   };
 
@@ -113,25 +117,21 @@ export default function SettingsAdmin() {
               </p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <select
+              <input
+                type="time"
+                step="60"
                 value={settings.workStart}
                 onChange={(e) => handleWorkStart(e.target.value)}
                 style={{ padding: '0.4rem 0.6rem', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#fff', color: '#3D2E24', fontSize: '0.85rem', outline: 'none' }}
-              >
-                {HOUR_SELECT_OPTIONS.map((h) => (
-                  <option key={h} value={h}>{h}</option>
-                ))}
-              </select>
+              />
               <span style={{ color: '#A89888', fontSize: '0.82rem' }}>a</span>
-              <select
+              <input
+                type="time"
+                step="60"
                 value={settings.workEnd}
                 onChange={(e) => handleWorkEnd(e.target.value)}
                 style={{ padding: '0.4rem 0.6rem', borderRadius: '8px', border: '1px solid #E8E0D6', background: '#fff', color: '#3D2E24', fontSize: '0.85rem', outline: 'none' }}
-              >
-                {HOUR_SELECT_OPTIONS.map((h) => (
-                  <option key={h} value={h}>{h}</option>
-                ))}
-              </select>
+              />
             </div>
           </div>
         </div>
