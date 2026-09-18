@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
 import NotificationModal from '../../components/NotificationModal';
 import { clearBusyCache } from '../../utils/busyCache';
+import { todayStr } from '../../utils/hours';
 
 export default function AdminBooking() {
   const { services, therapists, cabins, branches, packages, addAppointment, settings, appointments } = useApp();
@@ -311,7 +312,7 @@ export default function AdminBooking() {
     }
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
 
   const inputStyle = {
     width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px',

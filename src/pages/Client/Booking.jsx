@@ -3,9 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { Sparkles, Gift, ArrowLeft, MapPin } from 'lucide-react';
 import { personAPI, appointmentsAPI } from '../../services/api';
-import TimeSlotPicker from '../../components/TimeSlotPicker';
+import UnionSlotPicker from '../../components/UnionSlotPicker';
 import NotificationModal from '../../components/NotificationModal';
 import { clearBusyCache } from '../../utils/busyCache';
+import { todayStr, minToHhmm, therapistSlotsForDay } from '../../utils/hours';
 
 const BASE_STEPS = [
   { number: 1, label: 'Sede' },
@@ -16,8 +17,8 @@ const PICK_SERVICE_STEP = { number: 3, label: 'Servicios' };
 const PICK_PACKAGE_STEP = { number: 3, label: 'Paquetes' };
 
 const TAIL_STEPS = [
-  { number: 4, label: 'Terapeuta' },
-  { number: 5, label: 'Fecha' },
+  { number: 4, label: 'Fecha' },
+  { number: 5, label: 'Terapeuta' },
   { number: 6, label: 'Confirmar' },
 ];
 
@@ -73,6 +74,9 @@ export default function Booking() {
   const [dniLoading, setDniLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [notify, setNotify] = useState(null);
+  const [availableTherapists, setAvailableTherapists] = useState([]);
+  const [therapistLoading, setTherapistLoading] = useState(false);
+  const [slotWarning, setSlotWarning] = useState('');
 
   const handleDniBlur = useCallback(async () => {
     const dni = clientDni.trim();
@@ -149,6 +153,23 @@ export default function Booking() {
     : branchTherapists;
 
   const wizardTherapists = serviceTherapists;
+
+  const isMulti =
+    (bookingType === 'packages' && sessionSchedules.length > 1) ||
+    (bookingType === 'services' && sessionCount > 1 && sessionSchedules.length > 0);
+
+  const sessionHoursFor = (idx) => {
+    if (bookingType === 'packages') {
+      const pkg = packages.find((p) => p.id === selectedPackage);
+      return pkg?.sessions?.[idx]?.hours || 1;
+    }
+    const svcId = selectedServices[0];
+    return serviceDurations[svcId] || 1;
+  };
+
+  const sessionsKey = isMulti
+    ? sessionSchedules.map((s, i) => `${s.date}|${s.time}|${sessionHoursFor(i)}`).join(',')
+    : `${selectedDate}|${selectedTime}|${getTotalHours()}`;
 
   const singleSessionWithTime =
     selectedDate !== '' && selectedTime !== '' &&
@@ -235,6 +256,74 @@ export default function Booking() {
       }
     }
   }, [selectedServices, selectedTherapist, therapists]);
+
+  const pickTimeSlot = async ({ date, time, hours, apply }) => {
+    setSlotWarning('');
+    const durMin = Math.max(30, Math.round(hours * 60));
+    const endMins = toMin(time) + durMin;
+    const endTime = `${String(Math.floor(endMins / 60)).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`;
+    try {
+      const res = await appointmentsAPI.slotAvailability({ date, start: time, end: endTime });
+      const busy = new Set((res.data.therapist_ids || []).map(Number));
+      const stillFree = wizardTherapists.some((t) =>
+        !busy.has(Number(t.id)) &&
+        therapistSlotsForDay({ schedule: t.schedule, date, durationMin: durMin, today: todayStr() })
+          .map(minToHhmm)
+          .includes(time)
+      );
+      if (!stillFree) {
+        setSlotWarning('No hay terapeutas disponibles a esa hora, elige otra.');
+        return;
+      }
+    } catch {
+      // si la verificación falla, se permite elegir igualmente
+    }
+    apply(time);
+    setSelectedTherapist('');
+  };
+
+  useEffect(() => {
+    if (steps[step - 1]?.label !== 'Terapeuta') return;
+    let cancelled = false;
+    const run = async () => {
+      const sessions = isMulti
+        ? sessionSchedules.map((s, i) => ({ date: s.date, time: s.time, hours: sessionHoursFor(i) }))
+        : [{ date: selectedDate, time: selectedTime, hours: getTotalHours() }];
+      if (sessions.some((s) => !s.date || !s.time)) {
+        setAvailableTherapists([]);
+        return;
+      }
+      setTherapistLoading(true);
+      try {
+        const busy = new Set();
+        for (const s of sessions) {
+          const durMin = Math.max(30, Math.round(s.hours * 60));
+          const endMins = toMin(s.time) + durMin;
+          const endTime = `${String(Math.floor(endMins / 60)).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`;
+          const res = await appointmentsAPI.slotAvailability({ date: s.date, start: s.time, end: endTime });
+          (res.data.therapist_ids || []).forEach((id) => busy.add(Number(id)));
+        }
+        if (cancelled) return;
+        const durations = sessions.map((s) => Math.max(30, Math.round(s.hours * 60)));
+        const free = wizardTherapists.filter((t) => {
+          if (busy.has(Number(t.id))) return false;
+          return sessions.every((s, i) =>
+            therapistSlotsForDay({ schedule: t.schedule, date: s.date, durationMin: durations[i], today: todayStr() })
+              .map(minToHhmm)
+              .includes(s.time)
+          );
+        });
+        setAvailableTherapists(free);
+      } catch {
+        if (!cancelled) setAvailableTherapists([]);
+      } finally {
+        if (!cancelled) setTherapistLoading(false);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, sessionsKey]);
 
   const goNext = () => { setDirection('forward'); setStep((s) => Math.min(totalSteps, s + 1)); };
   const goBack = () => { setDirection('backward'); setStep((s) => Math.max(1, s - 1)); };
@@ -333,7 +422,7 @@ export default function Booking() {
   const getSelectedCabinObj = () => cabins.find((c) => c.id === selectedCabin);
   const getSelectedBranchObj = () => branches.find((b) => b.id === selectedBranch);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
 
   const canProceed = () => {
     const currentStep = steps[step - 1];
@@ -343,7 +432,7 @@ export default function Booking() {
       case 'Tipo': return bookingType !== '';
       case 'Servicios': return selectedServices.length > 0;
       case 'Paquetes': return selectedPackage !== null;
-      case 'Terapeuta': return selectedTherapist !== '';
+      case 'Terapeuta': return selectedTherapist !== '' && availableTherapists.some((t) => t.id === selectedTherapist);
       case 'Fecha':
         if ((bookingType === 'packages' && sessionSchedules.length > 1) || (bookingType === 'services' && sessionCount > 1 && sessionSchedules.length > 0)) {
           return sessionSchedules.every((s) => s.date && s.time);
@@ -706,41 +795,51 @@ export default function Booking() {
             <div className="wizard-step">
               <h2 className="wizard-step-title">Elige tu terapeuta</h2>
               <p className="wizard-step-subtitle">
-                {selectedServices.length > 0
-                  ? 'Profesionales especializados en los servicios elegidos'
-                  : 'Todos nuestros profesionales están certificados'}
+                Profesionales disponibles para la fecha y hora que elegiste
               </p>
-              <div className="wizard-therapist-grid">
-                {wizardTherapists.map((therapist) => (
-                  <div
-                    key={therapist.id}
-                    className={`wizard-therapist ${selectedTherapist === therapist.id ? 'selected' : ''}`}
-                    onClick={() => {
-                      setSelectedTherapist(therapist.id);
-                      setTimeout(() => {
-                        setStep((s) => (steps[s - 1]?.label === 'Terapeuta' && s < totalSteps ? s + 1 : s));
-                      }, 300);
-                    }}
+              {therapistLoading ? (
+                <p className="wizard-empty">Buscando terapeutas disponibles...</p>
+              ) : availableTherapists.length > 0 ? (
+                <div className="wizard-therapist-grid">
+                  {availableTherapists.map((therapist) => (
+                    <div
+                      key={therapist.id}
+                      className={`wizard-therapist ${selectedTherapist === therapist.id ? 'selected' : ''}`}
+                      onClick={() => {
+                        setSelectedTherapist(therapist.id);
+                        setTimeout(() => {
+                          setStep((s) => (steps[s - 1]?.label === 'Terapeuta' && s < totalSteps ? s + 1 : s));
+                        }, 300);
+                      }}
+                    >
+                      {therapist.image ? (
+                        <img src={therapist.image} alt={therapist.name} loading="lazy" />
+                      ) : (
+                        <div className="wizard-therapist-avatar-fallback">{therapist.name?.charAt(0)}</div>
+                      )}
+                      <h4>{therapist.name}</h4>
+                      <p className="specialty">{therapist.specialty}</p>
+                      <p className="experience">{therapist.experience}</p>
+                      {selectedTherapist === therapist.id && (
+                        <div className="wizard-therapist-check">✓</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="wizard-empty">
+                  No hay terapeutas disponibles para la fecha y hora elegidas.
+                  <br />
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ marginTop: '0.75rem' }}
+                    onClick={goBack}
                   >
-                    {therapist.image ? (
-                      <img src={therapist.image} alt={therapist.name} loading="lazy" />
-                    ) : (
-                      <div className="wizard-therapist-avatar-fallback">{therapist.name?.charAt(0)}</div>
-                    )}
-                    <h4>{therapist.name}</h4>
-                    <p className="specialty">{therapist.specialty}</p>
-                    <p className="experience">{therapist.experience}</p>
-                    {selectedTherapist === therapist.id && (
-                      <div className="wizard-therapist-check">✓</div>
-                    )}
-                  </div>
-                ))}
-                {wizardTherapists.length === 0 && (
-                  <div className="wizard-empty">
-                    No hay terapeutas disponibles para los servicios seleccionados
-                  </div>
-                )}
-              </div>
+                    Volver a elegir fecha y hora
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -752,15 +851,19 @@ export default function Booking() {
                   ? 'Selecciona la fecha y hora para cada sesión'
                   : 'Selecciona cuándo quieres tu cita'}
               </p>
-              {(bookingType === 'packages' && sessionSchedules.length > 1) || (bookingType === 'services' && sessionCount > 1) ? (
+              {wizardTherapists.length === 0 && (
+                <div className="wizard-empty" style={{ marginBottom: '1rem' }}>
+                  No hay terapeutas para los servicios y sede elegidos
+                </div>
+              )}
+              {isMulti ? (
+                <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {sessionSchedules.map((sched, idx) => {
                     const sessionName = bookingType === 'packages'
                       ? (() => { const pkg = packages.find((p) => p.id === selectedPackage); const sessions = pkg?.sessions || []; return services.find((s) => s.id === sessions[idx]?.id)?.name || `Sesión ${idx + 1}`; })()
                       : selectedServices.map((id) => services.find((s) => s.id === id)?.name)[0] || `Sesión ${idx + 1}`;
-                    const sessionHours = bookingType === 'packages'
-                      ? (() => { const pkg = packages.find((p) => p.id === selectedPackage); const sessions = pkg?.sessions || []; return sessions[idx]?.hours || 1; })()
-                      : (() => { const svcId = selectedServices[0]; return serviceDurations[svcId] || 1; })();
+                    const sessionHours = sessionHoursFor(idx);
                     return (
                       <div key={idx} style={{
                         padding: '1rem', borderRadius: '12px',
@@ -785,6 +888,8 @@ export default function Booking() {
                                   next[idx] = { date: newDate, time: '' };
                                   return next;
                                 });
+                                setSlotWarning('');
+                                setSelectedTherapist('');
                               }}
                             />
                           </div>
@@ -793,21 +898,24 @@ export default function Booking() {
                               Hora {sched.date ? '' : '(Selecciona fecha primero)'}
                             </label>
                             {sched.date ? (
-                              <TimeSlotPicker
-                                therapistId={selectedTherapist}
-                                schedule={getSelectedTherapistObj()?.schedule}
-                                available={!!selectedTherapist}
+                              <UnionSlotPicker
+                                therapists={wizardTherapists}
                                 date={sched.date}
-                                value={sched.time}
                                 hours={sessionHours}
+                                value={sched.time}
                                 compact
-                                onChange={(slot) => {
-                                  setSessionSchedules((prev) => {
-                                    const next = [...prev];
-                                    next[idx] = { ...next[idx], time: slot };
-                                    return next;
-                                  });
-                                }}
+                                onChange={(slot) => pickTimeSlot({
+                                  date: sched.date,
+                                  time: slot,
+                                  hours: sessionHours,
+                                  apply: (time) => {
+                                    setSessionSchedules((prev) => {
+                                      const next = [...prev];
+                                      next[idx] = { ...next[idx], time };
+                                      return next;
+                                    });
+                                  },
+                                })}
                               />
                             ) : (
                               <div className="wizard-time-placeholder">
@@ -820,6 +928,12 @@ export default function Booking() {
                     );
                   })}
                 </div>
+                {slotWarning && (
+                  <p style={{ fontSize: '0.75rem', color: '#B85C4C', marginTop: '0.75rem' }}>
+                    {slotWarning}
+                  </p>
+                )}
+                </>
               ) : (
                 <div className="wizard-datetime">
                   <div>
@@ -829,29 +943,35 @@ export default function Booking() {
                       className="form-control wizard-date-input"
                       value={selectedDate}
                       min={today}
-                      onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime(''); }}
+                      onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime(''); setSlotWarning(''); setSelectedTherapist(''); }}
                     />
                   </div>
                   <div>
-                    <label className="wizard-field-label">Hora</label>
-                    {!selectedTherapist ? (
-                      <div className="wizard-time-placeholder">
-                        <p>Primero selecciona un terapeuta</p>
-                      </div>
-                    ) : !selectedDate ? (
+                    <label className="wizard-field-label">
+                      Hora {selectedDate ? '' : '(Selecciona fecha primero)'}
+                    </label>
+                    {!selectedDate ? (
                       <div className="wizard-time-placeholder">
                         <p>Primero selecciona una fecha</p>
                       </div>
                     ) : (
-                      <TimeSlotPicker
-                        therapistId={selectedTherapist}
-                        schedule={getSelectedTherapistObj()?.schedule}
-                        available={true}
+                      <UnionSlotPicker
+                        therapists={wizardTherapists}
                         date={selectedDate}
-                        value={selectedTime}
                         hours={getTotalHours()}
-                        onChange={setSelectedTime}
+                        value={selectedTime}
+                        onChange={(slot) => pickTimeSlot({
+                          date: selectedDate,
+                          time: slot,
+                          hours: getTotalHours(),
+                          apply: setSelectedTime,
+                        })}
                       />
+                    )}
+                    {slotWarning && (
+                      <p style={{ fontSize: '0.75rem', color: '#B85C4C', marginTop: '0.5rem' }}>
+                        {slotWarning}
+                      </p>
                     )}
                   </div>
                 </div>

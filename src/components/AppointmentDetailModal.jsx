@@ -8,6 +8,7 @@ import useEscClose from '../hooks/useEscClose';
 import { useApp } from '../context/AppContext';
 import { appointmentsAPI } from '../services/api';
 import { clearBusyCache } from '../utils/busyCache';
+import { todayStr } from '../utils/hours';
 import TimeSlotPicker from './TimeSlotPicker';
 import CancelAppointmentModal from './CancelAppointmentModal';
 import PaymentScopeModal from './PaymentScopeModal';
@@ -91,7 +92,7 @@ export default function AppointmentDetailModal({
   if (!open || !appointment) return null;
 
   const apt = (allAppointments || []).find((a) => a.id === appointment.id) || appointment;
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
   const canEdit = hasModulePermission('citas', 'can_edit');
   const person = apt.person || {};
   const clientName = [person.name, person.last_name].filter(Boolean).join(' ') || apt.clientName || 'N/A';

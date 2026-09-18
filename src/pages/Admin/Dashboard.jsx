@@ -7,7 +7,7 @@ import { useApp } from '../../context/AppContext';
 import { CalendarDays, Clock, DollarSign, Hourglass, Home, User, Info } from 'lucide-react';
 import AppointmentDetailModal from '../../components/AppointmentDetailModal';
 import Skeleton from '../../components/Skeleton';
-import { buildQuarterRange, formatMinutes } from '../../utils/hours';
+import { buildQuarterRange, formatMinutes, todayStr } from '../../utils/hours';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const locales = { es };
@@ -93,7 +93,7 @@ export default function Dashboard() {
   );
 
   const stats = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayStr();
     const totalRev = filteredAppointments.reduce((sum, a) => sum + Number(a.total || a.total_price || 0), 0);
     return {
       totalAppointments: filteredAppointments.length,

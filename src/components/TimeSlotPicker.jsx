@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { therapistsAPI } from '../services/api';
 import { getCachedBusy, setCachedBusy } from '../utils/busyCache';
+import { todayStr } from '../utils/hours';
 import Skeleton from './Skeleton';
 
 const SkeletonSlots = ({ compact }) => (
@@ -118,7 +119,7 @@ export default function TimeSlotPicker({
   }, []);
 
   const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
 
   const getAvailableSlots = () => {
     if (!date) return [];

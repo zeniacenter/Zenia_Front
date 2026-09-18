@@ -68,3 +68,69 @@ export function formatDuration(hoursFloat) {
   if (h) return `${h}h`;
   return `${m}m`;
 }
+
+export function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export const DAY_NAMES = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+
+export function hhmmToMin(hhmm) {
+  const [h, m] = String(hhmm || '').split(':').map(Number);
+  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+}
+
+export function minToHhmm(min) {
+  const n = Math.max(0, Number(min) || 0);
+  return `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
+}
+
+function gcdMinutes(a, b) {
+  return b === 0 ? a : gcdMinutes(b, a % b);
+}
+
+export function therapistSlotsForDay({ schedule, date, durationMin = 60, today = '' }) {
+  const dayName = DAY_NAMES[new Date(`${date}T12:00:00`).getDay()];
+  const marks = ((schedule && schedule[dayName]) || [])
+    .map(hhmmToMin)
+    .filter((m) => m !== null)
+    .sort((a, b) => a - b);
+  if (marks.length === 0) return [];
+
+  const blocks = [];
+  let blockStart = marks[0];
+  let prev = marks[0];
+  for (let i = 1; i < marks.length; i++) {
+    const m = marks[i];
+    if (m - prev > 60) {
+      blocks.push([blockStart, prev + 60]);
+      blockStart = m;
+    }
+    prev = m;
+  }
+  blocks.push([blockStart, prev + 60]);
+
+  const step = Math.max(5, gcdMinutes(durationMin, 60));
+  const set = new Set();
+  blocks.forEach(([bs, be]) => {
+    for (let t = bs; t <= be - durationMin; t += step) set.add(t);
+  });
+
+  if (date === today) {
+    const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+    [...set].forEach((t) => {
+      if (t <= nowMin) set.delete(t);
+    });
+  }
+
+  return [...set].sort((a, b) => a - b);
+}
+
+export function unionSlotsForTherapists(therapists, date, durationMin = 60, today = '') {
+  const set = new Set();
+  (therapists || []).forEach((t) => {
+    therapistSlotsForDay({ schedule: t.schedule, date, durationMin, today }).forEach((m) => set.add(m));
+  });
+  return [...set].sort((a, b) => a - b);
+}

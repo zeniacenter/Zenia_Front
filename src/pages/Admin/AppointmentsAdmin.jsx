@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
 import { clearBusyCache } from '../../utils/busyCache';
+import { todayStr } from '../../utils/hours';
 import CancelAppointmentModal from '../../components/CancelAppointmentModal';
 import AppointmentDetailModal from '../../components/AppointmentDetailModal';
 import PaymentScopeModal from '../../components/PaymentScopeModal';
@@ -256,7 +257,7 @@ export default function AppointmentsAdmin() {
     await handlePaymentPropagate(apt);
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
 
   const thStyle = {
     padding: '0.7rem 1rem', fontSize: '0.7rem', fontWeight: 600,
