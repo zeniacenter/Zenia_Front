@@ -3,10 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { personAPI } from '../../services/api';
 import { ArrowLeft } from 'lucide-react';
-import TimeSlotPicker from '../../components/TimeSlotPicker';
 import NotificationModal from '../../components/NotificationModal';
+import UnionSlotPicker from '../../components/UnionSlotPicker';
 import { clearBusyCache } from '../../utils/busyCache';
-import { todayStr } from '../../utils/hours';
+import { todayStr, therapistSlotsForDay, minToHhmm } from '../../utils/hours';
 
 export default function AdminBooking() {
   const { services, therapists, cabins, branches, packages, addAppointment, settings, appointments } = useApp();
@@ -79,7 +79,6 @@ export default function AdminBooking() {
 
   const getSelectedServiceObj = () => services.find((s) => String(s.id) === String(selectedService));
   const getSelectedPackageObj = () => (packages || []).find((p) => String(p.id) === String(selectedPackage));
-  const getSelectedTherapistObj = () => therapists.find((t) => String(t.id) === String(selectedTherapist));
 
   const filteredTherapists = (() => {
     let list = selectedBranch
@@ -115,6 +114,7 @@ export default function AdminBooking() {
   const effectiveHours = bookingType === 'package' ? (getSelectedPackageObj()?.hours || hours) : hours;
   const selStart = selectedTime ? toMinLocal(selectedTime) : null;
   const selEnd = selStart !== null ? selStart + Math.max(30, Math.round(effectiveHours * 60)) : null;
+  const durMin = Math.max(30, Math.round(effectiveHours * 60));
 
   const isBlockingStatus = (st) => st === 'pendiente' || st === 'confirmada';
 
@@ -153,6 +153,38 @@ export default function AdminBooking() {
     return !marks.some((mk) => toMinLocal(mk) <= selStart && selStart < toMinLocal(mk) + 60);
   };
 
+  const therapistCoversSlot = (t) => {
+    if (!selectedDate || selStart === null) return false;
+    return therapistSlotsForDay({ schedule: t.schedule, date: selectedDate, durationMin: durMin, today: todayStr() }).includes(selStart);
+  };
+
+  const availableTherapistsAtTime = selectedTime && selectedDate
+    ? filteredTherapists.filter((t) => therapistCoversSlot(t) && !therapistConflict(t.id))
+    : [];
+
+  const availableHoursSet = (() => {
+    const set = new Set();
+    if (!selectedDate || filteredTherapists.length === 0) return set;
+    filteredTherapists.forEach((t) => {
+      const slots = therapistSlotsForDay({ schedule: t.schedule, date: selectedDate, durationMin: durMin, today: todayStr() });
+      slots.forEach((startMin) => {
+        const s = startMin;
+        const e = s + durMin;
+        const conflicted = appointments.some((a) => {
+          if (!isBlockingStatus(a.status)) return false;
+          if (String(a.date) !== String(selectedDate)) return false;
+          const tid = a.therapistId || a.therapist_id;
+          if (!tid || Number(tid) !== Number(t.id)) return false;
+          const as = toMinLocal(a.time || a.start_time);
+          const ae = a.end_time ? toMinLocal(a.end_time) : as + 60;
+          return as < e && ae > s;
+        });
+        if (!conflicted) set.add(minToHhmm(startMin));
+      });
+    });
+    return set;
+  })();
+
   useEffect(() => {
     if (selectedTherapist) {
       const t = filteredTherapists.find((th) => String(th.id) === String(selectedTherapist));
@@ -172,6 +204,13 @@ export default function AdminBooking() {
     if (t && (therapistConflict(t.id) || therapistOffSchedule(t))) setSelectedTime('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, selectedTime, hours, selectedTherapist]);
+
+  useEffect(() => {
+    if (!selectedTherapist) return;
+    const ids = new Set(availableTherapistsAtTime.map((t) => String(t.id)));
+    if (!ids.has(String(selectedTherapist))) setSelectedTherapist('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTime, selectedDate, effectiveHours, selectedService, selectedPackage, bookingType, selectedBranch, appointments]);
 
   const getTotal = () => {
     if (bookingType === 'package' && selectedPackage) {
@@ -447,21 +486,6 @@ export default function AdminBooking() {
               </div>
             )}
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={labelStyle}>Terapeuta *</label>
-              <select
-                style={inputStyle}
-                value={selectedTherapist}
-                onChange={(e) => { setSelectedTherapist(e.target.value); setSelectedTime(''); }}
-                required
-              >
-                <option value="">Seleccionar terapeuta</option>
-                {filteredTherapists.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name} - {t.specialty}</option>
-                ))}
-              </select>
-            </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: bookingType === 'service' ? '1fr 1fr' : '1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={labelStyle}>Fecha *</label>
@@ -470,7 +494,7 @@ export default function AdminBooking() {
                   style={inputStyle}
                   value={selectedDate}
                   min={today}
-                  onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime(''); }}
+                  onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime(''); setSelectedTherapist(''); }}
                   required
                 />
               </div>
@@ -503,6 +527,57 @@ export default function AdminBooking() {
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
+              <label style={labelStyle}>Hora *</label>
+              {!selectedDate ? (
+                <div style={{ padding: '0.6rem', textAlign: 'center', color: '#A89888', fontSize: '0.85rem', border: '1px solid #E8E0D6', borderRadius: '8px' }}>
+                  Selecciona una fecha primero
+                </div>
+              ) : filteredTherapists.length === 0 ? (
+                <div style={{ padding: '0.6rem', textAlign: 'center', color: '#A89888', fontSize: '0.85rem', border: '1px solid #E8E0D6', borderRadius: '8px' }}>
+                  No hay terapeutas habilitados para el servicio/sede seleccionado
+                </div>
+              ) : availableHoursSet.size === 0 ? (
+                <div style={{ padding: '0.6rem', textAlign: 'center', color: '#A89888', fontSize: '0.85rem', border: '1px solid #E8E0D6', borderRadius: '8px' }}>
+                  No hay horarios disponibles para este día
+                </div>
+              ) : (
+                <UnionSlotPicker
+                  therapists={filteredTherapists}
+                  date={selectedDate}
+                  hours={effectiveHours}
+                  availableHours={availableHoursSet}
+                  value={selectedTime}
+                  onChange={(t) => { setSelectedTime(t); setSelectedTherapist(''); }}
+                />
+              )}
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={labelStyle}>Terapeuta *</label>
+              {!selectedDate || !selectedTime ? (
+                <div style={{ padding: '0.6rem', textAlign: 'center', color: '#A89888', fontSize: '0.85rem', border: '1px solid #E8E0D6', borderRadius: '8px' }}>
+                  Primero elige la fecha y la hora para mostrar los terapeutas disponibles
+                </div>
+              ) : availableTherapistsAtTime.length === 0 ? (
+                <div style={{ padding: '0.6rem', textAlign: 'center', color: '#B85C4C', fontSize: '0.85rem', border: '1px solid #E8E0D6', borderRadius: '8px' }}>
+                  No hay terapeutas disponibles en ese horario
+                </div>
+              ) : (
+                <select
+                  style={inputStyle}
+                  value={selectedTherapist}
+                  onChange={(e) => setSelectedTherapist(e.target.value)}
+                  required
+                >
+                  <option value="">Seleccionar terapeuta</option>
+                  {availableTherapistsAtTime.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name} - {t.specialty}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
               <label style={labelStyle}>Precio (S/) *</label>
               <input
                 type="number"
@@ -519,29 +594,6 @@ export default function AdminBooking() {
                 <p style={{ margin: '0.3rem 0 0', fontSize: '0.78rem', color: '#2E7D32', fontWeight: 600 }}>
                   Total con {discountPct}% de descuento: <s style={{ color: '#A89888' }}>S/ {effectiveTotal}</s> → S/ {finalTotal}
                 </p>
-              )}
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={labelStyle}>Hora *</label>
-              {!selectedTherapist ? (
-                <div style={{ padding: '0.6rem', textAlign: 'center', color: '#A89888', fontSize: '0.85rem', border: '1px solid #E8E0D6', borderRadius: '8px' }}>
-                  Selecciona un terapeuta primero
-                </div>
-              ) : !selectedDate ? (
-                <div style={{ padding: '0.6rem', textAlign: 'center', color: '#A89888', fontSize: '0.85rem', border: '1px solid #E8E0D6', borderRadius: '8px' }}>
-                  Selecciona una fecha primero
-                </div>
-              ) : (
-                <TimeSlotPicker
-                  therapistId={selectedTherapist}
-                  schedule={getSelectedTherapistObj()?.schedule}
-                  available={true}
-                  date={selectedDate}
-                  value={selectedTime}
-                  hours={effectiveHours}
-                  onChange={setSelectedTime}
-                />
               )}
             </div>
 

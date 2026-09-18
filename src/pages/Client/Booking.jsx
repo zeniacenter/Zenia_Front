@@ -105,18 +105,18 @@ export default function Booking() {
 
   const branchServices = selectedBranch
     ? services.filter((s) => {
-        const branch = branches.find((b) => b.id === selectedBranch);
-        if (!branch || !branch.serviceIds || branch.serviceIds.length === 0) return true;
-        return branch.serviceIds.includes(s.id);
-      })
+      const branch = branches.find((b) => b.id === selectedBranch);
+      if (!branch || !branch.serviceIds || branch.serviceIds.length === 0) return true;
+      return branch.serviceIds.includes(s.id);
+    })
     : services;
 
   const branchPackages = selectedBranch
     ? packages.filter((p) => {
-        if (!(p.active ?? p.is_active)) return false;
-        if (p.branchId && p.branchId !== selectedBranch) return false;
-        return true;
-      })
+      if (!(p.active ?? p.is_active)) return false;
+      if (p.branchId && p.branchId !== selectedBranch) return false;
+      return true;
+    })
     : packages.filter((p) => p.active ?? p.is_active);
 
   const selectedServiceIds = selectedServices.length > 0
@@ -132,24 +132,24 @@ export default function Booking() {
 
   const branchCabins = (selectedBranch
     ? cabins.filter((c) => {
-        if (c.branchId !== selectedBranch && c.branch_id !== selectedBranch) return false;
-        return c.is_available ?? c.available;
-      })
+      if (c.branchId !== selectedBranch && c.branch_id !== selectedBranch) return false;
+      return c.is_available ?? c.available;
+    })
     : cabins.filter((c) => c.is_available ?? c.available)).filter(isCabinCompatible);
 
   const branchTherapists = selectedBranch
     ? therapists.filter((t) => {
-        if (!(t.is_available ?? t.available)) return false;
-        if (!t.branchIds || t.branchIds.length === 0) return true;
-        return t.branchIds.includes(selectedBranch);
-      })
+      if (!(t.is_available ?? t.available)) return false;
+      if (!t.branchIds || t.branchIds.length === 0) return true;
+      return t.branchIds.includes(selectedBranch);
+    })
     : therapists.filter((t) => t.is_available ?? t.available);
 
   const serviceTherapists = selectedServices.length > 0
     ? branchTherapists.filter((t) => {
-        if (!t.serviceIds || t.serviceIds.length === 0) return false;
-        return t.serviceIds.some((sid) => selectedServices.includes(sid));
-      })
+      if (!t.serviceIds || t.serviceIds.length === 0) return false;
+      return t.serviceIds.some((sid) => selectedServices.includes(sid));
+    })
     : branchTherapists;
 
   const wizardTherapists = serviceTherapists;
@@ -166,10 +166,6 @@ export default function Booking() {
     const svcId = selectedServices[0];
     return serviceDurations[svcId] || 1;
   };
-
-  const sessionsKey = isMulti
-    ? sessionSchedules.map((s, i) => `${s.date}|${s.time}|${sessionHoursFor(i)}`).join(',')
-    : `${selectedDate}|${selectedTime}|${getTotalHours()}`;
 
   const singleSessionWithTime =
     selectedDate !== '' && selectedTime !== '' &&
@@ -192,7 +188,7 @@ export default function Booking() {
         const free = branchCabins.find((c) => !busy.has(Number(c.id)));
         if (free) setSelectedCabin(free.id);
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, selectedTime, bookingType, sessionCount, singleSessionWithTime, selectedServices]);
@@ -281,49 +277,6 @@ export default function Booking() {
     apply(time);
     setSelectedTherapist('');
   };
-
-  useEffect(() => {
-    if (steps[step - 1]?.label !== 'Terapeuta') return;
-    let cancelled = false;
-    const run = async () => {
-      const sessions = isMulti
-        ? sessionSchedules.map((s, i) => ({ date: s.date, time: s.time, hours: sessionHoursFor(i) }))
-        : [{ date: selectedDate, time: selectedTime, hours: getTotalHours() }];
-      if (sessions.some((s) => !s.date || !s.time)) {
-        setAvailableTherapists([]);
-        return;
-      }
-      setTherapistLoading(true);
-      try {
-        const busy = new Set();
-        for (const s of sessions) {
-          const durMin = Math.max(30, Math.round(s.hours * 60));
-          const endMins = toMin(s.time) + durMin;
-          const endTime = `${String(Math.floor(endMins / 60)).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`;
-          const res = await appointmentsAPI.slotAvailability({ date: s.date, start: s.time, end: endTime });
-          (res.data.therapist_ids || []).forEach((id) => busy.add(Number(id)));
-        }
-        if (cancelled) return;
-        const durations = sessions.map((s) => Math.max(30, Math.round(s.hours * 60)));
-        const free = wizardTherapists.filter((t) => {
-          if (busy.has(Number(t.id))) return false;
-          return sessions.every((s, i) =>
-            therapistSlotsForDay({ schedule: t.schedule, date: s.date, durationMin: durations[i], today: todayStr() })
-              .map(minToHhmm)
-              .includes(s.time)
-          );
-        });
-        setAvailableTherapists(free);
-      } catch {
-        if (!cancelled) setAvailableTherapists([]);
-      } finally {
-        if (!cancelled) setTherapistLoading(false);
-      }
-    };
-    run();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, sessionsKey]);
 
   const goNext = () => { setDirection('forward'); setStep((s) => Math.min(totalSteps, s + 1)); };
   const goBack = () => { setDirection('backward'); setStep((s) => Math.max(1, s - 1)); };
@@ -421,6 +374,53 @@ export default function Booking() {
   const getSelectedTherapistObj = () => therapists.find((t) => t.id === selectedTherapist);
   const getSelectedCabinObj = () => cabins.find((c) => c.id === selectedCabin);
   const getSelectedBranchObj = () => branches.find((b) => b.id === selectedBranch);
+
+  const sessionsKey = isMulti
+    ? sessionSchedules.map((s, i) => `${s.date}|${s.time}|${sessionHoursFor(i)}`).join(',')
+    : `${selectedDate}|${selectedTime}|${getTotalHours()}`;
+
+  useEffect(() => {
+    if (steps[step - 1]?.label !== 'Terapeuta') return;
+    let cancelled = false;
+    const run = async () => {
+      const sessions = isMulti
+        ? sessionSchedules.map((s, i) => ({ date: s.date, time: s.time, hours: sessionHoursFor(i) }))
+        : [{ date: selectedDate, time: selectedTime, hours: getTotalHours() }];
+      if (sessions.some((s) => !s.date || !s.time)) {
+        setAvailableTherapists([]);
+        return;
+      }
+      setTherapistLoading(true);
+      try {
+        const busy = new Set();
+        for (const s of sessions) {
+          const durMin = Math.max(30, Math.round(s.hours * 60));
+          const endMins = toMin(s.time) + durMin;
+          const endTime = `${String(Math.floor(endMins / 60)).padStart(2, '0')}:${String(endMins % 60).padStart(2, '0')}`;
+          const res = await appointmentsAPI.slotAvailability({ date: s.date, start: s.time, end: endTime });
+          (res.data.therapist_ids || []).forEach((id) => busy.add(Number(id)));
+        }
+        if (cancelled) return;
+        const durations = sessions.map((s) => Math.max(30, Math.round(s.hours * 60)));
+        const free = wizardTherapists.filter((t) => {
+          if (busy.has(Number(t.id))) return false;
+          return sessions.every((s, i) =>
+            therapistSlotsForDay({ schedule: t.schedule, date: s.date, durationMin: durations[i], today: todayStr() })
+              .map(minToHhmm)
+              .includes(s.time)
+          );
+        });
+        setAvailableTherapists(free);
+      } catch {
+        if (!cancelled) setAvailableTherapists([]);
+      } finally {
+        if (!cancelled) setTherapistLoading(false);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, sessionsKey]);
 
   const today = todayStr();
 
@@ -696,13 +696,13 @@ export default function Booking() {
                   <div className="type-card-icon"><Sparkles size={32} /></div>
                   <h3>Servicios Individuales</h3>
                   <p>Selecciona uno o más servicios para tu cita</p>
-                  <span className="type-card-price">Desde S/ 15</span>
+                  <span className="type-card-price">Desde S/ 45</span>
                 </div>
                 <div className="type-card" onClick={() => selectType('packages')}>
                   <div className="type-card-icon"><Gift size={32} /></div>
                   <h3>Paquetes Especiales</h3>
                   <p>Combina servicios con precios especiales y ahorra hasta un 25%</p>
-                  <span className="type-card-price">Ahorra hasta S/ 25</span>
+                  <span className="type-card-price">Ahorra hasta un 37%</span>
                 </div>
               </div>
             </div>
@@ -858,81 +858,81 @@ export default function Booking() {
               )}
               {isMulti ? (
                 <>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {sessionSchedules.map((sched, idx) => {
-                    const sessionName = bookingType === 'packages'
-                      ? (() => { const pkg = packages.find((p) => p.id === selectedPackage); const sessions = pkg?.sessions || []; return services.find((s) => s.id === sessions[idx]?.id)?.name || `Sesión ${idx + 1}`; })()
-                      : selectedServices.map((id) => services.find((s) => s.id === id)?.name)[0] || `Sesión ${idx + 1}`;
-                    const sessionHours = sessionHoursFor(idx);
-                    return (
-                      <div key={idx} style={{
-                        padding: '1rem', borderRadius: '12px',
-                        border: '1px solid #E8E0D6', background: '#FDFCFA',
-                      }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#3D2E24', marginBottom: '0.75rem' }}>
-                          Sesión {idx + 1}: {sessionName}
-                          <span style={{ fontWeight: 400, color: '#A89888', marginLeft: '0.5rem' }}>({sessionHours}h)</span>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                          <div>
-                            <label className="wizard-field-label">Fecha</label>
-                            <input
-                              type="date"
-                              className="form-control wizard-date-input"
-                              value={sched.date}
-                              min={today}
-                              onChange={(e) => {
-                                const newDate = e.target.value;
-                                setSessionSchedules((prev) => {
-                                  const next = [...prev];
-                                  next[idx] = { date: newDate, time: '' };
-                                  return next;
-                                });
-                                setSlotWarning('');
-                                setSelectedTherapist('');
-                              }}
-                            />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {sessionSchedules.map((sched, idx) => {
+                      const sessionName = bookingType === 'packages'
+                        ? (() => { const pkg = packages.find((p) => p.id === selectedPackage); const sessions = pkg?.sessions || []; return services.find((s) => s.id === sessions[idx]?.id)?.name || `Sesión ${idx + 1}`; })()
+                        : selectedServices.map((id) => services.find((s) => s.id === id)?.name)[0] || `Sesión ${idx + 1}`;
+                      const sessionHours = sessionHoursFor(idx);
+                      return (
+                        <div key={idx} style={{
+                          padding: '1rem', borderRadius: '12px',
+                          border: '1px solid #E8E0D6', background: '#FDFCFA',
+                        }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#3D2E24', marginBottom: '0.75rem' }}>
+                            Sesión {idx + 1}: {sessionName}
+                            <span style={{ fontWeight: 400, color: '#A89888', marginLeft: '0.5rem' }}>({sessionHours}h)</span>
                           </div>
-                          <div>
-                            <label className="wizard-field-label">
-                              Hora {sched.date ? '' : '(Selecciona fecha primero)'}
-                            </label>
-                            {sched.date ? (
-                              <UnionSlotPicker
-                                therapists={wizardTherapists}
-                                date={sched.date}
-                                hours={sessionHours}
-                                value={sched.time}
-                                compact
-                                onChange={(slot) => pickTimeSlot({
-                                  date: sched.date,
-                                  time: slot,
-                                  hours: sessionHours,
-                                  apply: (time) => {
-                                    setSessionSchedules((prev) => {
-                                      const next = [...prev];
-                                      next[idx] = { ...next[idx], time };
-                                      return next;
-                                    });
-                                  },
-                                })}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                              <label className="wizard-field-label">Fecha</label>
+                              <input
+                                type="date"
+                                className="form-control wizard-date-input"
+                                value={sched.date}
+                                min={today}
+                                onChange={(e) => {
+                                  const newDate = e.target.value;
+                                  setSessionSchedules((prev) => {
+                                    const next = [...prev];
+                                    next[idx] = { date: newDate, time: '' };
+                                    return next;
+                                  });
+                                  setSlotWarning('');
+                                  setSelectedTherapist('');
+                                }}
                               />
-                            ) : (
-                              <div className="wizard-time-placeholder">
-                                <p style={{ fontSize: '0.75rem' }}>Selecciona fecha</p>
-                              </div>
-                            )}
+                            </div>
+                            <div>
+                              <label className="wizard-field-label">
+                                Hora {sched.date ? '' : '(Selecciona fecha primero)'}
+                              </label>
+                              {sched.date ? (
+                                <UnionSlotPicker
+                                  therapists={wizardTherapists}
+                                  date={sched.date}
+                                  hours={sessionHours}
+                                  value={sched.time}
+                                  compact
+                                  onChange={(slot) => pickTimeSlot({
+                                    date: sched.date,
+                                    time: slot,
+                                    hours: sessionHours,
+                                    apply: (time) => {
+                                      setSessionSchedules((prev) => {
+                                        const next = [...prev];
+                                        next[idx] = { ...next[idx], time };
+                                        return next;
+                                      });
+                                    },
+                                  })}
+                                />
+                              ) : (
+                                <div className="wizard-time-placeholder">
+                                  <p style={{ fontSize: '0.75rem' }}>Selecciona fecha</p>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {slotWarning && (
-                  <p style={{ fontSize: '0.75rem', color: '#B85C4C', marginTop: '0.75rem' }}>
-                    {slotWarning}
-                  </p>
-                )}
+                      );
+                    })}
+                  </div>
+                  {slotWarning && (
+                    <p style={{ fontSize: '0.75rem', color: '#B85C4C', marginTop: '0.75rem' }}>
+                      {slotWarning}
+                    </p>
+                  )}
                 </>
               ) : (
                 <div className="wizard-datetime">

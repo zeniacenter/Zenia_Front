@@ -10,12 +10,17 @@ export default function UnionSlotPicker({
   compact = false,
   disabled = false,
   emptyText = 'No hay horarios disponibles para este día',
+  availableHours = null,
 }) {
   const slots = useMemo(() => {
     if (!date || !Array.isArray(therapists) || therapists.length === 0) return [];
     const duration = Math.max(30, Math.round(hours * 60));
-    return unionSlotsForTherapists(therapists, date, duration, todayStr()).map(minToHhmm);
-  }, [therapists, date, hours]);
+    let list = unionSlotsForTherapists(therapists, date, duration, todayStr()).map(minToHhmm);
+    if (availableHours instanceof Set) {
+      list = list.filter((s) => availableHours.has(s));
+    }
+    return list;
+  }, [therapists, date, hours, availableHours]);
 
   return (
     <div
