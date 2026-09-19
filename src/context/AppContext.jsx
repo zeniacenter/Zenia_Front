@@ -545,10 +545,13 @@ export function AppProvider({ children }) {
 
   const updateAppointment = useCallback(async (id, updates) => {
     try {
-      await appointmentsAPI.update(id, updates);
-      setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
+      const res = await appointmentsAPI.update(id, updates);
+      const data = res.data;
+      setAppointments((prev) => prev.map((a) => (a.id === id ? data : a)));
+      return data;
     } catch (err) {
       console.error('Error actualizando cita:', err);
+      throw err;
     }
   }, []);
 

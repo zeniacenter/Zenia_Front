@@ -597,6 +597,7 @@ export default function AppointmentsAdmin() {
         appointment={detailTarget}
         allAppointments={data}
         onClose={() => setDetailTarget(null)}
+        onUpdated={refetch}
         onSelectSession={(session) => setDetailTarget(session)}
       />
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X, Package, CreditCard, Clock, MapPin, User, Phone, Scissors, AlertTriangle, Mail, Hash, Home,
-  Check, CheckCircle2, CalendarClock, XCircle, Receipt,
+  Check, CheckCircle2, CalendarClock, XCircle, Receipt, Pencil,
 } from 'lucide-react';
 import useEscClose from '../hooks/useEscClose';
 import { useApp } from '../context/AppContext';
@@ -69,9 +69,10 @@ export default function AppointmentDetailModal({
   appointment,
   allAppointments,
   onClose,
+  onUpdated,
   onSelectSession,
 }) {
-  const { appointments, updateAppointment, hasModulePermission } = useApp();
+  const { appointments, updateAppointment, hasModulePermission, therapists, cabins, branches } = useApp();
   const navigate = useNavigate();
   const [postponing, setPostponing] = useState(false);
   const [postponeDate, setPostponeDate] = useState('');
@@ -80,6 +81,10 @@ export default function AppointmentDetailModal({
   const [actionLoading, setActionLoading] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [editForm, setEditForm] = useState({});
 
   useEscClose(open, onClose);
 
@@ -87,7 +92,35 @@ export default function AppointmentDetailModal({
     setPostponing(false);
     setPostponeDate('');
     setPostponeTime('');
+    setEditing(false);
+    setEditError('');
   }, [open, appointment?.id]);
+
+  useEffect(() => {
+    const current = (allAppointments || []).find((a) => a.id === appointment?.id) || appointment;
+    const person = current?.person || {};
+    if (current) {
+      setEditForm({
+        client_name: person.name || current.clientName || '',
+        client_last_name: person.last_name || '',
+        client_dni: person.dni || '',
+        client_phone: person.phone || current.clientPhone || '',
+        client_email: person.email || '',
+        client_address: person.address || '',
+        date: current.date || '',
+        start_time: String(current.start_time || current.time || '').slice(0, 5),
+        hours: current.hours || 1,
+        therapist_id: current.therapist_id || '',
+        cabin_id: current.cabin_id || '',
+        branch_id: current.branch_id || '',
+        status: current.status || 'pendiente',
+        payment_status: current.payment_status || 'pendiente',
+        paid_amount: current.paid_amount ?? 0,
+        total_price: current.total_price ?? 0,
+        notes: current.notes || '',
+      });
+    }
+  }, [appointment, allAppointments]);
 
   if (!open || !appointment) return null;
 
@@ -206,7 +239,7 @@ export default function AppointmentDetailModal({
       const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
 
       const newStatus = apt.status === 'postergada' ? 'pendiente' : 'postergada';
-      await updateAppointment(apt.id, {
+      const updatedAppointment = await updateAppointment(apt.id, {
         status: newStatus,
         date: postponeDate,
         start_time: postponeTime,
@@ -243,6 +276,35 @@ export default function AppointmentDetailModal({
 
   const handleEmitBoleta = () => {
     navigate(`/admin/boletas/${apt.id}`);
+  };
+
+  const updateEditField = (field, value) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleEditSubmit = async (event) => {
+    event.preventDefault();
+    if (savingEdit) return;
+    setSavingEdit(true);
+    setEditError('');
+    try {
+      await updateAppointment(apt.id, {
+        ...editForm,
+        therapist_id: editForm.therapist_id ? Number(editForm.therapist_id) : null,
+        cabin_id: editForm.cabin_id ? Number(editForm.cabin_id) : null,
+        branch_id: editForm.branch_id ? Number(editForm.branch_id) : null,
+        hours: Number(editForm.hours),
+        paid_amount: Number(editForm.paid_amount || 0),
+        total_price: Number(editForm.total_price || 0),
+      });
+      clearBusyCache();
+      onUpdated?.(updatedAppointment);
+      setEditing(false);
+    } catch (error) {
+      setEditError(error.response?.data?.message || 'No se pudo actualizar la cita.');
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   return (
@@ -301,6 +363,70 @@ export default function AppointmentDetailModal({
                 <LoadingButton className="btn btn-primary" loading={savingPostpone} loadingText="Guardando..." disabled={!postponeDate || !postponeTime} onClick={confirmPostpone}>Confirmar</LoadingButton>
               </div>
             </div>
+          ) : editing ? (
+            <form onSubmit={handleEditSubmit}>
+              <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', color: '#3D2E24' }}>Editar cita</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+                {[
+                  ['client_name', 'Nombre', 'text'], ['client_last_name', 'Apellidos', 'text'],
+                  ['client_dni', 'DNI', 'text'], ['client_phone', 'Teléfono', 'tel'],
+                  ['client_email', 'Correo', 'email'], ['client_address', 'Dirección', 'text'],
+                ].map(([field, fieldLabel, type]) => (
+                  <label key={field} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: '#6B5B4E' }}>
+                    {fieldLabel}
+                    <input type={type} value={editForm[field] || ''} onChange={(e) => updateEditField(field, e.target.value)} style={inputStyle} required={field === 'client_name' || field === 'client_phone'} />
+                  </label>
+                ))}
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: '#6B5B4E' }}>
+                  Fecha
+                  <input type="date" value={editForm.date || ''} onChange={(e) => updateEditField('date', e.target.value)} style={inputStyle} required />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: '#6B5B4E' }}>
+                  Hora de inicio
+                  <input type="time" value={editForm.start_time || ''} onChange={(e) => updateEditField('start_time', e.target.value)} style={inputStyle} required />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: '#6B5B4E' }}>
+                  Duración (horas)
+                  <input type="number" min="0.25" max="8" step="0.01" value={editForm.hours ?? ''} onChange={(e) => updateEditField('hours', e.target.value)} style={inputStyle} required />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: '#6B5B4E' }}>
+                  Estado
+                  <select value={editForm.status || ''} onChange={(e) => updateEditField('status', e.target.value)} style={inputStyle}>
+                    {Object.entries(STATUS_CONFIG).map(([status, config]) => <option key={status} value={status}>{config.label}</option>)}
+                  </select>
+                </label>
+                {[
+                  ['therapist_id', 'Terapeuta', therapists], ['cabin_id', 'Cabina', cabins], ['branch_id', 'Sede', branches],
+                ].map(([field, fieldLabel, options]) => (
+                  <label key={field} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: '#6B5B4E' }}>
+                    {fieldLabel}
+                    <select value={editForm[field] || ''} onChange={(e) => updateEditField(field, e.target.value)} style={inputStyle}>
+                      <option value="">Sin asignar</option>
+                      {(options || []).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+                    </select>
+                  </label>
+                ))}
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: '#6B5B4E' }}>
+                  Estado de pago
+                  <select value={editForm.payment_status || ''} onChange={(e) => updateEditField('payment_status', e.target.value)} style={inputStyle}>
+                    <option value="pendiente">Pendiente</option><option value="parcial">Parcial</option><option value="pagado">Pagado</option>
+                  </select>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: '#6B5B4E' }}>
+                  Total
+                  <input type="number" min="0" step="0.01" value={editForm.total_price ?? ''} onChange={(e) => updateEditField('total_price', e.target.value)} style={inputStyle} />
+                </label>
+              </div>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.65rem', fontSize: '0.75rem', color: '#6B5B4E' }}>
+                Notas
+                <textarea rows={3} value={editForm.notes || ''} onChange={(e) => updateEditField('notes', e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
+              </label>
+              {editError && <div style={{ marginTop: '0.75rem', color: '#B85C4C', fontSize: '0.8rem' }}>{editError}</div>}
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setEditing(false)} disabled={savingEdit}>Volver</button>
+                <LoadingButton type="submit" className="btn btn-primary" loading={savingEdit} loadingText="Guardando...">Guardar cambios</LoadingButton>
+              </div>
+            </form>
           ) : (
             <>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
@@ -509,6 +635,7 @@ export default function AppointmentDetailModal({
             <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #E8E0D6' }}>
               <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#A89888', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acciones</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                <ActionButton label="Editar cita" icon={<Pencil size={14} />} onClick={() => setEditing(true)} disabled={actionLoading} />
                 {apt.status === 'pendiente' && (
                   <ActionButton label="Confirmar" icon={<Check size={14} />} onClick={handleConfirm} disabled={actionLoading} />
                 )}
