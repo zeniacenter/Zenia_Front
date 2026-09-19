@@ -8,7 +8,7 @@ import useEscClose from '../hooks/useEscClose';
 import { useApp } from '../context/AppContext';
 import { appointmentsAPI } from '../services/api';
 import { clearBusyCache } from '../utils/busyCache';
-import { todayStr } from '../utils/hours';
+import { todayStr, formatHours } from '../utils/hours';
 import TimeSlotPicker from './TimeSlotPicker';
 import CancelAppointmentModal from './CancelAppointmentModal';
 import PaymentScopeModal from './PaymentScopeModal';
@@ -233,7 +233,7 @@ export default function AppointmentDetailModal({
     try {
       const hours = apt.hours || 1;
       const startMins = parseInt(postponeTime.split(':')[0]) * 60 + parseInt(postponeTime.split(':')[1]);
-      const endMins = startMins + hours * 60;
+      const endMins = startMins + Math.round(hours * 60);
       const endH = Math.floor(endMins / 60);
       const endM = endMins % 60;
       const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
@@ -498,7 +498,7 @@ export default function AppointmentDetailModal({
             </div>
             <div style={row}>
               <span style={label}>Duración</span>
-              <span style={value}>{apt.hours}h</span>
+              <span style={value}>{formatHours(apt.hours)} h</span>
             </div>
             <div style={{ ...row, borderBottom: 'none' }}>
               <span style={label}>Total</span>

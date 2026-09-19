@@ -357,6 +357,8 @@ export default function Booking() {
 
   const getTotalHours = () => {
     if (bookingType === 'packages' && selectedPackage) {
+      const pkg = packages.find((p) => p.id === selectedPackage);
+      if (pkg) return getPackageHours(pkg);
       return selectedServices.reduce((sum, id) => sum + (serviceDurations[id] || 1), 0);
     }
     const base = selectedServices.reduce((sum, id) => sum + (serviceDurations[id] || 1), 0);
@@ -457,7 +459,7 @@ export default function Booking() {
           const hours = sessions[i].hours || 1;
           const svc = services.find((s) => s.id === svcId);
           const startMinutes = parseInt(sched.time.split(':')[0]) * 60 + parseInt(sched.time.split(':')[1]);
-          const endMinutes = startMinutes + hours * 60;
+          const endMinutes = startMinutes + Math.round(hours * 60);
           const endH = Math.floor(endMinutes / 60);
           const endM = endMinutes % 60;
           const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
@@ -528,7 +530,7 @@ export default function Booking() {
         for (let i = 0; i < sessionCount; i++) {
           const sched = sessionSchedules[i];
           const startMinutes = parseInt(sched.time.split(':')[0]) * 60 + parseInt(sched.time.split(':')[1]);
-          const endMinutes = startMinutes + dur * 60;
+          const endMinutes = startMinutes + Math.round(dur * 60);
           const endH = Math.floor(endMinutes / 60);
           const endM = endMinutes % 60;
           const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;

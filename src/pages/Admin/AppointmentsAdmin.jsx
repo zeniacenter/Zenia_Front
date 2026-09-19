@@ -200,7 +200,7 @@ export default function AppointmentsAdmin() {
       const apt = postponeTarget;
       const hours = apt.hours || 1;
       const startMins = parseInt(postponeTime.split(':')[0]) * 60 + parseInt(postponeTime.split(':')[1]);
-      const endMins = startMins + hours * 60;
+      const endMins = startMins + Math.round(hours * 60);
       const endH = Math.floor(endMins / 60);
       const endM = endMins % 60;
       const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;

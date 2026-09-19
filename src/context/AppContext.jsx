@@ -101,7 +101,7 @@ export function AppProvider({ children }) {
     const sessions = Array.isArray(pkg.services)
       ? pkg.services
         .filter((s) => s && typeof s === 'object')
-        .map((s) => ({ id: s.id, name: s.name, hours: parseFloat(s.pivot?.hours) || 1 }))
+        .map((s) => ({ id: s.id, name: s.name, hours: Math.round((parseFloat(s.pivot?.hours) || 1) * 100) / 100 }))
       : [];
     const packageMinutes = sessions.reduce(
       (sum, session) => sum + hoursToMinutes(session.hours, 60),
@@ -111,7 +111,7 @@ export function AppProvider({ children }) {
       ...pkg,
       image: getImageUrl(pkg.image),
       sessions,
-      hours: minutesToHours(packageMinutes) || parseFloat(pkg.hours) || 1,
+      hours: Math.round((minutesToHours(packageMinutes) || parseFloat(pkg.hours) || 1) * 100) / 100,
       serviceIds: sessions.map((s) => s.id),
       originalPrice: parseFloat(pkg.original_price) || 0,
       packagePrice: parseFloat(pkg.package_price) || 0,
@@ -647,13 +647,13 @@ export function AppProvider({ children }) {
       const qty = s.qty || 1;
       for (let i = 0; i < qty; i++) {
         expandedIds.push(s.id);
-        expandedHours[s.id] = s.hours || 1;
+        expandedHours[s.id] = Math.round((Number(s.hours) || 1) * 100) / 100;
       }
     });
     const payload = {
       name: pkg.name,
       description: pkg.description,
-      hours: minutesToHours(totalMinutes) || 1,
+      hours: Math.round((minutesToHours(totalMinutes) || 1) * 100) / 100,
       original_price: pkg.originalPrice,
       package_price: pkg.packagePrice,
       image: getImagePath(pkg.image) || '',
@@ -686,13 +686,13 @@ export function AppProvider({ children }) {
       const qty = s.qty || 1;
       for (let i = 0; i < qty; i++) {
         expandedIds.push(s.id);
-        expandedHours[s.id] = s.hours || 1;
+        expandedHours[s.id] = Math.round((Number(s.hours) || 1) * 100) / 100;
       }
     });
     const payload = {
       name: updates.name,
       description: updates.description,
-      hours: minutesToHours(totalMinutes) || 1,
+      hours: Math.round((minutesToHours(totalMinutes) || 1) * 100) / 100,
       original_price: updates.originalPrice,
       package_price: updates.packagePrice,
       image: getImagePath(updates.image) || '',

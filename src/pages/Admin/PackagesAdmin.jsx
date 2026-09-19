@@ -51,7 +51,7 @@ export default function PackagesAdmin() {
     );
     return {
       originalPrice: Math.round(original * 100) / 100,
-      hours: minutesToHours(totalMinutes) || 1,
+      hours: Math.round((minutesToHours(totalMinutes) || 1) * 100) / 100,
     };
   };
 
@@ -112,7 +112,7 @@ export default function PackagesAdmin() {
     setForm((prev) => {
       const svc = services.find((sv) => sv.id === Number(serviceId));
       const minutes = svc?.durationMin ?? 60;
-      const hours = minutes / 60;
+      const hours = Math.round((minutes / 60) * 100) / 100;
       return applyTotals(prev, [...prev.sessions, { id: Number(serviceId), hours, qty: 1 }]);
     });
   };
@@ -353,7 +353,7 @@ export default function PackagesAdmin() {
                           <input
                             type="number"
                             min={0}
-                            step="any"
+                            step="0.01"
                             value={formatHours(sess.hours)}
                             onChange={(e) => updateServiceField(sessionIndex, 'hours', Number(e.target.value))}
                             style={{ width: '60px', padding: '0.25rem 0.4rem', borderRadius: '6px', border: '1px solid var(--land-border)', fontSize: '0.82rem', textAlign: 'center' }}
@@ -385,7 +385,7 @@ export default function PackagesAdmin() {
                           <input
                             type="number"
                             min={0}
-                            step="any"
+                            step="0.01"
                             value={formatHours(sess.hours)}
                             onChange={(e) => updateServiceField(sessionIndex, 'hours', Number(e.target.value))}
                             style={{ width: '55px', padding: '0.25rem 0.4rem', borderRadius: '6px', border: '1px solid var(--land-border)', fontSize: '0.82rem', textAlign: 'center' }}

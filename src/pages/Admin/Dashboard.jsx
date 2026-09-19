@@ -7,7 +7,7 @@ import { useApp } from '../../context/AppContext';
 import { CalendarDays, Clock, DollarSign, Hourglass, Home, User, Info } from 'lucide-react';
 import AppointmentDetailModal from '../../components/AppointmentDetailModal';
 import Skeleton from '../../components/Skeleton';
-import { buildQuarterRange, formatMinutes, todayStr } from '../../utils/hours';
+import { buildQuarterRange, formatMinutes, todayStr, formatHours } from '../../utils/hours';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const locales = { es };
@@ -486,7 +486,7 @@ export default function Dashboard() {
                       )}
                       {serviceNames && (
                         <p style={{ fontSize: '0.82rem', color: '#A89888' }}>
-                          {serviceNames} | {apt.hours}h - S/ {apt.total || apt.total_price}
+                          {serviceNames} | {formatHours(apt.hours)} h - S/ {apt.total || apt.total_price}
                         </p>
                       )}
                       {cabin && (

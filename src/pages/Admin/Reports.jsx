@@ -11,6 +11,7 @@ import {
   BarChart3, DollarSign, Clock, Timer,
   Download, FileText, FileSpreadsheet, Filter, X, Search, CloudUpload
 } from 'lucide-react';
+import { formatHours } from '../../utils/hours';
 
 const COLORS = ['#C9A96E', '#E6C992', '#9A7D52', '#5A8F6A', '#D46B5A', '#B5A898'];
 
@@ -396,7 +397,7 @@ export default function Reports() {
         <div className="stat-card">
           <div className="stat-icon red"><Timer size={22} /></div>
           <div className="stat-info">
-            <h4>{occupancy?.total_hours_booked ?? 0}h</h4>
+            <h4>{formatHours(occupancy?.total_hours_booked ?? 0)}h</h4>
             <p>Horas Reservadas</p>
           </div>
         </div>
@@ -482,7 +483,7 @@ export default function Reports() {
           </div>
           <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
             <p style={{ color: '#B5A898', fontSize: '0.9rem' }}>
-              {occupancy?.total_hours_booked ?? 0}h reservadas de {occupancy?.total_hours_available ?? 0}h disponibles
+              {formatHours(occupancy?.total_hours_booked ?? 0)}h reservadas de {formatHours(occupancy?.total_hours_available ?? 0)}h disponibles
             </p>
           </div>
         </div>
@@ -540,7 +541,7 @@ export default function Reports() {
                           <td style={detailTd}>{a.therapist_name}</td>
                           <td style={detailTd}>{a.branch_name || '-'}</td>
                           <td style={detailTd}>{a.cabin_name || '-'}</td>
-                          <td style={detailTd}>{Number(a.hours)}</td>
+                          <td style={detailTd}>{formatHours(a.hours)}</td>
                           <td style={{ ...detailTd, textAlign: 'right', fontWeight: 600, color: '#3D2E24' }}>{fmtMoney(a.total_price)}</td>
                           <td style={detailTd} className="text-right">{Number(a.discount_percent) > 0 ? `${Number(a.discount_percent)}%` : '-'}</td>
                           <td style={{ ...detailTd, textAlign: 'right', color: '#B85C4C' }}>{Number(a.discount_amount) > 0 ? `-${fmtMoney(a.discount_amount)}` : '-'}</td>
@@ -554,7 +555,7 @@ export default function Reports() {
                     <tfoot>
                       <tr style={{ borderTop: '2px solid #C9A96E' }}>
                         <td colSpan="8" style={{ ...detailTd, fontWeight: 700, color: '#3D2E24' }}>Totales (rango filtrado)</td>
-                        <td style={{ ...detailTd, fontWeight: 700, color: '#3D2E24' }}>{Number(detail.totals.total_horas)}h</td>
+                        <td style={{ ...detailTd, fontWeight: 700, color: '#3D2E24' }}>{formatHours(detail.totals.total_horas)}h</td>
                         <td style={{ ...detailTd, textAlign: 'right', fontWeight: 700, color: '#3D2E24' }}>{fmtMoney(detail.totals.total_ingresos)}</td>
                         <td style={{ ...detailTd, textAlign: 'right', fontWeight: 700, color: '#3D2E24' }}>{Number(detail.totals.total_descuentos) > 0 ? `-${fmtMoney(detail.totals.total_descuentos)}` : '-'}</td>
                         <td style={{ ...detailTd, fontWeight: 700, color: '#3D2E24' }}>{detail.totals.total_citas} citas</td>
@@ -637,7 +638,7 @@ export default function Reports() {
                       <tr key={i} style={{ borderBottom: '1px solid #F0EBE3' }}>
                         <td style={{ ...detailTd, color: '#3D2E24', fontWeight: 500 }}>{t.therapist}</td>
                         <td style={detailTd}>{t.appointment_count}</td>
-                        <td style={detailTd}>{Number(t.total_hours)}</td>
+                        <td style={detailTd}>{formatHours(t.total_hours)}</td>
                         <td style={{ ...detailTd, textAlign: 'right', fontWeight: 600, color: '#3D2E24' }}>{fmtMoney(t.total_price)}</td>
                       </tr>
                     ))}
