@@ -192,6 +192,30 @@ export default function AppointmentDetailModal({
     };
   }, [open, appointment?.id]);
 
+  // Al dar clic en editar, si el correo aún estuviera vacío pero hay un DNI,
+  // busca y jala inmediatamente el correo registrado del cliente.
+  useEffect(() => {
+    if (!editing) return;
+    const dni = (editForm.client_dni || '').trim();
+    if (!editForm.client_email && dni && dni.length >= 8) {
+      personAPI
+        .searchByDni(dni)
+        .then((res) => {
+          if (res.data?.email) {
+            setEditForm((prev) => ({
+              ...prev,
+              client_email: prev.client_email || res.data.email,
+              client_name: prev.client_name || res.data.name || '',
+              client_last_name: prev.client_last_name || res.data.last_name || '',
+              client_phone: prev.client_phone || res.data.phone || '',
+              client_address: prev.client_address || res.data.address || '',
+            }));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [editing]);
+
   if (!open || !appointment) return null;
 
   const apt = (allAppointments || []).find((a) => a.id === appointment.id) || appointment;
