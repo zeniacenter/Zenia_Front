@@ -35,7 +35,8 @@ export function minutesToHours(minutes) {
 
 export function formatHours(hours, fallback = 1) {
   const value = Number(hours);
-  return Number.isFinite(value) ? String(value) : String(fallback);
+  if (!Number.isFinite(value)) return String(fallback);
+  return value.toFixed(2).replace(/\.?(0+)$/, '');
 }
 
 export function getPackageHours(pkg) {
