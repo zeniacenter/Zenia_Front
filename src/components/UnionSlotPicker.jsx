@@ -1,5 +1,11 @@
-import { useMemo } from 'react';
-import { unionSlotsForTherapists, minToHhmm, todayStr } from '../utils/hours';
+import { useEffect, useMemo, useState } from 'react';
+import { therapistsAPI } from '../services/api';
+import { minToHhmm, therapistSlotsForDay, todayStr } from '../utils/hours';
+
+const toMinutes = (value) => {
+  const [hours, minutes] = String(value || '').slice(0, 5).split(':').map(Number);
+  return (hours || 0) * 60 + (minutes || 0);
+};
 
 export default function UnionSlotPicker({
   therapists,
@@ -12,15 +18,63 @@ export default function UnionSlotPicker({
   emptyText = 'No hay horarios disponibles para este día',
   availableHours = null,
 }) {
-  const slots = useMemo(() => {
-    if (!date || !Array.isArray(therapists) || therapists.length === 0) return [];
-    const duration = Math.max(30, Math.round(hours * 60));
-    let list = unionSlotsForTherapists(therapists, date, duration, todayStr()).map(minToHhmm);
-    if (availableHours instanceof Set) {
-      list = list.filter((s) => availableHours.has(s));
+  const [busyByTherapist, setBusyByTherapist] = useState(null);
+  const therapistKey = Array.isArray(therapists)
+    ? therapists.map((therapist) => therapist.id).join(',')
+    : '';
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!date || !Array.isArray(therapists) || therapists.length === 0) {
+      setBusyByTherapist({});
+      return () => { cancelled = true; };
     }
-    return list;
-  }, [therapists, date, hours, availableHours]);
+
+    setBusyByTherapist(null);
+    Promise.all(therapists.map(async (therapist) => {
+      try {
+        const res = await therapistsAPI.busySlots(therapist.id, date);
+        let intervals = res.data.busy_intervals || [];
+        if (intervals.length === 0 && res.data.busy_slots?.length) {
+          intervals = res.data.busy_slots.map((slot) => ({
+            start: slot,
+            end: minToHhmm(toMinutes(slot) + 30),
+          }));
+        }
+        return [therapist.id, intervals];
+      } catch {
+        return [therapist.id, null];
+      }
+    })).then((entries) => {
+      if (!cancelled) setBusyByTherapist(new Map(entries));
+    });
+
+    return () => { cancelled = true; };
+  }, [date, therapistKey]);
+
+  const slots = useMemo(() => {
+    if (!date || !Array.isArray(therapists) || therapists.length === 0 || busyByTherapist === null) return [];
+    const duration = Math.max(30, Math.round(hours * 60));
+    const list = new Set();
+    therapists.forEach((therapist) => {
+      const busyIntervals = busyByTherapist.get(therapist.id);
+      if (busyIntervals === null) return;
+      therapistSlotsForDay({ schedule: therapist.schedule, date, durationMin: duration, today: todayStr() })
+        .filter((start) => {
+          const end = start + duration;
+          return !busyIntervals.some((interval) => (
+            start < toMinutes(interval.end) && toMinutes(interval.start) < end
+          ));
+        })
+        .forEach((start) => list.add(minToHhmm(start)));
+    });
+    let availableSlots = [...list].sort();
+    if (availableHours instanceof Set) {
+      availableSlots = availableSlots.filter((s) => availableHours.has(s));
+    }
+    return availableSlots;
+  }, [therapists, date, hours, availableHours, busyByTherapist]);
 
   return (
     <div
@@ -33,7 +87,11 @@ export default function UnionSlotPicker({
         gap: compact ? '0.3rem' : '0.4rem',
       }}
     >
-      {slots.map((slot) => (
+      {busyByTherapist === null ? (
+        <p className="wizard-empty" style={{ gridColumn: '1 / -1', fontSize: '0.75rem' }}>
+          Buscando horarios disponibles...
+        </p>
+      ) : slots.map((slot) => (
         <button
           key={slot}
           type="button"
