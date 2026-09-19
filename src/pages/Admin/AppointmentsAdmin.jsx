@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import useEscClose from '../../hooks/useEscClose';
 import {
   Inbox, Info, MoreVertical, Check, CheckCircle2,
-  CalendarClock, XCircle, CreditCard, Receipt, RefreshCw, Search,
+  CalendarClock, XCircle, CreditCard, Receipt, RefreshCw, Search, Pencil,
 } from 'lucide-react';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
 import { clearBusyCache } from '../../utils/busyCache';
@@ -100,6 +100,7 @@ export default function AppointmentsAdmin() {
   const [search, setSearch] = useState('');
   const [cancelTarget, setCancelTarget] = useState(null);
   const [detailTarget, setDetailTarget] = useState(null);
+  const [startInEdit, setStartInEdit] = useState(false);
   const [paymentScopeTarget, setPaymentScopeTarget] = useState(null);
   const [menuFor, setMenuFor] = useState(null);
   const menuRefs = useRef({});
@@ -189,7 +190,7 @@ export default function AppointmentsAdmin() {
 
   const openPostpone = (apt) => {
     setPostponeTarget(apt);
-    setPostponeDate(apt.date || '');
+    setPostponeDate(apt.date ? String(apt.date).split('T')[0].slice(0, 10) : '');
     setPostponeTime(apt.start_time || apt.time || '');
   };
 
@@ -416,7 +417,7 @@ export default function AppointmentsAdmin() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', position: 'relative' }} ref={(el) => { menuRefs.current[apt.id] = el; }}>
                           <button
                             title="Ver detalle"
-                            onClick={() => setDetailTarget(apt)}
+                            onClick={() => { setStartInEdit(false); setDetailTarget(apt); }}
                             style={{
                               background: 'none', border: '1px solid #E8E0D6', borderRadius: '6px',
                               cursor: 'pointer', padding: '0.3rem 0.4rem', color: '#6B5B4E',
@@ -471,7 +472,8 @@ export default function AppointmentsAdmin() {
                                     <MenuItem label="Registrar pago" icon={<CreditCard size={14} />} onClick={() => { setMenuFor(null); setPaymentScopeTarget(apt); }} />
                                   )}
                                   <MenuItemDivider />
-                                  <MenuItem label="Ver detalle" icon={<Info size={14} />} onClick={() => { setMenuFor(null); setDetailTarget(apt); }} />
+                                  <MenuItem label="Ver detalle" icon={<Info size={14} />} onClick={() => { setMenuFor(null); setStartInEdit(false); setDetailTarget(apt); }} />
+                                  <MenuItem label="Editar cita" icon={<Pencil size={14} />} onClick={() => { setMenuFor(null); setStartInEdit(true); setDetailTarget(apt); }} />
                                   {apt.payment_status === 'pagado' && (
                                     <MenuItem label="Emitir comprobante" icon={<Receipt size={14} />} onClick={() => { setMenuFor(null); navigate(`/admin/boletas/${apt.id}`); }} />
                                   )}
@@ -596,9 +598,10 @@ export default function AppointmentsAdmin() {
         open={!!detailTarget}
         appointment={detailTarget}
         allAppointments={data}
-        onClose={() => setDetailTarget(null)}
+        initialEditing={startInEdit}
+        onClose={() => { setDetailTarget(null); setStartInEdit(false); }}
         onUpdated={refetch}
-        onSelectSession={(session) => setDetailTarget(session)}
+        onSelectSession={(session) => { setStartInEdit(false); setDetailTarget(session); }}
       />
 
       <PaymentScopeModal

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import useEscClose from '../hooks/useEscClose';
 import { useApp } from '../context/AppContext';
-import { appointmentsAPI } from '../services/api';
+import { appointmentsAPI, personAPI } from '../services/api';
 import { clearBusyCache } from '../utils/busyCache';
 import { todayStr, formatHours } from '../utils/hours';
 import TimeSlotPicker from './TimeSlotPicker';
@@ -64,6 +64,22 @@ const ActionButton = ({ label, icon, onClick, danger, disabled }) => (
   </button>
 );
 
+const formatDateForInput = (val) => {
+  if (!val) return '';
+  if (typeof val === 'string') {
+    return val.split('T')[0].slice(0, 10);
+  }
+  if (val instanceof Date) {
+    return val.toISOString().slice(0, 10);
+  }
+  return '';
+};
+
+const formatTimeForInput = (val) => {
+  if (!val) return '';
+  return String(val).slice(0, 5);
+};
+
 export default function AppointmentDetailModal({
   open,
   appointment,
@@ -71,6 +87,7 @@ export default function AppointmentDetailModal({
   onClose,
   onUpdated,
   onSelectSession,
+  initialEditing = false,
 }) {
   const { appointments, updateAppointment, hasModulePermission, therapists, cabins, branches } = useApp();
   const navigate = useNavigate();
@@ -92,23 +109,23 @@ export default function AppointmentDetailModal({
     setPostponing(false);
     setPostponeDate('');
     setPostponeTime('');
-    setEditing(false);
+    setEditing(!!initialEditing);
     setEditError('');
-  }, [open, appointment?.id]);
+  }, [open, appointment?.id, initialEditing]);
 
   useEffect(() => {
     const current = (allAppointments || []).find((a) => a.id === appointment?.id) || appointment;
     const person = current?.person || {};
     if (current) {
       setEditForm({
-        client_name: person.name || current.clientName || '',
-        client_last_name: person.last_name || '',
-        client_dni: person.dni || '',
-        client_phone: person.phone || current.clientPhone || '',
-        client_email: person.email || '',
-        client_address: person.address || '',
-        date: current.date || '',
-        start_time: String(current.start_time || current.time || '').slice(0, 5),
+        client_name: person.name || current.clientName || current.client_name || '',
+        client_last_name: person.last_name || current.client_last_name || '',
+        client_dni: person.dni || current.client_dni || '',
+        client_phone: person.phone || current.clientPhone || current.client_phone || '',
+        client_email: person.email || current.clientEmail || current.client_email || current.email || '',
+        client_address: person.address || current.client_address || '',
+        date: formatDateForInput(current.date),
+        start_time: formatTimeForInput(current.start_time || current.time),
         hours: current.hours || 1,
         therapist_id: current.therapist_id || '',
         cabin_id: current.cabin_id || '',
@@ -122,6 +139,59 @@ export default function AppointmentDetailModal({
     }
   }, [appointment, allAppointments]);
 
+  // Si faltan datos o para asegurar sincronización con la BD,
+  // consulta los datos frescos de la cita y el cliente.
+  useEffect(() => {
+    if (!open || !appointment?.id) return;
+    let active = true;
+
+    appointmentsAPI
+      .get(appointment.id)
+      .then((res) => {
+        if (!active || !res.data) return;
+        const freshApt = res.data;
+        const freshPerson = freshApt.person || {};
+        const freshEmail = freshPerson.email || freshApt.clientEmail || freshApt.client_email || freshApt.email || '';
+        const freshDate = formatDateForInput(freshApt.date);
+
+        setEditForm((prev) => ({
+          ...prev,
+          client_name: prev.client_name || freshPerson.name || '',
+          client_last_name: prev.client_last_name || freshPerson.last_name || '',
+          client_dni: prev.client_dni || freshPerson.dni || '',
+          client_phone: prev.client_phone || freshPerson.phone || '',
+          client_email: prev.client_email || freshEmail,
+          client_address: prev.client_address || freshPerson.address || '',
+          date: prev.date || freshDate,
+          start_time: prev.start_time || formatTimeForInput(freshApt.start_time),
+        }));
+
+        const dni = (freshPerson.dni || freshApt.client_dni || '').trim();
+        if (!freshEmail && dni && dni.length >= 8) {
+          personAPI
+            .searchByDni(dni)
+            .then((pRes) => {
+              if (active && pRes.data?.email) {
+                setEditForm((p) => ({
+                  ...p,
+                  client_email: p.client_email || pRes.data.email,
+                  client_name: p.client_name || pRes.data.name || '',
+                  client_last_name: p.client_last_name || pRes.data.last_name || '',
+                  client_phone: p.client_phone || pRes.data.phone || '',
+                  client_address: p.client_address || pRes.data.address || '',
+                }));
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [open, appointment?.id]);
+
   if (!open || !appointment) return null;
 
   const apt = (allAppointments || []).find((a) => a.id === appointment.id) || appointment;
@@ -131,7 +201,7 @@ export default function AppointmentDetailModal({
   const clientName = [person.name, person.last_name].filter(Boolean).join(' ') || apt.clientName || 'N/A';
   const clientPhone = person.phone || apt.clientPhone || 'N/A';
   const clientDni = person.dni || '';
-  const clientEmail = person.email || '';
+  const clientEmail = person.email || apt.clientEmail || apt.client_email || apt.email || '';
   const clientAddress = person.address || '';
   const therapistName = apt.therapist?.name || 'N/A';
   const branchName = apt.branch?.name || 'N/A';
@@ -222,8 +292,8 @@ export default function AppointmentDetailModal({
   };
 
   const openPostpone = () => {
-    setPostponeDate(apt.date || '');
-    setPostponeTime(apt.start_time || apt.time || '');
+    setPostponeDate(formatDateForInput(apt.date));
+    setPostponeTime(formatTimeForInput(apt.start_time || apt.time));
     setPostponing(true);
   };
 
@@ -239,7 +309,7 @@ export default function AppointmentDetailModal({
       const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
 
       const newStatus = apt.status === 'postergada' ? 'pendiente' : 'postergada';
-      const updatedAppointment = await updateAppointment(apt.id, {
+      await updateAppointment(apt.id, {
         status: newStatus,
         date: postponeDate,
         start_time: postponeTime,
@@ -282,13 +352,34 @@ export default function AppointmentDetailModal({
     setEditForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleDniBlur = async () => {
+    const dni = (editForm.client_dni || '').trim();
+    if (!dni || dni.length < 8) return;
+    try {
+      const res = await personAPI.searchByDni(dni);
+      if (res.data) {
+        const p = res.data;
+        setEditForm((prev) => ({
+          ...prev,
+          client_name: prev.client_name || p.name || '',
+          client_last_name: prev.client_last_name || p.last_name || '',
+          client_phone: prev.client_phone || p.phone || '',
+          client_email: p.email || prev.client_email || '',
+          client_address: prev.client_address || p.address || '',
+        }));
+      }
+    } catch {
+      // Si no existe, ignorar
+    }
+  };
+
   const handleEditSubmit = async (event) => {
     event.preventDefault();
     if (savingEdit) return;
     setSavingEdit(true);
     setEditError('');
     try {
-      await updateAppointment(apt.id, {
+      const updatedAppointment = await updateAppointment(apt.id, {
         ...editForm,
         therapist_id: editForm.therapist_id ? Number(editForm.therapist_id) : null,
         cabin_id: editForm.cabin_id ? Number(editForm.cabin_id) : null,
@@ -374,7 +465,14 @@ export default function AppointmentDetailModal({
                 ].map(([field, fieldLabel, type]) => (
                   <label key={field} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: '#6B5B4E' }}>
                     {fieldLabel}
-                    <input type={type} value={editForm[field] || ''} onChange={(e) => updateEditField(field, e.target.value)} style={inputStyle} required={field === 'client_name' || field === 'client_phone'} />
+                    <input
+                      type={type}
+                      value={editForm[field] || ''}
+                      onChange={(e) => updateEditField(field, e.target.value)}
+                      onBlur={field === 'client_dni' ? handleDniBlur : undefined}
+                      style={inputStyle}
+                      required={field === 'client_name' || field === 'client_phone'}
+                    />
                   </label>
                 ))}
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: '#6B5B4E' }}>
