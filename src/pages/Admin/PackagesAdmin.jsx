@@ -105,7 +105,7 @@ export default function PackagesAdmin() {
 
   const addedServiceIds = [...new Set(form.sessions.map((s) => s.id))];
   const availableServices = services.filter((s) => (
-    (s.is_active ?? true) && (sessionMode === 'services' || !addedServiceIds.includes(s.id))
+    (s.is_active ?? true) && !addedServiceIds.includes(s.id)
   ));
 
   const addServiceToPackage = (serviceId) => {
