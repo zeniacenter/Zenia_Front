@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authAPI, usersAPI, servicesAPI, packagesAPI, therapistsAPI, cabinsAPI, appointmentsAPI, branchesAPI, settingsAPI, setBranchId } from '../services/api';
 import { BarChart3, Calendar, Users, Home, Sparkles, Package, TrendingUp, Plus, User, MapPin } from 'lucide-react';
+import { hoursToMinutes, minutesToHours } from '../utils/hours';
 
 const AppContext = createContext(null);
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -102,10 +103,15 @@ export function AppProvider({ children }) {
         .filter((s) => s && typeof s === 'object')
         .map((s) => ({ id: s.id, name: s.name, hours: parseFloat(s.pivot?.hours) || 1 }))
       : [];
+    const packageMinutes = sessions.reduce(
+      (sum, session) => sum + hoursToMinutes(session.hours, 60),
+      0,
+    );
     return {
       ...pkg,
       image: getImageUrl(pkg.image),
       sessions,
+      hours: minutesToHours(packageMinutes) || parseFloat(pkg.hours) || 1,
       serviceIds: sessions.map((s) => s.id),
       originalPrice: parseFloat(pkg.original_price) || 0,
       packagePrice: parseFloat(pkg.package_price) || 0,
@@ -631,6 +637,9 @@ export function AppProvider({ children }) {
     const sessions = pkg.sessions || [];
     const expandedIds = [];
     const expandedHours = {};
+    const totalMinutes = sessions.reduce((sum, session) => (
+      sum + hoursToMinutes(session.hours, 60) * (session.qty || 1)
+    ), 0);
     sessions.forEach((s) => {
       const qty = s.qty || 1;
       for (let i = 0; i < qty; i++) {
@@ -641,7 +650,7 @@ export function AppProvider({ children }) {
     const payload = {
       name: pkg.name,
       description: pkg.description,
-      hours: pkg.hours,
+      hours: minutesToHours(totalMinutes) || 1,
       original_price: pkg.originalPrice,
       package_price: pkg.packagePrice,
       image: getImagePath(pkg.image) || '',
@@ -667,6 +676,9 @@ export function AppProvider({ children }) {
     const sessions = updates.sessions || [];
     const expandedIds = [];
     const expandedHours = {};
+    const totalMinutes = sessions.reduce((sum, session) => (
+      sum + hoursToMinutes(session.hours, 60) * (session.qty || 1)
+    ), 0);
     sessions.forEach((s) => {
       const qty = s.qty || 1;
       for (let i = 0; i < qty; i++) {
@@ -677,7 +689,7 @@ export function AppProvider({ children }) {
     const payload = {
       name: updates.name,
       description: updates.description,
-      hours: updates.hours,
+      hours: minutesToHours(totalMinutes) || 1,
       original_price: updates.originalPrice,
       package_price: updates.packagePrice,
       image: getImagePath(updates.image) || '',

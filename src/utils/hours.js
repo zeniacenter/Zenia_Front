@@ -24,6 +24,30 @@ export function formatMinutes(totalMinutes) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+export function hoursToMinutes(hours, fallback = 0) {
+  const value = Number(hours);
+  return Number.isFinite(value) ? Math.round(value * 60) : fallback;
+}
+
+export function minutesToHours(minutes) {
+  return Math.max(0, Number(minutes) || 0) / 60;
+}
+
+export function formatHours(hours, fallback = 1) {
+  const value = Number(hours);
+  return Number.isFinite(value) ? String(Math.round(value * 100) / 100) : String(fallback);
+}
+
+export function getPackageHours(pkg) {
+  const sessions = Array.isArray(pkg?.sessions) ? pkg.sessions : [];
+  if (sessions.length === 0) return Number(pkg?.hours) || 1;
+  const totalMinutes = sessions.reduce(
+    (sum, session) => sum + hoursToMinutes(session.hours, 60) * (Number(session.qty) || 1),
+    0,
+  );
+  return minutesToHours(totalMinutes) || 1;
+}
+
 export function buildQuarterRange(startStr, endStr) {
   const toMin = (s) => {
     const parts = String(s || '').slice(0, 5).split(':').map(Number);

@@ -8,6 +8,7 @@ import Pagination from '../../components/Pagination';
 import LoadingButton from '../../components/LoadingButton';
 import { CardGridSkeleton } from '../../components/Skeleton';
 import { FALLBACK_IMAGE_400 } from '../../utils/placeholders';
+import { formatHours, getPackageHours, hoursToMinutes, minutesToHours } from '../../utils/hours';
 
 export default function PackagesAdmin() {
   const { packages, services, branches, addPackage, updatePackage, deletePackage, updateEntityImage, hasModulePermission, loading } = useApp();
@@ -39,10 +40,19 @@ export default function PackagesAdmin() {
   const computeTotals = (sessions) => {
     const original = sessions.reduce((sum, sess) => {
       const s = services.find((sv) => sv.id === sess.id);
-      return sum + (s ? s.pricePerHour * (sess.hours || 1) * (sess.qty || 1) : 0);
+      if (!s) return sum;
+      const pricePerHour = Number(s.pricePerHour ?? s.price_per_hour ?? s.price ?? 0);
+      const quantity = Math.max(1, Number(sess.qty) || 1);
+      return sum + pricePerHour * quantity;
     }, 0);
-    const hours = sessions.reduce((sum, sess) => sum + (sess.hours || 1) * (sess.qty || 1), 0);
-    return { originalPrice: Math.round(original * 100) / 100, hours: hours || 1 };
+    const totalMinutes = sessions.reduce(
+      (sum, sess) => sum + hoursToMinutes(sess.hours, 60) * (Math.max(1, Number(sess.qty) || 1)),
+      0,
+    );
+    return {
+      originalPrice: Math.round(original * 100) / 100,
+      hours: minutesToHours(totalMinutes) || 1,
+    };
   };
 
   const applyTotals = (prev, updated) => {
@@ -83,7 +93,7 @@ export default function PackagesAdmin() {
       name: pkg.name,
       description: pkg.description,
       sessions,
-      hours: pkg.hours,
+      hours: getPackageHours(pkg),
       originalPrice: pkg.originalPrice,
       packagePrice: pkg.packagePrice,
       image: pkg.image,
@@ -94,23 +104,27 @@ export default function PackagesAdmin() {
   };
 
   const addedServiceIds = [...new Set(form.sessions.map((s) => s.id))];
-  const availableServices = services.filter((s) => (s.is_active ?? true) && !addedServiceIds.includes(s.id));
+  const availableServices = services.filter((s) => (
+    (s.is_active ?? true) && (sessionMode === 'services' || !addedServiceIds.includes(s.id))
+  ));
 
   const addServiceToPackage = (serviceId) => {
     setForm((prev) => {
       const svc = services.find((sv) => sv.id === Number(serviceId));
       const minutes = svc?.durationMin ?? 60;
-      const hours = Math.round((minutes / 60) * 10) / 10;
+      const hours = minutes / 60;
       return applyTotals(prev, [...prev.sessions, { id: Number(serviceId), hours, qty: 1 }]);
     });
   };
 
-  const removeServiceFromPackage = (serviceId) => {
-    setForm((prev) => applyTotals(prev, prev.sessions.filter((s) => s.id !== Number(serviceId))));
+  const removeServiceFromPackage = (sessionIndex) => {
+    setForm((prev) => applyTotals(prev, prev.sessions.filter((_, index) => index !== sessionIndex)));
   };
 
-  const updateServiceField = (serviceId, field, value) => {
-    setForm((prev) => applyTotals(prev, prev.sessions.map((s) => s.id === Number(serviceId) ? { ...s, [field]: value } : s)));
+  const updateServiceField = (sessionIndex, field, value) => {
+    setForm((prev) => applyTotals(prev, prev.sessions.map((s, index) => (
+      index === sessionIndex ? { ...s, [field]: value } : s
+    ))));
   };
 
   const handleSubmit = async (e) => {
@@ -172,7 +186,7 @@ export default function PackagesAdmin() {
   const getServiceNames = (sessions) =>
     (sessions || []).map((s) => {
       const svc = services.find((sv) => sv.id === s.id);
-      return svc ? `${svc.name} (${s.hours}h)` : 'N/A';
+      return svc ? `${svc.name} (${formatHours(s.hours)} h)` : 'N/A';
     }).join(', ');
 
   const getBranchName = (branchId) => {
@@ -222,63 +236,63 @@ export default function PackagesAdmin() {
       {loading ? (
         <CardGridSkeleton columns={3} rows={2} />
       ) : (
-      <>
-      <div className="services-grid">
-        {pagedPackages.map((pkg) => (
-          <div className="card" key={pkg.id}>
-            <img src={pkg.image || FALLBACK_IMAGE_400} alt={pkg.name} className="card-image" loading="lazy" />
-            <div className="card-body">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                <h3 className="card-title" style={{ margin: 0 }}>{pkg.name}</h3>
-                {pkg.active ? (
-                  <span className="badge badge-confirmed">Activo</span>
-                ) : (
-                  <span className="badge badge-cancelled">Inactivo</span>
-                )}
+        <>
+          <div className="services-grid">
+            {pagedPackages.map((pkg) => (
+              <div className="card" key={pkg.id}>
+                <img src={pkg.image || FALLBACK_IMAGE_400} alt={pkg.name} className="card-image" loading="lazy" />
+                <div className="card-body">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                    <h3 className="card-title" style={{ margin: 0 }}>{pkg.name}</h3>
+                    {pkg.active ? (
+                      <span className="badge badge-confirmed">Activo</span>
+                    ) : (
+                      <span className="badge badge-cancelled">Inactivo</span>
+                    )}
+                  </div>
+                  <p className="card-text">{pkg.description}</p>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.5rem' }}>
+                    Servicios: {getServiceNames(pkg.sessions)}
+                  </p>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.5rem' }}>
+                    Sede: {getBranchName(pkg.branchId)}
+                  </p>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.75rem' }}>
+                    Duración: {formatHours(getPackageHours(pkg))} h
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                    <span style={{ textDecoration: 'line-through', color: 'var(--land-text-muted)' }}>
+                      S/ {pkg.originalPrice}
+                    </span>
+                    <span className="card-price">S/ {pkg.packagePrice}</span>
+                    <span className="badge badge-confirmed" style={{ fontSize: '0.7rem' }}>
+                      -{discount(pkg)}%
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {hasModulePermission('paquetes', 'can_edit') && (
+                      <button className="btn btn-sm btn-outline" onClick={() => openEdit(pkg)}>
+                        Editar
+                      </button>
+                    )}
+                    {hasModulePermission('paquetes', 'can_delete') && (
+                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(pkg.id)}>
+                        Eliminar
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-              <p className="card-text">{pkg.description}</p>
-              <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.5rem' }}>
-                Servicios: {getServiceNames(pkg.sessions)}
-              </p>
-              <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.5rem' }}>
-                Sede: {getBranchName(pkg.branchId)}
-              </p>
-              <p style={{ fontSize: '0.82rem', color: 'var(--land-text-muted)', marginBottom: '0.75rem' }}>
-                Duración: {pkg.hours} {pkg.hours === 1 ? 'hora' : 'horas'}
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                <span style={{ textDecoration: 'line-through', color: 'var(--land-text-muted)' }}>
-                  S/ {pkg.originalPrice}
-                </span>
-                <span className="card-price">S/ {pkg.packagePrice}</span>
-                <span className="badge badge-confirmed" style={{ fontSize: '0.7rem' }}>
-                  -{discount(pkg)}%
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {hasModulePermission('paquetes', 'can_edit') && (
-                  <button className="btn btn-sm btn-outline" onClick={() => openEdit(pkg)}>
-                    Editar
-                  </button>
-                )}
-                {hasModulePermission('paquetes', 'can_delete') && (
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDelete(pkg.id)}>
-                    Eliminar
-                  </button>
-                )}
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <Pagination
-        total={filteredPackages.length}
-        page={page}
-        onPageChange={setPage}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={setRowsPerPage}
-      />
-      </>
+          <Pagination
+            total={filteredPackages.length}
+            page={page}
+            onPageChange={setPage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={setRowsPerPage}
+          />
+        </>
       )}
 
       {!loading && filteredPackages.length === 0 && (
@@ -331,21 +345,21 @@ export default function PackagesAdmin() {
 
                 {sessionMode === 'services' ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {form.sessions.map((sess) => {
+                    {form.sessions.map((sess, sessionIndex) => {
                       const svc = services.find((s) => s.id === sess.id);
                       return (
-                        <div key={sess.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: '1px solid #C9944A', borderRadius: '8px', background: 'rgba(201,148,74,0.08)' }}>
+                        <div key={`${sess.id}-${sessionIndex}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', border: '1px solid #C9944A', borderRadius: '8px', background: 'rgba(201,148,74,0.08)' }}>
                           <span style={{ flex: 1, fontSize: '0.85rem', fontWeight: 500 }}>{svc?.name || 'N/A'}</span>
                           <input
                             type="number"
-                            min={0.5}
-                            step={0.5}
-                            value={sess.hours}
-                            onChange={(e) => updateServiceField(sess.id, 'hours', Number(e.target.value))}
+                            min={0}
+                            step="any"
+                            value={formatHours(sess.hours)}
+                            onChange={(e) => updateServiceField(sessionIndex, 'hours', Number(e.target.value))}
                             style={{ width: '60px', padding: '0.25rem 0.4rem', borderRadius: '6px', border: '1px solid var(--land-border)', fontSize: '0.82rem', textAlign: 'center' }}
                           />
                           <span style={{ fontSize: '0.78rem', color: 'var(--land-text-muted)' }}>h</span>
-                          <button type="button" onClick={() => removeServiceFromPackage(sess.id)} style={{ background: 'none', border: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1rem', padding: '0 0.25rem' }}>×</button>
+                          <button type="button" onClick={() => removeServiceFromPackage(sessionIndex)} style={{ background: 'none', border: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1rem', padding: '0 0.25rem' }}>×</button>
                         </div>
                       );
                     })}
@@ -363,27 +377,27 @@ export default function PackagesAdmin() {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {form.sessions.map((sess) => {
+                    {form.sessions.map((sess, sessionIndex) => {
                       const svc = services.find((s) => s.id === sess.id);
                       return (
-                        <div key={sess.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 0.75rem', border: '1px solid #C9944A', borderRadius: '8px', background: 'rgba(201,148,74,0.08)' }}>
+                        <div key={`${sess.id}-${sessionIndex}`} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 0.75rem', border: '1px solid #C9944A', borderRadius: '8px', background: 'rgba(201,148,74,0.08)' }}>
                           <span style={{ flex: 1, fontSize: '0.85rem', fontWeight: 500 }}>{svc?.name || 'N/A'}</span>
                           <input
                             type="number"
-                            min={0.5}
-                            step={0.5}
-                            value={sess.hours}
-                            onChange={(e) => updateServiceField(sess.id, 'hours', Number(e.target.value))}
+                            min={0}
+                            step="any"
+                            value={formatHours(sess.hours)}
+                            onChange={(e) => updateServiceField(sessionIndex, 'hours', Number(e.target.value))}
                             style={{ width: '55px', padding: '0.25rem 0.4rem', borderRadius: '6px', border: '1px solid var(--land-border)', fontSize: '0.82rem', textAlign: 'center' }}
                           />
                           <span style={{ fontSize: '0.75rem', color: 'var(--land-text-muted)' }}>h</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', marginLeft: '0.25rem' }}>
-                            <button type="button" onClick={() => updateServiceField(sess.id, 'qty', Math.max(1, (sess.qty || 1) - 1))} style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1px solid var(--land-border)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>−</button>
+                            <button type="button" onClick={() => updateServiceField(sessionIndex, 'qty', Math.max(1, (sess.qty || 1) - 1))} style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1px solid var(--land-border)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>−</button>
                             <span style={{ minWidth: '18px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 600 }}>{sess.qty || 1}</span>
-                            <button type="button" onClick={() => updateServiceField(sess.id, 'qty', (sess.qty || 1) + 1)} style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1px solid var(--land-border)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>+</button>
+                            <button type="button" onClick={() => updateServiceField(sessionIndex, 'qty', (sess.qty || 1) + 1)} style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1px solid var(--land-border)', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>+</button>
                           </div>
                           <span style={{ fontSize: '0.72rem', color: 'var(--land-text-muted)' }}>ses</span>
-                          <button type="button" onClick={() => removeServiceFromPackage(sess.id)} style={{ background: 'none', border: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1rem', padding: '0 0.25rem' }}>×</button>
+                          <button type="button" onClick={() => removeServiceFromPackage(sessionIndex)} style={{ background: 'none', border: 'none', color: '#c0392b', cursor: 'pointer', fontSize: '1rem', padding: '0 0.25rem' }}>×</button>
                         </div>
                       );
                     })}

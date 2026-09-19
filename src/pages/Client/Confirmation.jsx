@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { formatHours } from '../../utils/hours';
 
 export default function Confirmation() {
   const { state } = useLocation();
@@ -62,7 +63,7 @@ export default function Confirmation() {
             state.sessions.map((s, i) => (
               <div key={i} className="detail-row">
                 <strong>Sesión {i + 1}:</strong>
-                <span>{s.name} — {s.date} {s.time} ({s.hours}h)</span>
+                <span>{s.name} — {s.date} {s.time} ({formatHours(s.hours)} h)</span>
               </div>
             ))
           ) : (
@@ -79,7 +80,7 @@ export default function Confirmation() {
           )}
           <div className="detail-row">
             <strong>Duración:</strong>
-            <span>{state.hours} {state.hours === 1 ? 'hora' : 'horas'}</span>
+            <span>{formatHours(state.hours)} h</span>
           </div>
           {state.originalPrice > state.total && (
             <div className="detail-row">

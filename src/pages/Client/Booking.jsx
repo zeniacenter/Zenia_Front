@@ -6,7 +6,7 @@ import { personAPI, appointmentsAPI } from '../../services/api';
 import UnionSlotPicker from '../../components/UnionSlotPicker';
 import NotificationModal from '../../components/NotificationModal';
 import { clearBusyCache } from '../../utils/busyCache';
-import { todayStr, minToHhmm, therapistSlotsForDay } from '../../utils/hours';
+import { formatHours, getPackageHours, hoursToMinutes, todayStr, minToHhmm, therapistSlotsForDay } from '../../utils/hours';
 
 const BASE_STEPS = [
   { number: 1, label: 'Sede' },
@@ -774,7 +774,7 @@ export default function Booking() {
                     <div className="wizard-option-info">
                       <h4>{pkg.name}</h4>
                       <p>{pkg.description}</p>
-                      <span className="wizard-option-meta">{pkg.hours}h · {(pkg.sessions || []).length} sesiones</span>
+                      <span className="wizard-option-meta">{formatHours(getPackageHours(pkg))} h · {(pkg.sessions || []).length} sesiones</span>
                     </div>
                     {settings.priceVisible && (
                       <div className="wizard-option-price-group">
@@ -871,7 +871,7 @@ export default function Booking() {
                         }}>
                           <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#3D2E24', marginBottom: '0.75rem' }}>
                             Sesión {idx + 1}: {sessionName}
-                            <span style={{ fontWeight: 400, color: '#A89888', marginLeft: '0.5rem' }}>({sessionHours}h)</span>
+                            <span style={{ fontWeight: 400, color: '#A89888', marginLeft: '0.5rem' }}>({formatHours(sessionHours)} h)</span>
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                             <div>
@@ -1032,7 +1032,7 @@ export default function Booking() {
                       const svc = services.find((s) => s.id === Number(id));
                       return (
                         <div className="confirm-row" key={id}>
-                          <span>{svc?.name} ×{g.count} ({fmtDur(g.hours)} c/u)</span>
+                          <span>{svc?.name} ×{g.count} ({formatHours(g.hours)} h c/u)</span>
                           <span></span>
                         </div>
                       );
@@ -1060,7 +1060,7 @@ export default function Booking() {
                       <span>{selectedServices.length}</span>
                     </div>
                   )}
-                  <div className="confirm-row"><span>Duración total</span><span>{fmtDur(getTotalHours())}</span></div>
+                  <div className="confirm-row"><span>Duración total</span><span>{formatHours(getTotalHours())} h</span></div>
                   {(bookingType === 'packages' || (bookingType === 'services' && sessionCount > 1)) && sessionSchedules.length > 1 ? (
                     sessionSchedules.map((sched, idx) => (
                       <div key={idx} className="confirm-row">
@@ -1116,7 +1116,7 @@ export default function Booking() {
                         return (
                           <div key={id} className="sidebar-service-item">
                             <span>{svc?.name} ×{g.count}</span>
-                            <span style={{ fontSize: '0.78rem', color: 'var(--land-text-muted)' }}>{fmtDur(g.hours)} c/u</span>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--land-text-muted)' }}>{formatHours(g.hours)} h c/u</span>
                           </div>
                         );
                       });

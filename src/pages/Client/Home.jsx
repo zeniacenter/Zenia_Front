@@ -5,6 +5,7 @@ import { motion, useInView } from 'framer-motion';
 import { Sparkles, Heart, Shield, Clock, ArrowRight, CheckCircle2, ImageIcon } from 'lucide-react';
 import AutoCarousel from '../../components/AutoCarousel';
 import Skeleton from '../../components/Skeleton';
+import { formatHours, getPackageHours } from '../../utils/hours';
 
 const SectionCardsSkeleton = ({ count = 3 }) => (
   <div className="services-showcase">
@@ -263,7 +264,7 @@ export default function Home() {
                           <h3>{pkg.name}</h3>
                           <p>{pkg.description}</p>
                           <div className="package-meta">
-                            <span>{pkg.hours}h de duración</span>
+                            <span>{formatHours(getPackageHours(pkg))} h de duración</span>
                             {totalSessions > 0 && <span>{totalSessions} sesiones incluidas</span>}
                           </div>
                           {settings.priceVisible && (

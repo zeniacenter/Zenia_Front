@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { formatHours, getPackageHours } from '../../utils/hours';
 
 export default function Packages() {
   const { packages, settings } = useApp();
@@ -28,9 +29,7 @@ export default function Packages() {
                 </div>
                 <p className="card-text">{pkg.description}</p>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                  {(pkg.sessions || []).length > 0
-                    ? `${pkg.sessions.length} sesiones incluidas`
-                    : `${pkg.hours}h de duración`}
+                  {`${formatHours(getPackageHours(pkg))} h de duración${(pkg.sessions || []).length > 0 ? ` · ${pkg.sessions.length} sesiones incluidas` : ''}`}
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   {settings.priceVisible && (
