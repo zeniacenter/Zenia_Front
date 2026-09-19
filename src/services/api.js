@@ -102,6 +102,7 @@ export const appointmentsAPI = {
   slotAvailability: (params, config = {}) => api.get('/slot-availability', { params, ...config }),
   propagatePayment: (packageId, personId) => api.post('/admin/appointments/propagate-payment', { package_id: packageId, person_id: personId }),
   propagatePaymentGroup: (groupId, personId) => api.post('/admin/appointments/propagate-payment-group', { group_id: groupId, person_id: personId }),
+  scheduleNextSession: (appointmentId, data) => api.post(`/admin/appointments/${appointmentId}/next-session`, data),
 };
 
 export const personAPI = {

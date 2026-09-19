@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X, Package, CreditCard, Clock, MapPin, User, Phone, Scissors, AlertTriangle, Mail, Hash, Home,
-  Check, CheckCircle2, CalendarClock, XCircle, Receipt, Pencil,
+  Check, CheckCircle2, CalendarClock, XCircle, Receipt, Pencil, CalendarPlus,
 } from 'lucide-react';
 import useEscClose from '../hooks/useEscClose';
 import { useApp } from '../context/AppContext';
@@ -89,8 +89,9 @@ export default function AppointmentDetailModal({
   onSelectSession,
   initialEditing = false,
 }) {
-  const { appointments, updateAppointment, hasModulePermission, therapists, cabins, branches } = useApp();
+  const { appointments, updateAppointment, hasModulePermission, therapists, cabins, branches, packages, services } = useApp();
   const navigate = useNavigate();
+  const [freshData, setFreshData] = useState(null);
   const [postponing, setPostponing] = useState(false);
   const [postponeDate, setPostponeDate] = useState('');
   const [postponeTime, setPostponeTime] = useState('');
@@ -103,6 +104,19 @@ export default function AppointmentDetailModal({
   const [editError, setEditError] = useState('');
   const [editForm, setEditForm] = useState({});
 
+  // Estados para agendar siguiente sesión de paquete / multi-sesión
+  const [schedulingNext, setSchedulingNext] = useState(false);
+  const [nextTargetNumber, setNextTargetNumber] = useState(1);
+  const [nextDate, setNextDate] = useState('');
+  const [nextTime, setNextTime] = useState('');
+  const [nextTherapistId, setNextTherapistId] = useState('');
+  const [nextCabinId, setNextCabinId] = useState('');
+  const [nextServiceId, setNextServiceId] = useState('');
+  const [nextHours, setNextHours] = useState(1);
+  const [nextNotes, setNextNotes] = useState('');
+  const [savingNext, setSavingNext] = useState(false);
+  const [nextError, setNextError] = useState('');
+
   useEscClose(open, onClose);
 
   useEffect(() => {
@@ -111,6 +125,9 @@ export default function AppointmentDetailModal({
     setPostponeTime('');
     setEditing(!!initialEditing);
     setEditError('');
+    setSchedulingNext(false);
+    setNextError('');
+    setFreshData(null);
   }, [open, appointment?.id, initialEditing]);
 
   useEffect(() => {
@@ -150,6 +167,7 @@ export default function AppointmentDetailModal({
       .then((res) => {
         if (!active || !res.data) return;
         const freshApt = res.data;
+        setFreshData(freshApt);
         const freshPerson = freshApt.person || {};
         const freshEmail = freshPerson.email || freshApt.clientEmail || freshApt.client_email || freshApt.email || '';
         const freshDate = formatDateForInput(freshApt.date);
@@ -218,7 +236,7 @@ export default function AppointmentDetailModal({
 
   if (!open || !appointment) return null;
 
-  const apt = (allAppointments || []).find((a) => a.id === appointment.id) || appointment;
+  const apt = freshData || (allAppointments || []).find((a) => a.id === appointment.id) || appointment;
   const today = todayStr();
   const canEdit = hasModulePermission('citas', 'can_edit');
   const person = apt.person || {};
@@ -233,15 +251,85 @@ export default function AppointmentDetailModal({
   const st = STATUS_CONFIG[apt.status] || STATUS_CONFIG.pendiente;
   const pCfg = PAYMENT_CONFIG[apt.payment_status || 'pendiente'];
 
-  const isGroupSession = !!apt.group_id && apt.session_number && apt.total_sessions;
+  const isGroupSession = !!apt.group_id && !!apt.total_sessions;
   const isPackageSession = !!apt.package_id && !isGroupSession;
 
   let groupSessions = [];
   if (isGroupSession) {
-    groupSessions = (allAppointments || []).filter(
+    const rawSessions = freshData?.group_sessions || (allAppointments || []).filter(
       (a) => a.group_id === apt.group_id && a.person_id === apt.person_id
-    ).sort((a, b) => (a.session_number || 0) - (b.session_number || 0));
+    );
+    const map = new Map();
+    (rawSessions || []).forEach((s) => { if (s && s.id) map.set(s.id, s); });
+    if (apt?.id) map.set(apt.id, apt);
+    groupSessions = Array.from(map.values()).sort((a, b) => (a.session_number || 0) - (b.session_number || 0));
   }
+
+  const totalSessions = isGroupSession ? Number(apt.total_sessions) : 1;
+  const activeSessions = groupSessions.filter((s) => s.status !== 'cancelada');
+  const scheduledCount = activeSessions.length;
+  const pendingCount = Math.max(0, totalSessions - scheduledCount);
+  const canScheduleNext = isGroupSession && pendingCount > 0 && hasModulePermission('citas', 'can_create');
+
+  const usedNumbers = activeSessions.map((s) => Number(s.session_number));
+  let nextSessionNumber = 1;
+  while (usedNumbers.includes(nextSessionNumber)) {
+    nextSessionNumber++;
+  }
+  if (nextSessionNumber > totalSessions) {
+    nextSessionNumber = scheduledCount + 1;
+  }
+
+  const openScheduleNext = (targetNumber = nextSessionNumber) => {
+    setNextTargetNumber(targetNumber);
+    setNextDate(todayStr());
+    setNextTime('');
+    setNextTherapistId(apt.therapist_id ? String(apt.therapist_id) : (therapists[0]?.id ? String(therapists[0].id) : ''));
+    setNextCabinId(apt.cabin_id ? String(apt.cabin_id) : '');
+
+    let defSvcId = apt.services?.[0]?.id ? String(apt.services[0].id) : '';
+    let defHours = apt.hours || 1;
+    if (apt.package_id) {
+      const pkg = (packages || []).find((p) => p.id === apt.package_id);
+      if (pkg?.sessions && pkg.sessions.length >= targetNumber) {
+        defSvcId = pkg.sessions[targetNumber - 1]?.id ? String(pkg.sessions[targetNumber - 1].id) : defSvcId;
+        defHours = pkg.sessions[targetNumber - 1]?.hours || defHours;
+      }
+    }
+    setNextServiceId(defSvcId);
+    setNextHours(defHours);
+    setNextNotes('');
+    setNextError('');
+    setSchedulingNext(true);
+  };
+
+  const handleScheduleNextSubmit = async (e) => {
+    e.preventDefault();
+    if (savingNext || !nextDate || !nextTime || !nextTherapistId) return;
+    setSavingNext(true);
+    setNextError('');
+    try {
+      await appointmentsAPI.scheduleNextSession(apt.id, {
+        date: nextDate,
+        start_time: nextTime,
+        therapist_id: Number(nextTherapistId),
+        cabin_id: nextCabinId ? Number(nextCabinId) : null,
+        branch_id: apt.branch_id || (branches[0]?.id || null),
+        service_id: nextServiceId ? Number(nextServiceId) : null,
+        hours: Number(nextHours) || 1,
+        notes: nextNotes,
+      });
+      clearBusyCache();
+      onUpdated?.();
+      setSchedulingNext(false);
+      const res = await appointmentsAPI.get(apt.id);
+      if (res.data) setFreshData(res.data);
+    } catch (err) {
+      setNextError(err.response?.data?.message || err.message || 'Error al agendar la sesión.');
+    } finally {
+      setSavingNext(false);
+    }
+  };
 
   let packageInfo = null;
   let siblingApts = [];
@@ -430,8 +518,162 @@ export default function AppointmentDetailModal({
         style={{
           background: '#FFFFFF', borderRadius: '14px', width: '100%', maxWidth: '520px',
           maxHeight: '90vh', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+          position: 'relative',
         }}
       >
+        {schedulingNext && (
+          <div style={{
+            position: 'absolute', inset: 0, background: '#FFFFFF', zIndex: 50,
+            padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #E8E0D6', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#3D2E24' }}>
+                  Agendar Sesión {nextTargetNumber} de {totalSessions}
+                </h3>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#A89888' }}>
+                  {clientName} — {apt.package?.name || serviceName}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSchedulingNext(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A89888', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', background: '#FDF6E9', border: '1px solid #E8E0D6', marginBottom: '1rem', color: '#8B6520', fontSize: '0.8rem' }}>
+              💡 Esta sesión forma parte del paquete o multi-sesión ya contratado. Costo adicional: <strong>S/ 0.00</strong>.
+            </div>
+
+            <form onSubmit={handleScheduleNextSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>
+                  Fecha de la sesión *
+                </label>
+                <input
+                  type="date"
+                  min={today}
+                  value={nextDate}
+                  onChange={(e) => { setNextDate(e.target.value); setNextTime(''); }}
+                  style={inputStyle}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>
+                  Terapeuta *
+                </label>
+                <select
+                  value={nextTherapistId}
+                  onChange={(e) => { setNextTherapistId(e.target.value); setNextTime(''); }}
+                  style={inputStyle}
+                  required
+                >
+                  <option value="">Selecciona terapeuta</option>
+                  {therapists.filter((t) => (t.is_available ?? t.available ?? true)).map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>
+                  Hora de la sesión *
+                </label>
+                {nextTherapistId && nextDate ? (
+                  <TimeSlotPicker
+                    therapistId={Number(nextTherapistId)}
+                    date={nextDate}
+                    value={nextTime}
+                    onChange={setNextTime}
+                    hours={Number(nextHours) || 1}
+                    compact
+                  />
+                ) : (
+                  <div style={{ padding: '0.6rem', textAlign: 'center', color: '#A89888', fontSize: '0.8rem', background: '#FDFCFA', border: '1px dashed #E8E0D6', borderRadius: '8px' }}>
+                    Selecciona fecha y terapeuta para ver los horarios disponibles
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>
+                    Cabina (opcional)
+                  </label>
+                  <select
+                    value={nextCabinId}
+                    onChange={(e) => setNextCabinId(e.target.value)}
+                    style={inputStyle}
+                  >
+                    <option value="">Sin asignar / Automática</option>
+                    {cabins.filter((c) => (c.is_available ?? c.available ?? true)).map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>
+                    Servicio
+                  </label>
+                  <select
+                    value={nextServiceId}
+                    onChange={(e) => setNextServiceId(e.target.value)}
+                    style={inputStyle}
+                  >
+                    {services.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6B5B4E', marginBottom: '0.3rem' }}>
+                  Notas u observaciones
+                </label>
+                <textarea
+                  value={nextNotes}
+                  onChange={(e) => setNextNotes(e.target.value)}
+                  style={{ ...inputStyle, minHeight: '55px', resize: 'vertical' }}
+                  placeholder="Instrucciones o preferencias para esta sesión..."
+                />
+              </div>
+
+              {nextError && (
+                <div style={{ padding: '0.6rem', borderRadius: '8px', background: '#FCEEED', border: '1px solid #F5D5D0', color: '#B85C4C', fontSize: '0.8rem' }}>
+                  {nextError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setSchedulingNext(false)}
+                  disabled={savingNext}
+                  style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={savingNext || !nextDate || !nextTime || !nextTherapistId}
+                  style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem', opacity: savingNext || !nextDate || !nextTime || !nextTherapistId ? 0.6 : 1 }}
+                >
+                  {savingNext ? 'Agendando...' : `Confirmar sesión ${nextTargetNumber}`}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', borderBottom: '1px solid #E8E0D6' }}>
           <h3 style={{ margin: 0, fontSize: '1rem', color: '#3D2E24' }}>Detalle de Cita</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A89888', padding: '4px' }}>
@@ -630,38 +872,98 @@ export default function AppointmentDetailModal({
 
           {isGroupSession && (
             <div style={{ marginTop: '0.75rem', padding: '0.85rem', borderRadius: '10px', background: '#FDFBF7', border: '1px solid #E8E0D6' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
-                <Package size={16} color="#8B6A50" />
-                <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#3D2E24' }}>
-                  Multi-sesión: Sesión {apt.session_number} de {apt.total_sessions}
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.3rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Package size={16} color="#8B6A50" />
+                  <span style={{ fontWeight: 600, fontSize: '0.82rem', color: '#3D2E24' }}>
+                    {apt.package?.name ? `Paquete: ${apt.package.name}` : 'Multi-sesión'} ({scheduledCount} de {totalSessions} agendadas)
+                  </span>
+                </div>
+                {pendingCount > 0 && (
+                  <span style={{ fontSize: '0.7rem', color: '#8B6520', fontWeight: 600, background: '#FDF6E9', border: '1px solid #E8E0D6', padding: '2px 8px', borderRadius: '12px' }}>
+                    {pendingCount} {pendingCount === 1 ? 'pendiente por agendar' : 'pendientes por agendar'}
+                  </span>
+                )}
               </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.4rem' }}>
-                {groupSessions.map((s) => {
-                  const sSt = STATUS_CONFIG[s.status] || STATUS_CONFIG.pendiente;
-                  const isCurrent = s.id === apt.id;
+                {Array.from({ length: totalSessions }, (_, idx) => {
+                  const sNum = idx + 1;
+                  const s = groupSessions.find((item) => Number(item.session_number) === sNum);
+                  if (s) {
+                    const sSt = STATUS_CONFIG[s.status] || STATUS_CONFIG.pendiente;
+                    const isCurrent = s.id === apt.id;
+                    return (
+                      <div
+                        key={s.id}
+                        onClick={() => {
+                          if (!isCurrent && onSelectSession) onSelectSession(s);
+                        }}
+                        style={{
+                          padding: '0.4rem 0.5rem', borderRadius: '6px', fontSize: '0.7rem',
+                          border: isCurrent ? '2px solid #C9944A' : '1px solid #E8E0D6',
+                          background: isCurrent ? '#FDF6E9' : '#fff',
+                          textAlign: 'center',
+                          cursor: isCurrent ? 'default' : 'pointer',
+                          transition: 'all 0.15s',
+                          opacity: isCurrent ? 1 : 0.85,
+                        }}
+                        title={isCurrent ? 'Sesión actual' : 'Ver detalle de esta sesión'}
+                      >
+                        <div style={{ fontWeight: 600, marginBottom: '2px' }}>Sesión {s.session_number}</div>
+                        <div style={{ color: '#A89888', fontSize: '0.65rem' }}>{s.date} {s.start_time?.slice(0, 5)}</div>
+                        <span style={badge({ ...sSt, bg: sSt.bg, color: sSt.color })}>{sSt.label}</span>
+                      </div>
+                    );
+                  }
+
                   return (
-                    <div key={s.id} onClick={() => {
-                      if (!isCurrent && onSelectSession) onSelectSession(s);
-                    }} style={{
-                      padding: '0.4rem 0.5rem', borderRadius: '6px', fontSize: '0.7rem',
-                      border: isCurrent ? '2px solid #C9944A' : '1px solid #E8E0D6',
-                      background: isCurrent ? '#FDF6E9' : '#fff',
-                      textAlign: 'center',
-                      cursor: isCurrent ? 'default' : 'pointer',
-                      transition: 'all 0.15s',
-                      opacity: isCurrent ? 1 : 0.85,
-                    }}
-                      onMouseEnter={(e) => { if (!isCurrent) { e.currentTarget.style.borderColor = '#C9944A'; e.currentTarget.style.opacity = '1'; } }}
-                      onMouseLeave={(e) => { if (!isCurrent) { e.currentTarget.style.borderColor = '#E8E0D6'; e.currentTarget.style.opacity = '0.85'; } }}
+                    <div
+                      key={`pending-${sNum}`}
+                      onClick={() => {
+                        if (canScheduleNext) openScheduleNext(sNum);
+                      }}
+                      style={{
+                        padding: '0.4rem 0.5rem', borderRadius: '6px', fontSize: '0.7rem',
+                        border: '1.5px dashed #D6C8B8', background: '#FAFAF8',
+                        textAlign: 'center',
+                        cursor: canScheduleNext ? 'pointer' : 'default',
+                        transition: 'all 0.15s',
+                        color: '#8B6520',
+                      }}
+                      title={canScheduleNext ? `Click para agendar sesión ${sNum}` : 'Por agendar'}
                     >
-                      <div style={{ fontWeight: 600, marginBottom: '2px' }}>Sesión {s.session_number}</div>
-                      <div style={{ color: '#A89888', fontSize: '0.65rem' }}>{s.date}</div>
-                      <span style={badge({ ...sSt, bg: sSt.bg, color: sSt.color })}>{sSt.label}</span>
+                      <div style={{ fontWeight: 600, marginBottom: '2px', color: '#6B5B4E' }}>Sesión {sNum}</div>
+                      <div style={{ color: '#A89888', fontSize: '0.65rem' }}>Por programar</div>
+                      {canScheduleNext ? (
+                        <span style={{ display: 'inline-block', fontSize: '0.65rem', fontWeight: 600, color: '#C9944A', marginTop: '2px' }}>
+                          + Agendar
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-block', fontSize: '0.65rem', color: '#A89888' }}>
+                          Pendiente
+                        </span>
+                      )}
                     </div>
                   );
                 })}
               </div>
+
+              {canScheduleNext && (
+                <button
+                  type="button"
+                  onClick={() => openScheduleNext(nextSessionNumber)}
+                  style={{
+                    marginTop: '0.65rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: '0.4rem', padding: '0.5rem', borderRadius: '8px', border: '1.5px dashed #C9944A',
+                    background: '#FDF6E9', color: '#8B6520', fontWeight: 600, fontSize: '0.78rem',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                >
+                  <CalendarPlus size={15} />
+                  <span>+ Agendar siguiente sesión ({nextSessionNumber} de {totalSessions})</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -758,6 +1060,14 @@ export default function AppointmentDetailModal({
               <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#A89888', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acciones</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                 <ActionButton label="Editar cita" icon={<Pencil size={14} />} onClick={() => setEditing(true)} disabled={actionLoading} />
+                {canScheduleNext && (
+                  <ActionButton
+                    label={`Agendar sesión ${nextSessionNumber}`}
+                    icon={<CalendarPlus size={14} />}
+                    onClick={() => openScheduleNext(nextSessionNumber)}
+                    disabled={actionLoading}
+                  />
+                )}
                 {apt.status === 'pendiente' && (
                   <ActionButton label="Confirmar" icon={<Check size={14} />} onClick={handleConfirm} disabled={actionLoading} />
                 )}

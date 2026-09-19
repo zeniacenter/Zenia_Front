@@ -436,8 +436,8 @@ export default function Booking() {
       case 'Paquetes': return selectedPackage !== null;
       case 'Terapeuta': return selectedTherapist !== '' && availableTherapists.some((t) => t.id === selectedTherapist);
       case 'Fecha':
-        if ((bookingType === 'packages' && sessionSchedules.length > 1) || (bookingType === 'services' && sessionCount > 1 && sessionSchedules.length > 0)) {
-          return sessionSchedules.every((s) => s.date && s.time);
+        if (isMulti) {
+          return !!sessionSchedules[0]?.date && !!sessionSchedules[0]?.time;
         }
         return selectedDate !== '' && selectedTime !== '';
       case 'Confirmar': return clientName.trim() !== '' && clientLastName.trim() !== '' && clientPhone.trim() !== '';
@@ -449,43 +449,62 @@ export default function Booking() {
     if (!canProceed() || submitting) return;
     setSubmitting(true);
 
-    if (bookingType === 'packages' && sessionSchedules.length > 1) {
+    if (bookingType === 'packages') {
       const pkg = packages.find((p) => p.id === selectedPackage);
       const sessions = pkg?.sessions || [];
-      try {
-        for (let i = 0; i < sessions.length; i++) {
-          const sched = sessionSchedules[i];
-          const svcId = sessions[i].id;
-          const hours = sessions[i].hours || 1;
-          const svc = services.find((s) => s.id === svcId);
-          const startMinutes = parseInt(sched.time.split(':')[0]) * 60 + parseInt(sched.time.split(':')[1]);
-          const endMinutes = startMinutes + Math.round(hours * 60);
-          const endH = Math.floor(endMinutes / 60);
-          const endM = endMinutes % 60;
-          const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+      const totalPkgSessions = sessions.length || 1;
 
-          const price = svc ? svc.pricePerHour || svc.price_per_hour || 0 : 0;
-          await addAppointment({
-            client_name: clientName,
-            client_last_name: clientLastName,
-            client_dni: clientDni,
-            client_address: clientAddress,
-            client_phone: clientPhone,
-            client_email: clientEmail,
-            therapist_id: selectedTherapist,
-            cabin_id: selectedCabin || branchCabins[0]?.id || null,
-            branch_id: selectedBranch || null,
-            package_id: selectedPackage,
-            service_ids: [svcId],
-            date: sched.date,
-            start_time: sched.time,
-            end_time: endTime,
-            hours,
-            total_price: price,
-            status: 'confirmada',
+      // Filtrar las sesiones que el cliente haya llenado con fecha y hora
+      const scheduledSessions = [];
+      sessionSchedules.forEach((s, i) => {
+        if (s?.date && s?.time) {
+          scheduledSessions.push({
+            date: s.date,
+            time: s.time,
+            hours: sessions[i]?.hours || 1,
+            service_id: sessions[i]?.id || (selectedServices[0] || null),
+            name: services.find((svc) => svc.id === sessions[i]?.id)?.name || `Sesión ${i + 1}`,
           });
         }
+      });
+
+      if (scheduledSessions.length === 0) {
+        setNotify({ type: 'warning', title: 'Falta fecha y hora', message: 'Debes seleccionar fecha y hora al menos para tu primera sesión.' });
+        setSubmitting(false);
+        return;
+      }
+
+      try {
+        const first = scheduledSessions[0];
+        const payload = {
+          client_name: clientName,
+          client_last_name: clientLastName,
+          client_dni: clientDni,
+          client_address: clientAddress,
+          client_phone: clientPhone,
+          client_email: clientEmail,
+          therapist_id: selectedTherapist,
+          cabin_id: selectedCabin || branchCabins[0]?.id || null,
+          branch_id: selectedBranch || null,
+          package_id: selectedPackage,
+          service_ids: selectedServices,
+          date: first.date,
+          start_time: first.time,
+          hours: first.hours || getTotalHours(),
+          total_price: getTotalPrice(),
+          session_count: totalPkgSessions,
+          status: 'confirmada',
+          sessions: scheduledSessions.map((s) => ({
+            date: s.date,
+            time: s.time,
+            hours: s.hours,
+            service_id: s.service_id,
+          })),
+        };
+
+        await addAppointment(payload);
         clearBusyCache();
+
         navigate('/confirmacion', {
           state: {
             clientName,
@@ -499,14 +518,11 @@ export default function Booking() {
             branch: getSelectedBranchObj()?.name,
             services: selectedServices.map((id) => services.find((s) => s.id === id)?.name),
             packageName: pkg?.name,
-            sessions: sessions.map((s, i) => ({
-              name: services.find((svc) => svc.id === s.id)?.name,
-              date: sessionSchedules[i].date,
-              time: sessionSchedules[i].time,
-              hours: s.hours,
-            })),
-            date: sessionSchedules.map((s) => s.date).join(', '),
-            time: sessionSchedules.map((s) => s.time).join(', '),
+            totalSessions: totalPkgSessions,
+            pendingSessions: Math.max(0, totalPkgSessions - scheduledSessions.length),
+            sessions: scheduledSessions,
+            date: scheduledSessions.map((s) => s.date).join(', '),
+            time: scheduledSessions.map((s) => s.time).join(', '),
             hours: getTotalHours(),
             total: getTotalPrice(),
             originalPrice: getOriginalPrice(),
@@ -521,41 +537,60 @@ export default function Booking() {
       return;
     }
 
-    if (bookingType === 'services' && sessionCount > 1 && sessionSchedules.length > 0) {
+    if (bookingType === 'services' && sessionCount > 1) {
       const svcId = selectedServices[0];
       const svc = services.find((s) => s.id === svcId);
       const dur = serviceDurations[svcId] || 1;
-      const pricePerSession = svc ? svc.pricePerHour || svc.price_per_hour || 0 : 0;
-      try {
-        for (let i = 0; i < sessionCount; i++) {
-          const sched = sessionSchedules[i];
-          const startMinutes = parseInt(sched.time.split(':')[0]) * 60 + parseInt(sched.time.split(':')[1]);
-          const endMinutes = startMinutes + Math.round(dur * 60);
-          const endH = Math.floor(endMinutes / 60);
-          const endM = endMinutes % 60;
-          const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
-          await addAppointment({
-            client_name: clientName,
-            client_last_name: clientLastName,
-            client_dni: clientDni,
-            client_address: clientAddress,
-            client_phone: clientPhone,
-            client_email: clientEmail,
-            therapist_id: selectedTherapist,
-            cabin_id: selectedCabin || branchCabins[0]?.id || null,
-            branch_id: selectedBranch || null,
-            service_ids: [svcId],
-            date: sched.date,
-            start_time: sched.time,
-            end_time: endTime,
+
+      const scheduledSessions = [];
+      sessionSchedules.forEach((s, i) => {
+        if (s?.date && s?.time) {
+          scheduledSessions.push({
+            date: s.date,
+            time: s.time,
             hours: dur,
-            total_price: pricePerSession,
-            session_count: sessionCount,
-            session_number: i + 1,
-            status: 'confirmada',
+            service_id: svcId,
+            name: svc?.name || `Sesión ${i + 1}`,
           });
         }
+      });
+
+      if (scheduledSessions.length === 0) {
+        setNotify({ type: 'warning', title: 'Falta fecha y hora', message: 'Debes seleccionar fecha y hora al menos para tu primera sesión.' });
+        setSubmitting(false);
+        return;
+      }
+
+      try {
+        const first = scheduledSessions[0];
+        const payload = {
+          client_name: clientName,
+          client_last_name: clientLastName,
+          client_dni: clientDni,
+          client_address: clientAddress,
+          client_phone: clientPhone,
+          client_email: clientEmail,
+          therapist_id: selectedTherapist,
+          cabin_id: selectedCabin || branchCabins[0]?.id || null,
+          branch_id: selectedBranch || null,
+          service_ids: [svcId],
+          date: first.date,
+          start_time: first.time,
+          hours: dur,
+          total_price: getTotalPrice(),
+          session_count: sessionCount,
+          status: 'confirmada',
+          sessions: scheduledSessions.map((s) => ({
+            date: s.date,
+            time: s.time,
+            hours: s.hours,
+            service_id: s.service_id,
+          })),
+        };
+
+        await addAppointment(payload);
         clearBusyCache();
+
         navigate('/confirmacion', {
           state: {
             clientName,
@@ -568,14 +603,11 @@ export default function Booking() {
             cabin: getSelectedCabinObj()?.name,
             branch: getSelectedBranchObj()?.name,
             services: [svc?.name],
-            sessions: sessionSchedules.map((sched) => ({
-              name: svc?.name,
-              date: sched.date,
-              time: sched.time,
-              hours: dur,
-            })),
-            date: sessionSchedules.map((s) => s.date).join(', '),
-            time: sessionSchedules.map((s) => s.time).join(', '),
+            totalSessions: sessionCount,
+            pendingSessions: Math.max(0, sessionCount - scheduledSessions.length),
+            sessions: scheduledSessions,
+            date: scheduledSessions.map((s) => s.date).join(', '),
+            time: scheduledSessions.map((s) => s.time).join(', '),
             hours: getTotalHours(),
             total: getTotalPrice(),
             originalPrice: getOriginalPrice(),
@@ -849,8 +881,8 @@ export default function Booking() {
             <div className="wizard-step">
               <h2 className="wizard-step-title">Fecha y hora</h2>
               <p className="wizard-step-subtitle">
-                {(bookingType === 'packages' && sessionSchedules.length > 1) || (bookingType === 'services' && sessionCount > 1)
-                  ? 'Selecciona la fecha y hora para cada sesión'
+                {isMulti
+                  ? 'Selecciona fecha y hora para tu 1ª sesión (las siguientes son opcionales y podrás coordinarlas después)'
                   : 'Selecciona cuándo quieres tu cita'}
               </p>
               {wizardTherapists.length === 0 && (
@@ -860,20 +892,58 @@ export default function Booking() {
               )}
               {isMulti ? (
                 <>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div style={{
+                    padding: '0.75rem 1rem', borderRadius: '10px', background: '#FDF6E9',
+                    border: '1px solid #E8E0D6', marginBottom: '1.25rem', color: '#8B6520', fontSize: '0.83rem',
+                  }}>
+                    💡 <strong>Tu reserva incluye {sessionSchedules.length} sesiones.</strong> Agenda tu <strong>1ª sesión</strong> hoy. Las siguientes sesiones puedes programarlas ahora o dejarlas para agendarse después según tu disponibilidad.
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {sessionSchedules.map((sched, idx) => {
                       const sessionName = bookingType === 'packages'
                         ? (() => { const pkg = packages.find((p) => p.id === selectedPackage); const sessions = pkg?.sessions || []; return services.find((s) => s.id === sessions[idx]?.id)?.name || `Sesión ${idx + 1}`; })()
                         : selectedServices.map((id) => services.find((s) => s.id === id)?.name)[0] || `Sesión ${idx + 1}`;
                       const sessionHours = sessionHoursFor(idx);
+                      const isScheduled = !!sched.date && !!sched.time;
                       return (
                         <div key={idx} style={{
                           padding: '1rem', borderRadius: '12px',
-                          border: '1px solid #E8E0D6', background: '#FDFCFA',
+                          border: isScheduled || idx === 0 ? '1px solid #E8E0D6' : '1.5px dashed #D6C8B8',
+                          background: '#FDFCFA',
                         }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#3D2E24', marginBottom: '0.75rem' }}>
-                            Sesión {idx + 1}: {sessionName}
-                            <span style={{ fontWeight: 400, color: '#A89888', marginLeft: '0.5rem' }}>({formatHours(sessionHours)} h)</span>
+                          <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#3D2E24', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.3rem' }}>
+                            <div>
+                              Sesión {idx + 1}: {sessionName}
+                              <span style={{ fontWeight: 400, color: '#A89888', marginLeft: '0.5rem' }}>({formatHours(sessionHours)} h)</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <span style={{
+                                fontSize: '0.68rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px',
+                                background: idx === 0 ? '#E8F5E9' : (isScheduled ? '#E8F5E9' : '#F5EDE5'),
+                                color: idx === 0 ? '#2D7A3A' : (isScheduled ? '#2D7A3A' : '#8B6520'),
+                              }}>
+                                {idx === 0 ? '1ª Sesión (Requerida)' : (isScheduled ? 'Agendada' : 'Opcional')}
+                              </span>
+                              {idx > 0 && (sched.date || sched.time) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSessionSchedules((prev) => {
+                                      const next = [...prev];
+                                      next[idx] = { date: '', time: '' };
+                                      return next;
+                                    });
+                                  }}
+                                  style={{
+                                    background: 'none', border: 'none', color: '#A89888',
+                                    fontSize: '0.72rem', cursor: 'pointer', textDecoration: 'underline', padding: 0,
+                                  }}
+                                >
+                                  Dejar para después
+                                </button>
+                              )}
+                            </div>
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                             <div>
@@ -1067,7 +1137,7 @@ export default function Booking() {
                     sessionSchedules.map((sched, idx) => (
                       <div key={idx} className="confirm-row">
                         <span>Sesión {idx + 1}</span>
-                        <span>{sched.date} {sched.time}</span>
+                        <span>{sched.date && sched.time ? `${sched.date} ${sched.time}` : 'Por coordinar después'}</span>
                       </div>
                     ))
                   ) : (

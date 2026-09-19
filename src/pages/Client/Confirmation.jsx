@@ -63,7 +63,7 @@ export default function Confirmation() {
             state.sessions.map((s, i) => (
               <div key={i} className="detail-row">
                 <strong>Sesión {i + 1}:</strong>
-                <span>{s.name} — {s.date} {s.time} ({formatHours(s.hours)} h)</span>
+                <span>{s.name} — {s.date && s.time ? `${s.date} ${s.time}` : 'Por coordinar'} ({formatHours(s.hours)} h)</span>
               </div>
             ))
           ) : (
@@ -77,6 +77,14 @@ export default function Confirmation() {
                 <span>{state.time}</span>
               </div>
             </>
+          )}
+          {state.pendingSessions > 0 && (
+            <div style={{
+              margin: '0.75rem 0', padding: '0.75rem 1rem', borderRadius: '8px',
+              background: '#FDF6E9', border: '1px solid #E8E0D6', fontSize: '0.85rem', color: '#8B6520',
+            }}>
+              💡 Tu reserva incluye <strong>{state.totalSessions} sesiones</strong> en total. Has programado <strong>{state.sessions?.length || 1}</strong> y tienes <strong>{state.pendingSessions} {state.pendingSessions === 1 ? 'sesión pendiente' : 'sesiones pendientes'}</strong> por programar. Podrás coordinarlas con nosotros cuando desees.
+            </div>
           )}
           <div className="detail-row">
             <strong>Duración:</strong>

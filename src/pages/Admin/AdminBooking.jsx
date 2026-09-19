@@ -215,12 +215,12 @@ export default function AdminBooking() {
   const getTotal = () => {
     if (bookingType === 'package' && selectedPackage) {
       const pkg = getSelectedPackageObj();
-      return pkg ? pkg.packagePrice * sessionCount : 0;
+      return pkg ? (pkg.packagePrice || 0) : 0;
     }
     const service = getSelectedServiceObj();
     if (!service) return 0;
     const defH = service.durationMin ? service.durationMin / 60 : 1;
-    return Math.round((service.pricePerHour || 0) * (hours / defH) * 100) / 100;
+    return Math.round((service.pricePerHour || 0) * (hours / defH) * sessionCount * 100) / 100;
   };
 
   const effectiveTotal = priceInput === '' ? getTotal() : (parseFloat(priceInput) || 0);
@@ -337,10 +337,12 @@ export default function AdminBooking() {
         status: 'pendiente',
         session_count: sessionCount,
       });
-      const successMsg = sessionCount > 1 ? `${sessionCount} sesiones agendadas exitosamente` : 'Cita agendada exitosamente';
+      const successMsg = sessionCount > 1
+        ? `1ª sesión agendada exitosamente. Las ${sessionCount - 1} sesiones restantes quedan guardadas para programarse poco a poco.`
+        : 'Cita agendada exitosamente';
       setNotify({
         type: 'success',
-        title: sessionCount > 1 ? `${sessionCount} sesiones agendadas` : 'Cita agendada exitosamente',
+        title: sessionCount > 1 ? `1ª sesión de ${sessionCount} agendada` : 'Cita agendada exitosamente',
         message: successMsg,
       });
       setAfterNotify(() => () => { clearBusyCache(); navigate('/admin/citas'); });
@@ -730,8 +732,13 @@ export default function AdminBooking() {
             </div>
 
             <button type="submit" className="btn btn-primary btn-lg" disabled={submitting} style={{ width: '100%', marginTop: '0.5rem', opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
-              {submitting ? 'Agendando...' : (sessionCount > 1 ? `Agendar ${sessionCount} Sesiones` : 'Agendar Cita')}
+              {submitting ? 'Agendando...' : (sessionCount > 1 ? `Agendar 1ª Sesión (de ${sessionCount})` : 'Agendar Cita')}
             </button>
+            {sessionCount > 1 && (
+              <div style={{ fontSize: '0.75rem', color: '#8B6520', textAlign: 'center', marginTop: '0.4rem', background: '#FDF6E9', padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid #E8E0D6' }}>
+                💡 Se agendará la 1ª sesión con la fecha y hora elegidas. Las siguientes {sessionCount - 1} sesiones se programarán sesión por sesión según la disponibilidad del cliente.
+              </div>
+            )}
           </form>
 
           {(selectedService || selectedPackage) && selectedDate && selectedTime && (
