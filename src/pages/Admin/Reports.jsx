@@ -9,7 +9,8 @@ import Skeleton from '../../components/Skeleton';
 import NotificationModal from '../../components/NotificationModal';
 import {
   BarChart3, DollarSign, Clock, Timer,
-  Download, FileText, FileSpreadsheet, Filter, X, Search, CloudUpload
+  Download, FileText, FileSpreadsheet, Filter, X, Search, CloudUpload,
+  Users, Star, AlertTriangle, UserX, CalendarClock, MessageCircle,
 } from 'lucide-react';
 import { formatHours } from '../../utils/hours';
 
@@ -27,11 +28,12 @@ const CHART_CARD = { padding: '1.5rem' };
 const CHART_TITLE = { marginBottom: '1rem', fontSize: '1.1rem', color: '#F5EDE0' };
 
 const STATUS_CONFIG = {
-  pendiente: { label: 'Pendiente', color: '#8B6520', bg: '#FDF6E9' },
-  confirmada: { label: 'Confirmada', color: '#8B6A50', bg: '#F5EDE5' },
-  cancelada: { label: 'Cancelada', color: '#B85C4C', bg: '#FCEEED' },
-  realizada: { label: 'Realizada', color: '#6A4A3A', bg: '#F0EBE3' },
+  confirmada: { label: 'Agendada', color: '#8B6A50', bg: '#F5EDE5' },
+  realizada: { label: 'Realizada', color: '#2D7A3A', bg: '#E8F5E9' },
+  no_asistio: { label: 'No asistió', color: '#C0392B', bg: '#FDEDEC' },
+  cancelada: { label: 'Cancelada', color: '#888888', bg: '#F2F2F2' },
   postergada: { label: 'Postergada', color: '#4A7A9A', bg: '#EBF3F8' },
+  pendiente: { label: 'Agendada', color: '#8B6A50', bg: '#F5EDE5' },
 };
 
 const PAYMENT_CONFIG = {
@@ -82,6 +84,9 @@ export default function Reports() {
   const [detail, setDetail] = useState(null);
   const [breakdowns, setBreakdowns] = useState(null);
   const [clientDiscounts, setClientDiscounts] = useState(null);
+  const [clientBehavior, setClientBehavior] = useState(null);
+  const [behaviorFilter, setBehaviorFilter] = useState('todos');
+  const [behaviorSearch, setBehaviorSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [exporting, setExporting] = useState(null);
@@ -101,16 +106,18 @@ export default function Reports() {
     setLoading(true);
     setError(false);
     try {
-      const [dashRes, filteredRes, brkRes, cdRes] = await Promise.all([
+      const [dashRes, filteredRes, brkRes, cdRes, cbRes] = await Promise.all([
         reportsAPI.dashboardData(filterParams),
         reportsAPI.filtered({ ...filterParams, page: targetPage }),
         reportsAPI.breakdowns(filterParams),
         reportsAPI.clientDiscounts(filterParams),
+        reportsAPI.clientBehavior(filterParams),
       ]);
       setData(dashRes.data);
       setDetail(filteredRes.data);
       setBreakdowns(brkRes.data);
       setClientDiscounts(cdRes.data);
+      setClientBehavior(cbRes.data);
       setPage(targetPage);
     } catch {
       setError(true);
@@ -118,6 +125,7 @@ export default function Reports() {
       setDetail(null);
       setBreakdowns(null);
       setClientDiscounts(null);
+      setClientBehavior(null);
     } finally {
       setLoading(false);
     }
@@ -150,6 +158,33 @@ export default function Reports() {
     () => Object.entries(filters).filter(([, v]) => v !== '').length,
     [filters]
   );
+
+  const filteredBehaviorItems = useMemo(() => {
+    if (!clientBehavior?.items) return [];
+    let list = clientBehavior.items;
+
+    if (behaviorFilter === 'vip') {
+      list = list.filter((i) => i.prioridad === 'vip' || i.prioridad === 'habitual');
+    } else if (behaviorFilter === 'canceladores') {
+      list = list.filter((i) => i.prioridad === 'cancelador' || i.canceladas > 0);
+    } else if (behaviorFilter === 'no_asistio') {
+      list = list.filter((i) => i.no_asistio > 0);
+    } else if (behaviorFilter === 'reprogramadores') {
+      list = list.filter((i) => i.postergadas > 0);
+    }
+
+    if (behaviorSearch.trim()) {
+      const q = behaviorSearch.toLowerCase().trim();
+      list = list.filter(
+        (i) =>
+          (i.name && i.name.toLowerCase().includes(q)) ||
+          (i.dni && i.dni.includes(q)) ||
+          (i.phone && i.phone.includes(q))
+      );
+    }
+
+    return list;
+  }, [clientBehavior, behaviorFilter, behaviorSearch]);
 
   const weeklyRevenue = useMemo(() => {
     if (!data?.weeklyRevenue?.length) return [];
@@ -353,10 +388,12 @@ export default function Reports() {
               value={filters.status}
               onChange={e => setFilters(f => ({ ...f, status: e.target.value }))}
             >
-              <option value="">Todos</option>
-              <option value="confirmada">Confirmada</option>
-              <option value="pendiente">Pendiente</option>
-              <option value="cancelada">Cancelada</option>
+              <option value="">Todos los estados</option>
+              <option value="confirmada">Agendadas</option>
+              <option value="realizada">Realizadas</option>
+              <option value="no_asistio">No asistió</option>
+              <option value="cancelada">Canceladas</option>
+              <option value="postergada">Postergadas</option>
             </select>
           </div>
           <div className="filter-actions">
@@ -677,6 +714,37 @@ export default function Reports() {
             </div>
 
             <div className="card" style={CHART_CARD}>
+              <h3 style={CHART_TITLE}>Control de Asistencia</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                {['realizada', 'confirmada', 'no_asistio', 'cancelada'].map((st) => {
+                  const cfg = STATUS_CONFIG[st] || { label: st, color: '#6B5B4E', bg: '#F0EBE3' };
+                  const item = detail?.status_summary?.[st] || { citas: 0, total_price: 0 };
+                  return (
+                    <div key={st} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '0.6rem 0.75rem', borderRadius: '8px', background: cfg.bg,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: cfg.color }} />
+                        <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#3D2E24' }}>{cfg.label}</span>
+                        <span style={{ fontSize: '0.75rem', color: '#6B5B4E' }}>({item.citas} citas)</span>
+                      </div>
+                      <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#3D2E24' }}>
+                        {st === 'cancelada' ? `${item.citas} citas` : fmtMoney(item.total_price)}
+                      </span>
+                    </div>
+                  );
+                })}
+                {detail?.total !== undefined && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid #E8E0D6' }}>
+                    <span style={{ fontWeight: 700, color: '#3D2E24' }}>Total en rango</span>
+                    <span style={{ fontWeight: 700, color: '#C9A96E', fontSize: '1rem' }}>{detail.total} citas</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="card" style={CHART_CARD}>
               <h3 style={CHART_TITLE}>Descuentos por Cliente</h3>
               {clientDiscounts && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
@@ -737,6 +805,199 @@ export default function Reports() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Mapeo y Prioridad de Clientes */}
+          <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.15rem', color: '#3D2E24', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Users size={20} color="#8B6A50" />
+                  Mapeo y Prioridad de Clientes (Hábitos de Asistencia)
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.82rem', color: '#887B70' }}>
+                  Segmentación automática para identificar clientes frecuentes (VIP), recurrentes en cancelaciones o inasistencias.
+                </p>
+              </div>
+            </div>
+
+            {/* Tarjetas resumen de segmentación */}
+            {clientBehavior?.summary && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <div style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: '#F8F5F1', border: '1px solid #E8E0D6' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#887B70', textTransform: 'uppercase' }}>Total Clientes</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#3D2E24', marginTop: '0.2rem' }}>{clientBehavior.summary.total_clientes}</div>
+                </div>
+                <div style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: '#FEF9E7', border: '1px solid #F9E79F' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#B7950B', textTransform: 'uppercase' }}>⭐ VIP / Habituales</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#B7950B', marginTop: '0.2rem' }}>{clientBehavior.summary.vip}</div>
+                </div>
+                <div style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: '#FBEEE6', border: '1px solid #F5CBA7' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#D35400', textTransform: 'uppercase' }}>⚠️ Suelen Cancelar</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#D35400', marginTop: '0.2rem' }}>{clientBehavior.summary.canceladores}</div>
+                </div>
+                <div style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: '#FDEDEC', border: '1px solid #F5B7B1' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#C0392B', textTransform: 'uppercase' }}>🚫 No asistió</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#C0392B', marginTop: '0.2rem' }}>{clientBehavior.summary.no_asistio}</div>
+                </div>
+                <div style={{ padding: '0.75rem 1rem', borderRadius: '10px', background: '#EBF5FB', border: '1px solid #AED6F1' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#2980B9', textTransform: 'uppercase' }}>🔄 Suelen Postergar</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#2980B9', marginTop: '0.2rem' }}>{clientBehavior.summary.reprogramadores}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Barra de filtros y buscador */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                {[
+                  { key: 'todos', label: 'Todos' },
+                  { key: 'vip', label: '⭐ VIP / Habituales' },
+                  { key: 'canceladores', label: '⚠️ Cancelan frecuente' },
+                  { key: 'no_asistio', label: '🚫 No asistió' },
+                  { key: 'reprogramadores', label: '🔄 Suelen postergar' },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setBehaviorFilter(tab.key)}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      borderRadius: '20px',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: behaviorFilter === tab.key ? '1px solid #8B6A50' : '1px solid #E8E0D6',
+                      background: behaviorFilter === tab.key ? '#8B6A50' : '#FFFFFF',
+                      color: behaviorFilter === tab.key ? '#FFFFFF' : '#6B5B4E',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ minWidth: '220px', maxWidth: '300px', flex: '1', position: 'relative' }}>
+                <Search size={14} style={{ position: 'absolute', left: '0.7rem', top: '50%', transform: 'translateY(-50%)', color: '#A89888' }} />
+                <input
+                  type="text"
+                  placeholder="Buscar cliente, DNI o teléfono..."
+                  value={behaviorSearch}
+                  onChange={(e) => setBehaviorSearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.4rem 0.7rem 0.4rem 2rem',
+                    fontSize: '0.8rem',
+                    borderRadius: '8px',
+                    border: '1px solid #E8E0D6',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Tabla de clientes */}
+            {(!filteredBehaviorItems || filteredBehaviorItems.length === 0) ? (
+              <p style={{ color: '#B5A898', fontSize: '0.85rem', padding: '1.5rem 0', textAlign: 'center' }}>
+                No se encontraron clientes para este filtro.
+              </p>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #E8E0D6' }}>
+                      <th style={detailTh}>Cliente</th>
+                      <th style={detailTh}>DNI</th>
+                      <th style={detailTh}>Contacto</th>
+                      <th style={detailTh}>Clasificación / Prioridad</th>
+                      <th style={{ ...detailTh, textAlign: 'center' }}>Total Citas</th>
+                      <th style={{ ...detailTh, textAlign: 'center' }}>Realizadas</th>
+                      <th style={{ ...detailTh, textAlign: 'center' }}>Canceladas</th>
+                      <th style={{ ...detailTh, textAlign: 'center' }}>No Asistió</th>
+                      <th style={{ ...detailTh, textAlign: 'center' }}>Postergadas</th>
+                      <th style={{ ...detailTh, textAlign: 'right' }}>Total Invertido</th>
+                      <th style={{ ...detailTh, textAlign: 'center' }}>% Cumplimiento</th>
+                      <th style={detailTh}>Última Cita</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBehaviorItems.map((c) => {
+                      const cleanPhone = (c.phone || '').replace(/\D/g, '');
+                      const whatsappUrl = cleanPhone ? `https://wa.me/51${cleanPhone}` : null;
+                      const cumpl = Number(c.tasa_cumplimiento ?? 100);
+                      const cumplColor = cumpl >= 80 ? '#27AE60' : cumpl >= 50 ? '#D35400' : '#C0392B';
+                      const cumplBg = cumpl >= 80 ? '#E8F8F5' : cumpl >= 50 ? '#FBEEE6' : '#FDEDEC';
+
+                      return (
+                        <tr key={c.person_id} style={{ borderBottom: '1px solid #F0EBE3' }}>
+                          <td style={{ ...detailTd, color: '#3D2E24', fontWeight: 600 }}>{c.name}</td>
+                          <td style={detailTd}>{c.dni || '-'}</td>
+                          <td style={detailTd}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <span>{c.phone || '-'}</span>
+                              {whatsappUrl && (
+                                <a
+                                  href={whatsappUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Enviar WhatsApp"
+                                  style={{ color: '#27AE60', display: 'inline-flex', alignItems: 'center' }}
+                                >
+                                  <MessageCircle size={14} />
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                          <td style={detailTd}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '0.2rem 0.55rem',
+                              borderRadius: '12px',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              color: c.tag_color,
+                              background: c.tag_bg,
+                              whiteSpace: 'nowrap',
+                            }}>
+                              {c.tag_label}
+                            </span>
+                          </td>
+                          <td style={{ ...detailTd, textAlign: 'center', fontWeight: 600, color: '#3D2E24' }}>{c.total_citas}</td>
+                          <td style={{ ...detailTd, textAlign: 'center', fontWeight: 600, color: '#27AE60' }}>{c.realizadas}</td>
+                          <td style={{ ...detailTd, textAlign: 'center', fontWeight: c.canceladas > 0 ? 600 : 400, color: c.canceladas > 0 ? '#D35400' : '#A89888' }}>
+                            {c.canceladas}
+                          </td>
+                          <td style={{ ...detailTd, textAlign: 'center', fontWeight: c.no_asistio > 0 ? 700 : 400, color: c.no_asistio > 0 ? '#C0392B' : '#A89888' }}>
+                            {c.no_asistio}
+                          </td>
+                          <td style={{ ...detailTd, textAlign: 'center', fontWeight: c.postergadas > 0 ? 600 : 400, color: c.postergadas > 0 ? '#2980B9' : '#A89888' }}>
+                            {c.postergadas}
+                          </td>
+                          <td style={{ ...detailTd, textAlign: 'right', fontWeight: 600, color: '#3D2E24' }}>
+                            {fmtMoney(c.total_gastado)}
+                          </td>
+                          <td style={{ ...detailTd, textAlign: 'center' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '0.15rem 0.5rem',
+                              borderRadius: '10px',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              color: cumplColor,
+                              background: cumplBg,
+                            }}>
+                              {cumpl}%
+                            </span>
+                          </td>
+                          <td style={detailTd}>{fmtDate(c.ultima_cita)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}

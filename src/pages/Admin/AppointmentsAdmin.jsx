@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import useEscClose from '../../hooks/useEscClose';
 import {
   Inbox, Info, MoreVertical, Check, CheckCircle2,
-  CalendarClock, XCircle, CreditCard, Receipt, RefreshCw, Search,
+  CalendarClock, XCircle, CreditCard, Receipt, RefreshCw, Search, UserX,
 } from 'lucide-react';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
 import { clearBusyCache } from '../../utils/busyCache';
@@ -17,11 +17,12 @@ import { appointmentsAPI } from '../../services/api';
 import { TableSkeleton } from '../../components/Skeleton';
 
 const STATUS_CONFIG = {
-  pendiente: { label: 'Pendiente', color: '#8B6520', bg: '#FDF6E9' },
-  confirmada: { label: 'Confirmada', color: '#8B6A50', bg: '#F5EDE5' },
-  cancelada: { label: 'Cancelada', color: '#B85C4C', bg: '#FCEEED' },
-  realizada: { label: 'Realizada', color: '#6A4A3A', bg: '#F0EBE3' },
+  confirmada: { label: 'Agendada', color: '#8B6A50', bg: '#F5EDE5' },
+  realizada: { label: 'Realizada', color: '#2D7A3A', bg: '#E8F5E9' },
+  no_asistio: { label: 'No asistió', color: '#C0392B', bg: '#FDEDEC' },
+  cancelada: { label: 'Cancelada', color: '#888888', bg: '#F2F2F2' },
   postergada: { label: 'Postergada', color: '#4A7A9A', bg: '#EBF3F8' },
+  pendiente: { label: 'Agendada', color: '#8B6A50', bg: '#F5EDE5' },
 };
 
 const PAYMENT_CONFIG = {
@@ -31,10 +32,10 @@ const PAYMENT_CONFIG = {
 };
 
 const FILTERS = [
-  { key: 'todas', label: 'Activas' },
-  { key: 'pendiente', label: 'Pendientes' },
-  { key: 'confirmada', label: 'Confirmadas' },
+  { key: 'todas', label: 'Todas las activas' },
+  { key: 'confirmada', label: 'Agendadas' },
   { key: 'realizada', label: 'Realizadas' },
+  { key: 'no_asistio', label: 'No asistió' },
   { key: 'postergada', label: 'Postergadas' },
   { key: 'cancelada', label: 'Canceladas' },
 ];
@@ -143,7 +144,7 @@ export default function AppointmentsAdmin() {
   }, [page, rowsPerPage, filter, filterBranch, debouncedSearch, reloadKey]);
 
   const counts = serverCounts || {
-    todas: 0, pendiente: 0, confirmada: 0, realizada: 0, postergada: 0, cancelada: 0,
+    todas: 0, confirmada: 0, realizada: 0, no_asistio: 0, postergada: 0, cancelada: 0, pendiente: 0,
   };
 
   const totalPages = Math.max(1, meta.last_page || 1);
@@ -205,7 +206,7 @@ export default function AppointmentsAdmin() {
       const endM = endMins % 60;
       const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
 
-      const newStatus = apt.status === 'postergada' ? 'pendiente' : 'postergada';
+      const newStatus = apt.status === 'postergada' ? 'confirmada' : 'postergada';
       await updateAppointment(apt.id, {
         status: newStatus,
         date: postponeDate,
@@ -452,11 +453,11 @@ export default function AppointmentsAdmin() {
                                   boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: '190px',
                                   padding: '0.3rem', display: 'flex', flexDirection: 'column',
                                 }}>
-                                  {apt.status === 'pendiente' && (
-                                    <MenuItem label="Confirmar" icon={<Check size={14} />} onClick={() => { setMenuFor(null); updateAppointment(apt.id, { status: 'confirmada' }).then(refetch); }} />
-                                  )}
                                   {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
                                     <MenuItem label="Marcar como realizada" icon={<CheckCircle2 size={14} />} onClick={() => { setMenuFor(null); updateAppointment(apt.id, { status: 'realizada' }).then(refetch); }} />
+                                  )}
+                                  {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
+                                    <MenuItem label="Marcar como no asistió" icon={<UserX size={14} />} danger onClick={() => { setMenuFor(null); updateAppointment(apt.id, { status: 'no_asistio' }).then(refetch); }} />
                                   )}
                                   {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
                                     <MenuItem label="Postergar" icon={<CalendarClock size={14} />} onClick={() => { setMenuFor(null); openPostpone(apt); }} />

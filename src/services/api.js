@@ -152,6 +152,7 @@ export const reportsAPI = {
   filtered: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/filtered')),
   breakdowns: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/breakdowns')),
   clientDiscounts: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/client-discounts')),
+  clientBehavior: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/client-behavior')),
   exportPdf: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/pdf'), { responseType: 'blob' }),
   exportExcel: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/excel'), { responseType: 'blob' }),
   uploadToDrive: (params = {}) => api.post('/admin/reports/export/drive', params),

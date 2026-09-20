@@ -21,10 +21,11 @@ const localizer = dateFnsLocalizer({
 
 const STATUSES_COLORS = {
   confirmada: '#8B6A50',
-  pendiente: '#C9944A',
-  cancelada: '#B85C4C',
-  realizada: '#6A4A3A',
+  realizada: '#2D7A3A',
+  no_asistio: '#C0392B',
+  cancelada: '#888888',
   postergada: '#4A7A9A',
+  pendiente: '#8B6A50',
 };
 
 function toDateStr(d) {

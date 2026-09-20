@@ -334,7 +334,7 @@ export default function AdminBooking() {
         start_time: selectedTime,
         hours: bookingType === 'package' ? (getSelectedPackageObj()?.hours || hours) : hours,
         total_price: effectiveTotal,
-        status: 'pendiente',
+        status: 'confirmada',
         session_count: sessionCount,
       });
       const successMsg = sessionCount > 1

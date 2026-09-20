@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X, Package, CreditCard, Clock, MapPin, User, Phone, Scissors, AlertTriangle, Mail, Hash, Home,
-  Check, CheckCircle2, CalendarClock, XCircle, Receipt, Pencil, CalendarPlus,
+  Check, CheckCircle2, CalendarClock, XCircle, Receipt, Pencil, CalendarPlus, UserX,
 } from 'lucide-react';
 import useEscClose from '../hooks/useEscClose';
 import { useApp } from '../context/AppContext';
@@ -15,11 +15,12 @@ import PaymentScopeModal from './PaymentScopeModal';
 import LoadingButton from './LoadingButton';
 
 const STATUS_CONFIG = {
-  pendiente: { label: 'Pendiente', color: '#8B6520', bg: '#FDF6E9' },
-  confirmada: { label: 'Confirmada', color: '#8B6A50', bg: '#F5EDE5' },
-  cancelada: { label: 'Cancelada', color: '#B85C4C', bg: '#FCEEED' },
-  realizada: { label: 'Realizada', color: '#6A4A3A', bg: '#F0EBE3' },
+  confirmada: { label: 'Agendada', color: '#8B6A50', bg: '#F5EDE5' },
+  realizada: { label: 'Realizada', color: '#2D7A3A', bg: '#E8F5E9' },
+  no_asistio: { label: 'No asistió', color: '#C0392B', bg: '#FDEDEC' },
+  cancelada: { label: 'Cancelada', color: '#888888', bg: '#F2F2F2' },
   postergada: { label: 'Postergada', color: '#4A7A9A', bg: '#EBF3F8' },
+  pendiente: { label: 'Agendada', color: '#8B6A50', bg: '#F5EDE5' },
 };
 
 const PAYMENT_CONFIG = {
@@ -340,6 +341,7 @@ export default function AppointmentDetailModal({
     const allForPkg = [...siblingApts, apt];
     const completed = allForPkg.filter((a) => a.status === 'realizada').length;
     const cancelled = allForPkg.filter((a) => a.status === 'cancelada').length;
+    const noShow = allForPkg.filter((a) => a.status === 'no_asistio').length;
     const paid = allForPkg.filter((a) => a.payment_status === 'pagado').length;
     packageInfo = {
       name: apt.package?.name || 'Paquete',
@@ -347,7 +349,8 @@ export default function AppointmentDetailModal({
       totalSessions: allForPkg.length,
       completed,
       cancelled,
-      remaining: allForPkg.length - completed - cancelled,
+      noShow,
+      remaining: Math.max(0, allForPkg.length - completed - cancelled - noShow),
       paidCount: paid,
       allPaid: paid === allForPkg.length,
     };
@@ -383,11 +386,11 @@ export default function AppointmentDetailModal({
     }
   };
 
-  const handleConfirm = async () => {
+  const handleMarkNoShow = async () => {
     if (actionLoading) return;
     setActionLoading(true);
     try {
-      await updateAppointment(apt.id, { status: 'confirmada' });
+      await updateAppointment(apt.id, { status: 'no_asistio' });
     } finally {
       setActionLoading(false);
     }
@@ -420,7 +423,7 @@ export default function AppointmentDetailModal({
       const endM = endMins % 60;
       const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
 
-      const newStatus = apt.status === 'postergada' ? 'pendiente' : 'postergada';
+      const newStatus = apt.status === 'postergada' ? 'confirmada' : 'postergada';
       await updateAppointment(apt.id, {
         status: newStatus,
         date: postponeDate,
@@ -756,7 +759,7 @@ export default function AppointmentDetailModal({
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: '#6B5B4E' }}>
                   Estado
                   <select value={editForm.status || ''} onChange={(e) => updateEditField('status', e.target.value)} style={inputStyle}>
-                    {Object.entries(STATUS_CONFIG).map(([status, config]) => <option key={status} value={status}>{config.label}</option>)}
+                    {Object.entries(STATUS_CONFIG).filter(([status]) => status !== 'pendiente').map(([status, config]) => <option key={status} value={status}>{config.label}</option>)}
                   </select>
                 </label>
                 {[
@@ -979,8 +982,14 @@ export default function AppointmentDetailModal({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem 1rem', fontSize: '0.78rem' }}>
                 <div style={{ color: '#A89888' }}>Total sesiones</div>
                 <div style={{ color: '#3D2E24', fontWeight: 600, textAlign: 'right' }}>{packageInfo.totalSessions}</div>
-                <div style={{ color: '#A89888' }}>Completadas</div>
-                <div style={{ color: '#6A4A3A', fontWeight: 600, textAlign: 'right' }}>{packageInfo.completed}</div>
+                <div style={{ color: '#A89888' }}>Realizadas</div>
+                <div style={{ color: '#2D7A3A', fontWeight: 600, textAlign: 'right' }}>{packageInfo.completed}</div>
+                {packageInfo.noShow > 0 && (
+                  <>
+                    <div style={{ color: '#A89888' }}>No asistió</div>
+                    <div style={{ color: '#C0392B', fontWeight: 600, textAlign: 'right' }}>{packageInfo.noShow}</div>
+                  </>
+                )}
                 <div style={{ color: '#A89888' }}>Canceladas</div>
                 <div style={{ color: '#B85C4C', fontWeight: 600, textAlign: 'right' }}>{packageInfo.cancelled}</div>
                 <div style={{ color: '#A89888' }}>Pendientes</div>
@@ -1068,11 +1077,11 @@ export default function AppointmentDetailModal({
                     disabled={actionLoading}
                   />
                 )}
-                {apt.status === 'pendiente' && (
-                  <ActionButton label="Confirmar" icon={<Check size={14} />} onClick={handleConfirm} disabled={actionLoading} />
-                )}
                 {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
                   <ActionButton label="Marcar como realizada" icon={<CheckCircle2 size={14} />} onClick={handleMarkDone} disabled={actionLoading} />
+                )}
+                {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
+                  <ActionButton label="No asistió" icon={<UserX size={14} />} danger onClick={handleMarkNoShow} disabled={actionLoading} />
                 )}
                 {(apt.status === 'pendiente' || apt.status === 'confirmada') && (
                   <ActionButton label="Postergar" icon={<CalendarClock size={14} />} onClick={openPostpone} />
