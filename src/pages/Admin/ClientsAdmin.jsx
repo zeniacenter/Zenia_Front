@@ -1,13 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { personAPI } from '../../services/api';
-import useEscClose from '../../hooks/useEscClose';
 import { TableSkeleton } from '../../components/Skeleton';
-import { Search } from 'lucide-react';
-
-const EMPTY_CREATE = {
-  name: '', last_name: '', dni: '', phone: '', email: '', address: '', discount_percent: '',
-};
+import ClientEditModal from '../../components/ClientEditModal';
+import ClientFichaModal from '../../components/ClientFichaModal';
+import ConfirmModal from '../../components/ConfirmModal';
+import {
+  Search,
+  User,
+  Phone,
+  Mail,
+  Percent,
+  FileText,
+  Edit,
+  AlertTriangle,
+  Activity,
+  Plus,
+  Heart,
+  Calendar,
+  Trash2,
+} from 'lucide-react';
 
 export default function ClientsAdmin() {
   const { hasModulePermission } = useApp();
@@ -17,14 +29,14 @@ export default function ClientsAdmin() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [editTarget, setEditTarget] = useState(null);
-  const [discountInput, setDiscountInput] = useState('');
-  const [saving, setSaving] = useState(false);
 
+  // Modals state
+  const [selectedFichaClient, setSelectedFichaClient] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
+  const [editInitialTab, setEditInitialTab] = useState('general');
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ ...EMPTY_CREATE });
-  const [createSaving, setCreateSaving] = useState(false);
-  const [createError, setCreateError] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deletingClient, setDeletingClient] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -43,8 +55,8 @@ export default function ClientsAdmin() {
         setClients(data.data);
         setMeta(data.meta);
       } else {
-        setClients(data);
-        setMeta({ page: 1, per_page: data.length, total: data.length, last_page: 1 });
+        setClients(data || []);
+        setMeta({ page: 1, per_page: (data || []).length, total: (data || []).length, last_page: 1 });
       }
     } catch (err) {
       console.error('Error cargando clientes:', err);
@@ -59,179 +71,367 @@ export default function ClientsAdmin() {
 
   const canCreate = hasModulePermission('clientes', 'can_create');
   const canEdit = hasModulePermission('clientes', 'can_edit');
+  const canDelete = hasModulePermission('clientes', 'can_delete') || hasModulePermission('clientes', 'can_edit');
 
-  useEscClose(!!editTarget, () => setEditTarget(null));
-  useEscClose(showCreate, () => setShowCreate(false));
-
-  const openEdit = (c) => {
-    setEditTarget(c);
-    setDiscountInput(String(Number(c.discount_percent) || 0));
-  };
-
-  const saveDiscount = async (e) => {
-    e.preventDefault();
-    if (!editTarget || saving) return;
-    const value = Math.max(0, Math.min(100, parseFloat(discountInput) || 0));
-    setSaving(true);
+  const handleDeleteClient = async () => {
+    if (!deleteTarget) return;
+    setDeletingClient(true);
     try {
-      await personAPI.updateDiscount(editTarget.id, value);
-      setClients((prev) => prev.map((c) => (c.id === editTarget.id ? { ...c, discount_percent: value } : c)));
-      setEditTarget(null);
+      await personAPI.delete(deleteTarget.id);
+      setClients((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      setMeta((prev) => ({ ...prev, total: Math.max(0, (prev.total || 1) - 1) }));
+      if (selectedFichaClient?.id === deleteTarget.id) {
+        setSelectedFichaClient(null);
+      }
+      if (editTarget?.id === deleteTarget.id) {
+        setEditTarget(null);
+      }
+      setDeleteTarget(null);
     } catch (err) {
-      console.error('Error actualizando descuento:', err);
-      window.alert(err.response?.data?.message || 'Error al actualizar el descuento');
+      console.error('Error eliminando cliente:', err);
+      alert(err.response?.data?.message || 'Error al eliminar el cliente');
     } finally {
-      setSaving(false);
+      setDeletingClient(false);
     }
   };
 
-  const handleCreateChange = (field, value) => {
-    setCreateForm((prev) => ({ ...prev, [field]: value }));
+  const handleClientSaved = (updatedClient) => {
+    setClients((prev) =>
+      prev.map((c) => (c.id === updatedClient.id ? { ...c, ...updatedClient } : c))
+    );
+    // If the ficha modal was open for this client, update its reference
+    if (selectedFichaClient && selectedFichaClient.id === updatedClient.id) {
+      setSelectedFichaClient(updatedClient);
+    }
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    if (createSaving) return;
-    setCreateError('');
-
-    if (!createForm.name.trim() || !createForm.phone.trim()) {
-      setCreateError('Nombre y teléfono son obligatorios.');
-      return;
-    }
-    if (createForm.dni.trim() && clients.some((c) => c.dni === createForm.dni.trim())) {
-      setCreateError('Ya existe un cliente con ese DNI.');
-      return;
-    }
-
-    setCreateSaving(true);
-    try {
-      const res = await personAPI.create({
-        name: createForm.name.trim(),
-        last_name: createForm.last_name.trim() || null,
-        dni: createForm.dni.trim() || null,
-        phone: createForm.phone.trim(),
-        email: createForm.email.trim() || null,
-        address: createForm.address.trim() || null,
-        discount_percent: parseFloat(createForm.discount_percent) || 0,
-      });
-      setClients((prev) => [res.data, ...prev]);
-      setMeta((prev) => ({ ...prev, total: (prev.total || 0) + 1 }));
-      setShowCreate(false);
-      setCreateForm({ ...EMPTY_CREATE });
-    } catch (err) {
-      setCreateError(err.response?.data?.message || 'Error al crear el cliente.');
-    } finally {
-      setCreateSaving(false);
-    }
+  const handleClientCreated = (newClient) => {
+    setClients((prev) => [newClient, ...prev]);
+    setMeta((prev) => ({ ...prev, total: (prev.total || 0) + 1 }));
   };
 
   const goToPage = (p) => {
     setPage(p);
   };
 
-  const inputStyle = {
-    width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px',
-    border: '1px solid #E8E0D6', background: '#FFFFFF', color: '#3D2E24',
-    fontSize: '0.85rem', fontFamily: 'inherit', outline: 'none',
-  };
-
-  const labelStyle = {
-    display: 'block', fontSize: '0.75rem', fontWeight: 600,
-    color: '#6B5B4E', marginBottom: '0.3rem',
-  };
-
   return (
     <div>
-      <div className="admin-header">
-        <h2>Clientes</h2>
+      {/* Header */}
+      <div className="admin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1.45rem', color: '#4A2E18' }}>Gestión de Clientes</h2>
+          <p style={{ margin: 0, fontSize: '0.84rem', color: '#7D6B5C' }}>
+            Directorio general, edición de datos, fidelización y fichas clínicas
+          </p>
+        </div>
+
         {canCreate && (
-          <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
-            + Nuevo Cliente
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setShowCreate(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            <Plus size={16} />
+            Nuevo Cliente
           </button>
         )}
       </div>
 
-      <div className="card" style={{ padding: '1rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '1', minWidth: '220px', maxWidth: '380px', position: 'relative' }}>
-          <Search size={16} style={{ position: 'absolute', left: '0.75rem', color: '#A89888' }} />
+      {/* Filter and stats bar */}
+      <div
+        className="card"
+        style={{
+          padding: '0.9rem 1.25rem',
+          marginBottom: '1rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '1rem',
+          flexWrap: 'wrap',
+          background: '#FFFFFF',
+          borderRadius: '12px',
+          border: '1px solid #EDE6DD',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '1', minWidth: '240px', maxWidth: '420px', position: 'relative' }}>
+          <Search size={16} style={{ position: 'absolute', left: '0.85rem', color: '#A89888' }} />
           <input
             type="text"
             className="form-control"
-            style={{ paddingLeft: '2.2rem' }}
-            placeholder="Buscar por DNI, nombre o teléfono..."
+            style={{ paddingLeft: '2.4rem', borderRadius: '8px', fontSize: '0.88rem' }}
+            placeholder="Buscar por DNI, nombre, teléfono o correo..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <span style={{ fontSize: '0.82rem', color: '#6B5B4E' }}>
-          {meta.total} cliente{meta.total === 1 ? '' : 's'}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <span style={{ fontSize: '0.84rem', color: '#6B5B4E', fontWeight: 500 }}>
+            Total registrados: <strong style={{ color: '#4A2E18' }}>{meta.total}</strong> cliente{meta.total === 1 ? '' : 's'}
+          </span>
+        </div>
       </div>
 
+      {/* Clients Table */}
       {loading ? (
-        <TableSkeleton columns={5} rows={8} />
+        <TableSkeleton columns={6} rows={8} />
       ) : (
-        <div className="table-container">
+        <div className="table-container" style={{ borderRadius: '12px', border: '1px solid #EDE6DD', background: '#FFFFFF', overflow: 'hidden' }}>
           <table className="table">
             <thead>
-              <tr>
-                <th>DNI</th>
-                <th>Nombre</th>
-                <th>Teléfono</th>
-                <th>Correo</th>
-                <th>Descuento</th>
-                <th>Acciones</th>
+              <tr style={{ background: '#FAF7F2' }}>
+                <th style={{ width: '110px' }}>DNI</th>
+                <th>Cliente</th>
+                <th>Contacto</th>
+                <th>Ficha / Alertas</th>
+                <th style={{ textAlign: 'center' }}>Descuento</th>
+                <th style={{ textAlign: 'center' }}>Citas (Realiz / Total)</th>
+                <th style={{ textAlign: 'right', minWidth: '170px' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {clients.map((c) => {
                 const pct = Number(c.discount_percent) || 0;
+                const fullName = [c.name, c.last_name].filter(Boolean).join(' ') || 'Cliente sin nombre';
+                const hasAllergies = Boolean(c.allergies && c.allergies.trim());
+                const hasPainZone = Boolean(c.frequent_pain_zone && c.frequent_pain_zone.trim());
+                const completedCitas = c.completed_appointments_count ?? '-';
+                const totalCitas = c.total_appointments_count ?? '-';
+
                 return (
-                  <tr key={c.id}>
-                    <td>{c.dni || '-'}</td>
-                    <td style={{ fontWeight: 500 }}>
-                      {[c.name, c.last_name].filter(Boolean).join(' ') || 'N/A'}
-                    </td>
-                    <td>{c.phone || '-'}</td>
-                    <td>{c.email || '-'}</td>
+                  <tr key={c.id} style={{ transition: 'background-color 0.15s' }}>
                     <td>
+                      <span style={{ fontWeight: 600, color: '#4A2E18', fontSize: '0.84rem' }}>
+                        {c.dni || 'S/DNI'}
+                      </span>
+                    </td>
+
+                    <td>
+                      <div
+                        onClick={() => setSelectedFichaClient(c)}
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
+                        title="Hacer clic para ver la Ficha del Cliente"
+                      >
+                        <div
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            background: '#FAF3EA',
+                            color: '#8C6B45',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            border: '1px solid #EAE0D3',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {c.name?.[0] || 'C'}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#2C1B0E', fontSize: '0.88rem' }}>
+                            {fullName}
+                          </div>
+                          {c.address && (
+                            <div style={{ fontSize: '0.74rem', color: '#8C7A6D', maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {c.address}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
+                    <td>
+                      <div style={{ fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        {c.phone && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#4A2E18' }}>
+                            <Phone size={12} color="#8C6B45" /> {c.phone}
+                          </span>
+                        )}
+                        {c.email && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#7D6B5C', fontSize: '0.77rem' }}>
+                            <Mail size={12} color="#A89888" /> {c.email}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {hasAllergies && (
+                          <span
+                            title={`Alergia: ${c.allergies}`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              background: '#FEE2E2',
+                              color: '#991B1B',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '2px 7px',
+                              borderRadius: '10px',
+                            }}
+                          >
+                            <AlertTriangle size={11} /> Alergia
+                          </span>
+                        )}
+                        {hasPainZone && (
+                          <span
+                            title={`Zonas de dolor: ${c.frequent_pain_zone}`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              background: '#FEF3C7',
+                              color: '#92400E',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              padding: '2px 7px',
+                              borderRadius: '10px',
+                            }}
+                          >
+                            <Activity size={11} /> Dolor frecuente
+                          </span>
+                        )}
+                        {c.preferred_pressure && (
+                          <span
+                            title={`Presión preferida: ${c.preferred_pressure}`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              background: '#F3E8FF',
+                              color: '#6B21A8',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              padding: '2px 7px',
+                              borderRadius: '10px',
+                            }}
+                          >
+                            <Heart size={11} /> {c.preferred_pressure.split('/')[0].trim()}
+                          </span>
+                        )}
+                        {!hasAllergies && !hasPainZone && !c.preferred_pressure && (
+                          <span style={{ color: '#B5A898', fontSize: '0.76rem' }}>Sin observaciones</span>
+                        )}
+                      </div>
+                    </td>
+
+                    <td style={{ textAlign: 'center' }}>
                       {pct > 0 ? (
-                        <span className="badge badge-confirmed" style={{ fontWeight: 700 }}>
+                        <span className="badge badge-confirmed" style={{ fontWeight: 700, fontSize: '0.78rem' }}>
                           {pct}%
                         </span>
                       ) : (
-                        <span className="badge badge-pending">0%</span>
+                        <span className="badge badge-pending" style={{ fontSize: '0.75rem', opacity: 0.7 }}>0%</span>
                       )}
                     </td>
-                    <td>
-                      {canEdit ? (
-                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(c)}>
-                          {pct > 0 ? 'Editar descuento' : 'Asignar descuento'}
+
+                    <td style={{ textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.84rem', fontWeight: 600, color: '#4A2E18' }}>
+                        {completedCitas} / {totalCitas}
+                      </span>
+                    </td>
+
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          onClick={() => setSelectedFichaClient(c)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            fontSize: '0.78rem',
+                            padding: '0.35rem 0.65rem',
+                          }}
+                          title="Ver historial de citas, paquetes y ficha clínica"
+                        >
+                          <FileText size={14} />
+                          Ficha
                         </button>
-                      ) : (
-                        <span style={{ color: '#A89888', fontSize: '0.78rem' }}>Sin permiso</span>
-                      )}
+
+                        {canEdit && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            onClick={() => {
+                              setEditTarget(c);
+                              setEditInitialTab('general');
+                            }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                              fontSize: '0.78rem',
+                              padding: '0.35rem 0.65rem',
+                            }}
+                            title="Editar todos los datos del cliente"
+                          >
+                            <Edit size={14} />
+                            Editar
+                          </button>
+                        )}
+
+                        {canDelete && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            onClick={() => setDeleteTarget(c)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                              fontSize: '0.78rem',
+                              padding: '0.35rem 0.65rem',
+                              color: '#B85C4C',
+                              borderColor: '#F5D5D0',
+                              transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#FCEEED';
+                              e.currentTarget.style.borderColor = '#B85C4C';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                              e.currentTarget.style.borderColor = '#F5D5D0';
+                            }}
+                            title="Eliminar cliente del sistema"
+                          >
+                            <Trash2 size={14} />
+                            Eliminar
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+
           {clients.length === 0 && (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#B5A898' }}>
-              No se encontraron clientes
+            <div style={{ padding: '3rem', textAlign: 'center', color: '#B5A898' }}>
+              <User size={36} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
+              <p style={{ margin: 0, fontSize: '0.9rem' }}>No se encontraron clientes registrados.</p>
             </div>
           )}
         </div>
       )}
 
+      {/* Pagination */}
       {meta.last_page > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.85rem 0', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.8rem', color: '#6B5B4E' }}>
-            Página {meta.page} de {meta.last_page}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '1rem 0', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.82rem', color: '#6B5B4E' }}>
+            Página {meta.page} de {meta.last_page} (Total: {meta.total} clientes)
           </span>
-          <div style={{ display: 'flex', gap: '0.35rem' }}>
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
             <button
+              type="button"
               className="btn btn-outline btn-sm"
               disabled={page <= 1 || loading}
               onClick={() => goToPage(page - 1)}
@@ -239,6 +439,7 @@ export default function ClientsAdmin() {
               ← Anterior
             </button>
             <button
+              type="button"
               className="btn btn-outline btn-sm"
               disabled={page >= meta.last_page || loading}
               onClick={() => goToPage(page + 1)}
@@ -249,118 +450,59 @@ export default function ClientsAdmin() {
         </div>
       )}
 
-      {showCreate && (
-        <div className="modal-overlay">
-          <div className="modal" style={{ maxWidth: '580px', maxHeight: '85vh', overflow: 'auto' }}>
-            <div className="modal-header">
-              <h3>Nuevo Cliente</h3>
-              <button className="modal-close" onClick={() => setShowCreate(false)}>&times;</button>
-            </div>
-            <form onSubmit={handleCreate}>
-              {createError && (
-                <p style={{ fontSize: '0.82rem', color: '#B85C4C', background: '#FCEEED', padding: '0.5rem 0.75rem', borderRadius: '6px', marginBottom: '1rem' }}>
-                  {createError}
-                </p>
-              )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={labelStyle}>DNI</label>
-                  <input type="text" style={inputStyle} placeholder="45678912" maxLength={15} value={createForm.dni} onChange={(e) => handleCreateChange('dni', e.target.value)} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Nombre *</label>
-                  <input type="text" style={inputStyle} placeholder="Juan" value={createForm.name} onChange={(e) => handleCreateChange('name', e.target.value)} required />
-                </div>
-                <div>
-                  <label style={labelStyle}>Apellido</label>
-                  <input type="text" style={inputStyle} placeholder="Pérez" value={createForm.last_name} onChange={(e) => handleCreateChange('last_name', e.target.value)} />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={labelStyle}>Teléfono *</label>
-                  <input type="tel" style={inputStyle} placeholder="999888777" value={createForm.phone} onChange={(e) => handleCreateChange('phone', e.target.value)} required />
-                </div>
-                <div>
-                  <label style={labelStyle}>Correo electrónico</label>
-                  <input type="email" style={inputStyle} placeholder="correo@ejemplo.com" value={createForm.email} onChange={(e) => handleCreateChange('email', e.target.value)} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Dirección</label>
-                  <input type="text" style={inputStyle} placeholder="Av. Principal 123" value={createForm.address} onChange={(e) => handleCreateChange('address', e.target.value)} />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '1.25rem' }}>
-                <label style={labelStyle}>Descuento (%)</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="0.01"
-                  style={{ ...inputStyle, maxWidth: '200px' }}
-                  placeholder="0"
-                  value={createForm.discount_percent}
-                  onChange={(e) => handleCreateChange('discount_percent', e.target.value)}
-                />
-                <small style={{ color: '#A89888', fontSize: '0.72rem', display: 'block', marginTop: '0.3rem' }}>
-                  Se aplicará automáticamente al precio de las citas. Deja en 0 si no aplica.
-                </small>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-outline" onClick={() => setShowCreate(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary" disabled={createSaving}>
-                  {createSaving ? 'Creando...' : 'Crear Cliente'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* MODAL 1: FICHA HISTÓRICA DEL CLIENTE */}
+      {selectedFichaClient && (
+        <ClientFichaModal
+          open={Boolean(selectedFichaClient)}
+          clientId={selectedFichaClient.id}
+          onClose={() => setSelectedFichaClient(null)}
+          onEdit={(c, tab = 'general') => {
+            setSelectedFichaClient(null);
+            setEditTarget(c);
+            setEditInitialTab(tab);
+          }}
+        />
       )}
 
+      {/* MODAL 2: EDICIÓN COMPLETA DEL CLIENTE */}
       {editTarget && (
-        <div className="modal-overlay">
-          <div className="modal" style={{ maxWidth: '420px' }}>
-            <div className="modal-header">
-              <h3>Descuento del cliente</h3>
-              <button className="modal-close" onClick={() => setEditTarget(null)}>&times;</button>
-            </div>
-            <form onSubmit={saveDiscount}>
-              <p style={{ fontSize: '0.85rem', color: '#6B5B4E', marginBottom: '1rem' }}>
-                Cliente: <strong>{[editTarget.name, editTarget.last_name].filter(Boolean).join(' ')}</strong>
-                {editTarget.dni ? ` (DNI ${editTarget.dni})` : ''}
-              </p>
-              <div className="form-group">
-                <label>Descuento (%)</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="0.01"
-                  className="form-control"
-                  value={discountInput}
-                  onChange={(e) => setDiscountInput(e.target.value)}
-                  required
-                />
-                <small style={{ color: 'var(--land-text-muted)', fontSize: '0.72rem', display: 'block', marginTop: '0.3rem' }}>
-                  Se aplicará automáticamente al precio de las citas de este cliente. Coloca 0 para quitar el descuento.
-                </small>
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-outline" onClick={() => setEditTarget(null)}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Guardando...' : 'Guardar'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ClientEditModal
+          open={Boolean(editTarget)}
+          client={editTarget}
+          initialTab={editInitialTab}
+          isCreating={false}
+          onClose={() => {
+            setEditTarget(null);
+            setEditInitialTab('general');
+          }}
+          onSaved={handleClientSaved}
+          onDelete={(c) => {
+            setEditTarget(null);
+            setDeleteTarget(c);
+          }}
+        />
       )}
+
+      {/* MODAL 3: CREAR NUEVO CLIENTE */}
+      {showCreate && (
+        <ClientEditModal
+          open={showCreate}
+          isCreating={true}
+          onClose={() => setShowCreate(false)}
+          onSaved={handleClientCreated}
+        />
+      )}
+
+      {/* MODAL 4: CONFIRMAR ELIMINACIÓN DE CLIENTE */}
+      <ConfirmModal
+        open={Boolean(deleteTarget)}
+        title="Eliminar Cliente"
+        message={deleteTarget ? `¿Estás seguro de que deseas eliminar a "${[deleteTarget.name, deleteTarget.last_name].filter(Boolean).join(' ')}"?\n\n${(deleteTarget.total_appointments_count || 0) > 0 ? `⚠️ Advertencia: Este cliente tiene ${deleteTarget.total_appointments_count} cita(s) registrada(s). Al eliminar este cliente, se eliminarán también sus citas asociadas del sistema.\n\n` : ''}Esta acción es permanente y no se puede deshacer.` : ''}
+        confirmLabel={deletingClient ? 'Eliminando...' : 'Sí, eliminar cliente'}
+        cancelLabel="Cancelar"
+        onConfirm={handleDeleteClient}
+        onCancel={() => !deletingClient && setDeleteTarget(null)}
+      />
     </div>
   );
 }

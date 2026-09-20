@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import useEscClose from '../../hooks/useEscClose';
 import {
   Inbox, Info, MoreVertical, Check, CheckCircle2,
-  CalendarClock, XCircle, CreditCard, Receipt, RefreshCw, Search, UserX,
+  CalendarClock, XCircle, CreditCard, Receipt, RefreshCw, Search, UserX, Trash2,
 } from 'lucide-react';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
 import { clearBusyCache } from '../../utils/busyCache';
@@ -12,6 +12,7 @@ import { todayStr } from '../../utils/hours';
 import CancelAppointmentModal from '../../components/CancelAppointmentModal';
 import AppointmentDetailModal from '../../components/AppointmentDetailModal';
 import PaymentScopeModal from '../../components/PaymentScopeModal';
+import ConfirmModal from '../../components/ConfirmModal';
 import LoadingButton from '../../components/LoadingButton';
 import { appointmentsAPI } from '../../services/api';
 import { TableSkeleton } from '../../components/Skeleton';
@@ -70,7 +71,7 @@ const MenuItemDivider = () => (
 );
 
 export default function AppointmentsAdmin() {
-  const { services, branches, updateAppointment, hasModulePermission, loading } = useApp();
+  const { services, branches, updateAppointment, deleteAppointment, hasModulePermission, loading } = useApp();
   const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [meta, setMeta] = useState({ page: 1, per_page: 10, total: 0, last_page: 1 });
@@ -102,6 +103,9 @@ export default function AppointmentsAdmin() {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [detailTarget, setDetailTarget] = useState(null);
   const [paymentScopeTarget, setPaymentScopeTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deletingAppointment, setDeletingAppointment] = useState(false);
+  useEscClose(!!deleteTarget, () => setDeleteTarget(null));
   const [menuFor, setMenuFor] = useState(null);
   const menuRefs = useRef({});
 
@@ -256,6 +260,21 @@ export default function AppointmentsAdmin() {
 
   const handlePayAllSessions = async (apt) => {
     await handlePaymentPropagate(apt);
+  };
+
+  const handleDeleteAppointment = async () => {
+    if (!deleteTarget) return;
+    setDeletingAppointment(true);
+    try {
+      await deleteAppointment(deleteTarget.id);
+      setDeleteTarget(null);
+      refetch();
+    } catch (err) {
+      console.error('Error eliminando cita:', err);
+      alert(err.response?.data?.message || 'Error al eliminar la cita');
+    } finally {
+      setDeletingAppointment(false);
+    }
   };
 
   const today = todayStr();
@@ -476,6 +495,20 @@ export default function AppointmentsAdmin() {
                                   {apt.payment_status === 'pagado' && (
                                     <MenuItem label="Emitir comprobante" icon={<Receipt size={14} />} onClick={() => { setMenuFor(null); navigate(`/admin/boletas/${apt.id}`); }} />
                                   )}
+                                  {(hasModulePermission('citas', 'can_delete') || hasModulePermission('citas', 'can_edit')) && (
+                                    <>
+                                      <MenuItemDivider />
+                                      <MenuItem
+                                        label="Eliminar cita"
+                                        icon={<Trash2 size={14} />}
+                                        danger
+                                        onClick={() => {
+                                          setMenuFor(null);
+                                          setDeleteTarget(apt);
+                                        }}
+                                      />
+                                    </>
+                                  )}
                                 </div>
                               )}
                             </>
@@ -608,6 +641,16 @@ export default function AppointmentsAdmin() {
         onClose={() => setPaymentScopeTarget(null)}
         onPaySession={handlePaySession}
         onPayAllSessions={handlePayAllSessions}
+      />
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Eliminar Cita"
+        message={deleteTarget ? `¿Estás seguro de que deseas eliminar esta cita de forma permanente?\n\n• Cliente: ${deleteTarget.client_name || deleteTarget.person?.name || 'Cliente'}\n• Fecha: ${deleteTarget.date || ''} ${deleteTarget.start_time ? `a las ${deleteTarget.start_time.slice(0, 5)}` : ''}\n\n⚠️ Nota importante: Esta acción eliminará únicamente esta cita. El cliente seguirá existiendo en el sistema con sus datos y ficha intactos.` : ''}
+        confirmLabel={deletingAppointment ? 'Eliminando...' : 'Sí, eliminar cita'}
+        cancelLabel="Cancelar"
+        onConfirm={handleDeleteAppointment}
+        onCancel={() => !deletingAppointment && setDeleteTarget(null)}
       />
     </div>
   );

@@ -115,8 +115,11 @@ export const personAPI = {
     const qs = query.toString();
     return api.get(`/admin/persons${qs ? `?${qs}` : ''}`);
   },
+  get: (id) => api.get(`/admin/persons/${id}`),
   create: (data) => api.post('/admin/persons', data),
-  updateDiscount: (id, discountPercent) => api.put(`/admin/persons/${id}`, { discount_percent: discountPercent }),
+  update: (id, data) => api.put(`/admin/persons/${id}`, data),
+  updateDiscount: (id, discountPercent) => api.put(`/admin/persons/${id}/discount`, { discount_percent: discountPercent }),
+  delete: (id) => api.delete(`/admin/persons/${id}`),
 };
 
 export const invoicesAPI = {

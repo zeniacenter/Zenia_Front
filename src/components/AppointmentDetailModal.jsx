@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X, Package, CreditCard, Clock, MapPin, User, Phone, Scissors, AlertTriangle, Mail, Hash, Home,
-  Check, CheckCircle2, CalendarClock, XCircle, Receipt, Pencil, CalendarPlus, UserX,
+  Check, CheckCircle2, CalendarClock, XCircle, Receipt, Pencil, CalendarPlus, UserX, FileText, Trash2,
 } from 'lucide-react';
 import useEscClose from '../hooks/useEscClose';
 import { useApp } from '../context/AppContext';
@@ -12,7 +12,10 @@ import { todayStr, formatHours } from '../utils/hours';
 import TimeSlotPicker from './TimeSlotPicker';
 import CancelAppointmentModal from './CancelAppointmentModal';
 import PaymentScopeModal from './PaymentScopeModal';
+import ConfirmModal from './ConfirmModal';
 import LoadingButton from './LoadingButton';
+import ClientFichaModal from './ClientFichaModal';
+import ClientEditModal from './ClientEditModal';
 
 const STATUS_CONFIG = {
   confirmada: { label: 'Agendada', color: '#8B6A50', bg: '#F5EDE5' },
@@ -90,7 +93,7 @@ export default function AppointmentDetailModal({
   onSelectSession,
   initialEditing = false,
 }) {
-  const { appointments, updateAppointment, hasModulePermission, therapists, cabins, branches, packages, services } = useApp();
+  const { appointments, updateAppointment, deleteAppointment, hasModulePermission, therapists, cabins, branches, packages, services } = useApp();
   const navigate = useNavigate();
   const [freshData, setFreshData] = useState(null);
   const [postponing, setPostponing] = useState(false);
@@ -100,6 +103,8 @@ export default function AppointmentDetailModal({
   const [actionLoading, setActionLoading] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingAppointment, setDeletingAppointment] = useState(false);
   const [editing, setEditing] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState('');
@@ -117,6 +122,9 @@ export default function AppointmentDetailModal({
   const [nextNotes, setNextNotes] = useState('');
   const [savingNext, setSavingNext] = useState(false);
   const [nextError, setNextError] = useState('');
+  const [showClientFicha, setShowClientFicha] = useState(false);
+  const [clientEditTarget, setClientEditTarget] = useState(null);
+  const [clientEditTab, setClientEditTab] = useState('general');
 
   useEscClose(open, onClose);
 
@@ -128,6 +136,9 @@ export default function AppointmentDetailModal({
     setEditError('');
     setSchedulingNext(false);
     setNextError('');
+    setShowClientFicha(false);
+    setClientEditTarget(null);
+    setClientEditTab('general');
     setFreshData(null);
   }, [open, appointment?.id, initialEditing]);
 
@@ -383,6 +394,43 @@ export default function AppointmentDetailModal({
           await updateAppointment(sib.id, { payment_status: 'pagado', paid_amount: sib.total_price });
         }
       }
+    }
+  };
+
+  const handleOpenClientEdit = (c, tab = 'general') => {
+    setShowClientFicha(false);
+    setClientEditTarget(c || person);
+    setClientEditTab(tab);
+  };
+
+  const handleClientSavedFromDetail = (updatedPerson) => {
+    setFreshData((prev) => {
+      const base = prev || apt;
+      return {
+        ...base,
+        person: {
+          ...(base.person || {}),
+          ...updatedPerson,
+        },
+      };
+    });
+    setClientEditTarget(null);
+    onUpdated?.();
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!apt) return;
+    setDeletingAppointment(true);
+    try {
+      await deleteAppointment(apt.id);
+      setShowDeleteModal(false);
+      onUpdated?.();
+      onClose();
+    } catch (err) {
+      console.error('Error eliminando cita:', err);
+      alert(err.response?.data?.message || 'Error al eliminar la cita');
+    } finally {
+      setDeletingAppointment(false);
     }
   };
 
@@ -810,8 +858,58 @@ export default function AppointmentDetailModal({
             </div>
           </div>
 
-          <div style={{ padding: '0.6rem 0.75rem', background: '#FDFBF7', borderRadius: '8px', border: '1px solid #F0EBE3', marginBottom: '0.75rem' }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#A89888', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Datos del Cliente</div>
+          <div style={{ padding: '0.65rem 0.85rem', background: '#FDFBF7', borderRadius: '10px', border: '1px solid #F0EBE3', marginBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#A89888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Datos del Cliente
+              </div>
+              {person.id && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowClientFicha(true)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#8C6B45',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                    }}
+                    title="Ver historial de citas, paquetes y ficha clínica completa"
+                  >
+                    <FileText size={13} /> Ver Ficha
+                  </button>
+                  <span style={{ color: '#DDD2C4', fontSize: '0.74rem' }}>|</span>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenClientEdit(person, 'general')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#8C6B45',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                    }}
+                    title="Editar perfil y datos del cliente"
+                  >
+                    <Pencil size={12} /> Editar
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem 1rem', fontSize: '0.78rem' }}>
               <div style={{ color: '#A89888' }}>Nombre</div>
               <div style={{ color: '#3D2E24', fontWeight: 500 }}>{clientName}</div>
@@ -836,6 +934,26 @@ export default function AppointmentDetailModal({
               <div style={{ color: '#A89888' }}><Phone size={11} style={{ verticalAlign: '-1px', marginRight: 2 }} />Teléfono</div>
               <div style={{ color: '#3D2E24', fontWeight: 500 }}>{clientPhone}</div>
             </div>
+
+            {(person.allergies || person.frequent_pain_zone || person.preferred_pressure) && (
+              <div style={{ marginTop: '0.55rem', paddingTop: '0.5rem', borderTop: '1px dashed #E8DFD5', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                {person.allergies && (
+                  <div style={{ fontSize: '0.74rem', color: '#991B1B', background: '#FEE2E2', padding: '3px 8px', borderRadius: '6px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <AlertTriangle size={12} color="#DC2626" /> Alergia: {person.allergies}
+                  </div>
+                )}
+                {person.frequent_pain_zone && (
+                  <div style={{ fontSize: '0.74rem', color: '#92400E', background: '#FEF3C7', padding: '3px 8px', borderRadius: '6px', fontWeight: 500 }}>
+                    🎯 Dolor frecuente: {person.frequent_pain_zone}
+                  </div>
+                )}
+                {person.preferred_pressure && (
+                  <div style={{ fontSize: '0.74rem', color: '#6B21A8', background: '#F3E8FF', padding: '3px 8px', borderRadius: '6px', fontWeight: 500 }}>
+                    💆 Presión preferida: {person.preferred_pressure}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -1098,6 +1216,15 @@ export default function AppointmentDetailModal({
                 {apt.payment_status === 'pagado' && (
                   <ActionButton label="Emitir comprobante" icon={<Receipt size={14} />} onClick={handleEmitBoleta} />
                 )}
+                {(hasModulePermission('citas', 'can_delete') || hasModulePermission('citas', 'can_edit')) && (
+                  <ActionButton
+                    label="Eliminar cita"
+                    icon={<Trash2 size={14} />}
+                    danger
+                    onClick={() => setShowDeleteModal(true)}
+                    disabled={actionLoading || deletingAppointment}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -1119,6 +1246,36 @@ export default function AppointmentDetailModal({
           onPaySession={handlePaySession}
           onPayAllSessions={handlePayAllSessions}
         />
+
+        <ConfirmModal
+          open={showDeleteModal}
+          title="Eliminar Cita"
+          message={`¿Estás seguro de que deseas eliminar esta cita de forma permanente?\n\n• Cliente: ${person.name ? [person.name, person.last_name].filter(Boolean).join(' ') : (apt.client_name || 'Cliente')}\n• Fecha: ${formatDateForInput(apt.date)} ${apt.start_time ? `a las ${String(apt.start_time).slice(0, 5)}` : ''}\n\n⚠️ Nota importante: Solo se eliminará esta cita. El cliente seguirá existiendo en el sistema con sus datos y ficha intactos.`}
+          confirmLabel={deletingAppointment ? 'Eliminando...' : 'Sí, eliminar cita'}
+          cancelLabel="Cancelar"
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => !deletingAppointment && setShowDeleteModal(false)}
+        />
+
+        {showClientFicha && person.id && (
+          <ClientFichaModal
+            open={showClientFicha}
+            clientId={person.id}
+            onClose={() => setShowClientFicha(false)}
+            onEdit={(c, tab = 'general') => handleOpenClientEdit(c, tab)}
+          />
+        )}
+
+        {clientEditTarget && (
+          <ClientEditModal
+            open={Boolean(clientEditTarget)}
+            client={clientEditTarget}
+            initialTab={clientEditTab}
+            isCreating={false}
+            onClose={() => setClientEditTarget(null)}
+            onSaved={handleClientSavedFromDetail}
+          />
+        )}
 
         <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid #E8E0D6', display: 'flex', justifyContent: 'flex-end' }}>
           <button className="btn btn-secondary" onClick={onClose}>Cerrar</button>
