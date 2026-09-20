@@ -195,8 +195,12 @@ export default function ClientsAdmin() {
                 const fullName = [c.name, c.last_name].filter(Boolean).join(' ') || 'Cliente sin nombre';
                 const hasAllergies = Boolean(c.allergies && c.allergies.trim());
                 const hasPainZone = Boolean(c.frequent_pain_zone && c.frequent_pain_zone.trim());
-                const completedCitas = c.completed_appointments_count ?? '-';
-                const totalCitas = c.total_appointments_count ?? '-';
+                const completedCitas = c.completed_appointments_count !== undefined && c.completed_appointments_count !== null
+                  ? Number(c.completed_appointments_count)
+                  : '-';
+                const totalCitas = c.total_appointments_count !== undefined && c.total_appointments_count !== null
+                  ? Number(c.total_appointments_count)
+                  : '-';
 
                 return (
                   <tr key={c.id} style={{ transition: 'background-color 0.15s' }}>

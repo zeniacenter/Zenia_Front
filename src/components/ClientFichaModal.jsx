@@ -75,19 +75,24 @@ export default function ClientFichaModal({
   // Initials for avatar
   const initials = [client.name?.[0], client.last_name?.[0]].filter(Boolean).join('').toUpperCase() || 'C';
 
+  const isRealizada = (status) => {
+    const st = (status || '').toLowerCase().trim();
+    return st === 'realizada' || st === 'realizado' || st === 'completada' || st === 'completado';
+  };
+
   // Filtered appointments
   const filteredAppointments = appointments.filter((app) => {
-    const st = (app.status || '').toLowerCase();
+    const st = (app.status || '').toLowerCase().trim();
     if (statusFilter === 'todas') return true;
-    if (statusFilter === 'realizadas') return st === 'realizada';
+    if (statusFilter === 'realizadas') return isRealizada(st);
     if (statusFilter === 'agendadas') return st === 'confirmada' || st === 'pendiente';
     if (statusFilter === 'canceladas_inasistencias') return st === 'cancelada' || st === 'no_asistio' || st === 'postergada';
     return true;
   });
 
   const getStatusBadge = (status) => {
-    const st = (status || '').toLowerCase();
-    if (st === 'realizada') {
+    const st = (status || '').toLowerCase().trim();
+    if (isRealizada(st)) {
       return (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: '#DCFCE7', color: '#15803D', padding: '2px 8px', borderRadius: '12px', fontSize: '0.74rem', fontWeight: 600 }}>
           <CheckCircle2 size={12} /> Realizada
@@ -98,6 +103,13 @@ export default function ClientFichaModal({
       return (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: '#FEF3C7', color: '#B45309', padding: '2px 8px', borderRadius: '12px', fontSize: '0.74rem', fontWeight: 600 }}>
           <Clock size={12} /> Agendada
+        </span>
+      );
+    }
+    if (st === 'postergada') {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: '#EBF3F8', color: '#4A7A9A', padding: '2px 8px', borderRadius: '12px', fontSize: '0.74rem', fontWeight: 600 }}>
+          <Clock size={12} /> Postergada
         </span>
       );
     }
