@@ -115,8 +115,11 @@ export const personAPI = {
     const qs = query.toString();
     return api.get(`/admin/persons${qs ? `?${qs}` : ''}`);
   },
+  get: (id) => api.get(`/admin/persons/${id}`),
   create: (data) => api.post('/admin/persons', data),
-  updateDiscount: (id, discountPercent) => api.put(`/admin/persons/${id}`, { discount_percent: discountPercent }),
+  update: (id, data) => api.put(`/admin/persons/${id}`, data),
+  updateDiscount: (id, discountPercent) => api.put(`/admin/persons/${id}/discount`, { discount_percent: discountPercent }),
+  delete: (id) => api.delete(`/admin/persons/${id}`),
 };
 
 export const invoicesAPI = {
@@ -152,6 +155,7 @@ export const reportsAPI = {
   filtered: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/filtered')),
   breakdowns: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/breakdowns')),
   clientDiscounts: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/client-discounts')),
+  clientBehavior: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/client-behavior')),
   exportPdf: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/pdf'), { responseType: 'blob' }),
   exportExcel: (params = {}) => api.get(buildReportsUrl(params, '/admin/reports/export/excel'), { responseType: 'blob' }),
   uploadToDrive: (params = {}) => api.post('/admin/reports/export/drive', params),
