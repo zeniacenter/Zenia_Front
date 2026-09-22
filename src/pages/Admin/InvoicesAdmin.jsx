@@ -5,7 +5,7 @@ import { TableSkeleton } from '../../components/Skeleton';
 import { FileText, FileCode, RefreshCw, Receipt, Monitor } from 'lucide-react';
 
 const RAPIFAC_PANEL_URL =
-  import.meta.env.VITE_RAPIFAC_PANEL_URL || 'https://sistema-p1.rapifac.com/';
+  import.meta.env.VITE_RAPIFAC_PANEL_URL || 'https://sistema.rapifac.com/';
 
 const formatMoney = (n) => Number(n || 0).toFixed(2);
 
