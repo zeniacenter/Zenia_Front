@@ -22,7 +22,8 @@ export default function Services() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
                   {settings.priceVisible && (
                     <div className="card-price">
-                      S/ {service.pricePerHour} <span>/ hora</span>
+                      S/ {service.pricePerHour}{' '}
+                      <span>{service.durationMin ? `(${service.durationMin} min)` : '/ sesión'}</span>
                     </div>
                   )}
                   <Link to={`/agendar?service=${service.id}`} className="btn btn-primary btn-sm">

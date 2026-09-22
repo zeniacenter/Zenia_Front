@@ -208,7 +208,9 @@ export default function Home() {
                           <div className="service-price">
                             <span className="price-from">Desde</span>
                             <span className="price-value">S/ {service.pricePerHour}</span>
-                            <span className="price-unit">/ hora</span>
+                            <span className="price-unit">
+                              {service.durationMin ? `(${service.durationMin} min)` : '/ sesión'}
+                            </span>
                           </div>
                         )}
                         <Link to={`/agendar?service=${service.id}`} className="service-cta">

@@ -219,8 +219,7 @@ export default function AdminBooking() {
     }
     const service = getSelectedServiceObj();
     if (!service) return 0;
-    const defH = service.durationMin ? service.durationMin / 60 : 1;
-    return Math.round((service.pricePerHour || 0) * (hours / defH) * sessionCount * 100) / 100;
+    return Math.round((service.pricePerHour || 0) * sessionCount * 100) / 100;
   };
 
   const effectiveTotal = priceInput === '' ? getTotal() : (parseFloat(priceInput) || 0);
@@ -232,7 +231,7 @@ export default function AdminBooking() {
   useEffect(() => {
     setPriceInput(String(getTotal()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedService, selectedPackage, hours, sessionCount, bookingType]);
+  }, [selectedService, selectedPackage, sessionCount, bookingType]);
 
   const handleDniBlur = useCallback(async () => {
     const dni = clientDni.trim();
