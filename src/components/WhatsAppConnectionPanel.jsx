@@ -4,7 +4,7 @@ import { LogOut, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { getWhatsAppSocket } from '../services/whatsappSocket';
 import ConfirmModal from './ConfirmModal';
 
-const labels = { Iniciando: 'Iniciando conexión', QR_Listo: 'Escanea el código QR', Conectado: 'WhatsApp conectado', Desconectado: 'WhatsApp desconectado' };
+const labels = { Iniciando: 'Iniciando conexión', QR_Listo: 'Escanea el código QR', Autenticando: 'Vinculando y sincronizando chats...', Conectado: 'WhatsApp conectado', Desconectado: 'WhatsApp desconectado' };
 
 export default function WhatsAppConnectionPanel() {
   const [state, setState] = useState({ status: 'Iniciando', qr: null, phoneNumber: null, pushName: null });

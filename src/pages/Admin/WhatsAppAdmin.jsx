@@ -6,7 +6,7 @@ import { whatsappAPI } from '../../services/api';
 import ConfirmModal from '../../components/ConfirmModal';
 import NotificationModal from '../../components/NotificationModal';
 
-const labels = { Iniciando: 'Iniciando conexión', QR_Listo: 'Escanea el código QR', Conectado: 'WhatsApp conectado', Desconectado: 'WhatsApp desconectado' };
+const labels = { Iniciando: 'Iniciando conexión', QR_Listo: 'Escanea el código QR', Autenticando: 'Vinculando y sincronizando chats...', Conectado: 'WhatsApp conectado', Desconectado: 'WhatsApp desconectado' };
 
 const DEFAULT_CONFIG = {
   menuServicios: true,
@@ -187,6 +187,14 @@ export default function WhatsAppAdmin() {
             {connected ? 'Conectado' : 'Pendiente'}
           </span>
         </div>
+
+        {state.status === 'Autenticando' && (
+          <div className="whatsapp-panel__qr" style={{ padding: '2rem 1rem', textAlign: 'center' }}>
+            <RefreshCw size={36} style={{ animation: 'spin 1.5s linear infinite', color: '#8c6d58', margin: '0 auto 1rem' }} />
+            <p style={{ fontWeight: 600, color: '#3D2E24' }}>¡Dispositivo vinculado!</p>
+            <p style={{ fontSize: '0.9rem', color: '#666' }}>Sincronizando chats y cargando sesión en el servidor. Espera unos segundos...</p>
+          </div>
+        )}
 
         {state.status === 'QR_Listo' && state.qr && (
           <div className="whatsapp-panel__qr">
