@@ -6,7 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import NotificationModal from '../../components/NotificationModal';
 import UnionSlotPicker from '../../components/UnionSlotPicker';
 import { clearBusyCache } from '../../utils/busyCache';
-import { todayStr, therapistSlotsForDay, minToHhmm } from '../../utils/hours';
+import { todayStr, therapistSlotsForDay, minToHhmm, formatLongDate } from '../../utils/hours';
 
 export default function AdminBooking() {
   const { services, therapists, cabins, branches, packages, addAppointment, settings, appointments } = useApp();
@@ -773,7 +773,7 @@ export default function AdminBooking() {
                 )}
                 <span style={{ color: '#A89888' }}>Fecha</span>
                 <span style={{ color: '#3D2E24', fontWeight: 600 }}>
-                  {new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })} - {selectedTime}
+                  {formatLongDate(selectedDate)} - {selectedTime}
                 </span>
                 {selectedCabin && (
                   <>

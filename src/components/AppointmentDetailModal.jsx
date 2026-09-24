@@ -8,7 +8,7 @@ import useEscClose from '../hooks/useEscClose';
 import { useApp } from '../context/AppContext';
 import { appointmentsAPI, personAPI } from '../services/api';
 import { clearBusyCache } from '../utils/busyCache';
-import { todayStr, formatHours } from '../utils/hours';
+import { todayStr, formatHours, formatDate, formatLongDate, toLocalDateStr } from '../utils/hours';
 import TimeSlotPicker from './TimeSlotPicker';
 import CancelAppointmentModal from './CancelAppointmentModal';
 import PaymentScopeModal from './PaymentScopeModal';
@@ -69,14 +69,7 @@ const ActionButton = ({ label, icon, onClick, danger, disabled }) => (
 );
 
 const formatDateForInput = (val) => {
-  if (!val) return '';
-  if (typeof val === 'string') {
-    return val.split('T')[0].slice(0, 10);
-  }
-  if (val instanceof Date) {
-    return val.toISOString().slice(0, 10);
-  }
-  return '';
+  return toLocalDateStr(val);
 };
 
 const formatTimeForInput = (val) => {
@@ -975,7 +968,7 @@ export default function AppointmentDetailModal({
             </div>
             <div style={row}>
               <span style={label}>📅 Fecha</span>
-              <span style={value}>{apt.date ? new Date(apt.date).toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</span>
+              <span style={value}>{formatLongDate(apt.date)}</span>
             </div>
             <div style={row}>
               <span style={label}><Clock size={13} />Hora</span>
@@ -1250,7 +1243,7 @@ export default function AppointmentDetailModal({
         <ConfirmModal
           open={showDeleteModal}
           title="Eliminar Cita"
-          message={`¿Estás seguro de que deseas eliminar esta cita de forma permanente?\n\n• Cliente: ${person.name ? [person.name, person.last_name].filter(Boolean).join(' ') : (apt.client_name || 'Cliente')}\n• Fecha: ${formatDateForInput(apt.date)} ${apt.start_time ? `a las ${String(apt.start_time).slice(0, 5)}` : ''}\n\n⚠️ Nota importante: Solo se eliminará esta cita. El cliente seguirá existiendo en el sistema con sus datos y ficha intactos.`}
+          message={`¿Estás seguro de que deseas eliminar esta cita de forma permanente?\n\n• Cliente: ${person.name ? [person.name, person.last_name].filter(Boolean).join(' ') : (apt.client_name || 'Cliente')}\n• Fecha: ${formatDate(apt.date)} ${apt.start_time ? `a las ${String(apt.start_time).slice(0, 5)}` : ''}\n\n⚠️ Nota importante: Solo se eliminará esta cita. El cliente seguirá existiendo en el sistema con sus datos y ficha intactos.`}
           confirmLabel={deletingAppointment ? 'Eliminando...' : 'Sí, eliminar cita'}
           cancelLabel="Cancelar"
           onConfirm={handleDeleteConfirm}

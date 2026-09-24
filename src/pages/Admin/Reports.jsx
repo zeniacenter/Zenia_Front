@@ -12,7 +12,7 @@ import {
   Download, FileText, FileSpreadsheet, Filter, X, Search, CloudUpload,
   Users, Star, AlertTriangle, UserX, CalendarClock, MessageCircle,
 } from 'lucide-react';
-import { formatHours } from '../../utils/hours';
+import { formatHours, formatDate, parseLocalDate } from '../../utils/hours';
 
 const COLORS = ['#C9A96E', '#E6C992', '#9A7D52', '#5A8F6A', '#D46B5A', '#B5A898'];
 
@@ -57,10 +57,7 @@ const detailTd = { fontSize: '0.8rem', color: '#6B5B4E', padding: '0.55rem 0.75r
 const fmtMoney = (n) => `S/ ${Number(n || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const fmtDate = (d) => {
-  if (!d) return '-';
-  const dt = new Date(d);
-  if (Number.isNaN(dt.getTime())) return d;
-  return dt.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return formatDate(d);
 };
 
 function downloadBlob(blob, filename) {
@@ -190,7 +187,7 @@ export default function Reports() {
     if (!data?.weeklyRevenue?.length) return [];
     return data.weeklyRevenue.map(d => ({
       ...d,
-      week_label: new Date(d.week).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }),
+      week_label: (parseLocalDate(d.week) || new Date(d.week)).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }),
     }));
   }, [data?.weeklyRevenue]);
 

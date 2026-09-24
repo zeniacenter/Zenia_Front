@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { appointmentsAPI, invoicesAPI } from '../../services/api';
 import useEscClose from '../../hooks/useEscClose';
 import { Monitor, Send } from 'lucide-react';
+import { formatDate } from '../../utils/hours';
 
 const RAPIFAC_PANEL_URL =
   import.meta.env.VITE_RAPIFAC_PANEL_URL || 'https://sistema.rapifac.com/';
@@ -234,7 +235,7 @@ export default function BoletasPlaceholder() {
               </p>
             )}
             <p style={{ color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-              {appointment?.services?.map((s) => s.name).join(', ') || 'Servicio'} · {appointment?.date} {appointment?.start_time}
+              {appointment?.services?.map((s) => s.name).join(', ') || 'Servicio'} · {formatDate(appointment?.date)} {appointment?.start_time}
             </p>
           </section>
 
@@ -261,7 +262,7 @@ export default function BoletasPlaceholder() {
                       onChange={() => toggleSelection(a.id)}
                     />
                     <span>
-                      {a.date} {a.start_time} — {a.services?.map((s) => s.name).join(', ') || 'Servicio'} — S/ {formatMoney(a.total_price)}
+                      {formatDate(a.date)} {a.start_time} — {a.services?.map((s) => s.name).join(', ') || 'Servicio'} — S/ {formatMoney(a.total_price)}
                     </span>
                   </label>
                 ))}

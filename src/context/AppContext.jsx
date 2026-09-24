@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authAPI, usersAPI, servicesAPI, packagesAPI, therapistsAPI, cabinsAPI, appointmentsAPI, branchesAPI, settingsAPI, setBranchId } from '../services/api';
 import { BarChart3, Calendar, Users, Home, Sparkles, Package, TrendingUp, Plus, User, MapPin } from 'lucide-react';
-import { hoursToMinutes, minutesToHours } from '../utils/hours';
+import { hoursToMinutes, minutesToHours, toLocalDateStr } from '../utils/hours';
 
 const AppContext = createContext(null);
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -25,8 +25,7 @@ const appointmentRange = () => {
   to.setDate(to.getDate() + APPOINTMENT_RANGE_DAYS_FUTURE);
   const from = new Date();
   from.setDate(from.getDate() - APPOINTMENT_RANGE_DAYS_PAST);
-  const fmt = (d) => d.toISOString().slice(0, 10);
-  return { from: fmt(from), to: fmt(to) };
+  return { from: toLocalDateStr(from), to: toLocalDateStr(to) };
 };
 
 const getImagePath = (url) => {

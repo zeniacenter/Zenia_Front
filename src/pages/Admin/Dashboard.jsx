@@ -7,7 +7,7 @@ import { useApp } from '../../context/AppContext';
 import { CalendarDays, Clock, DollarSign, Hourglass, Home, User, Info } from 'lucide-react';
 import AppointmentDetailModal from '../../components/AppointmentDetailModal';
 import Skeleton from '../../components/Skeleton';
-import { buildQuarterRange, formatMinutes, todayStr, formatHours } from '../../utils/hours';
+import { buildQuarterRange, formatMinutes, todayStr, formatHours, formatDate } from '../../utils/hours';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const locales = { es };
@@ -455,7 +455,7 @@ export default function Dashboard() {
         <div>
           <h3 style={{ marginBottom: '1rem', color: '#3D2E24' }}>
             {selectedDay
-              ? `Citas del ${selectedDay}`
+              ? `Citas del ${formatDate(selectedDay)}`
               : 'Selecciona una cita en el calendario'}
           </h3>
           {selectedAppointments.length === 0 ? (

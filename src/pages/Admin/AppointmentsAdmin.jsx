@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
 import { clearBusyCache } from '../../utils/busyCache';
-import { todayStr } from '../../utils/hours';
+import { todayStr, formatDate, toLocalDateStr } from '../../utils/hours';
 import CancelAppointmentModal from '../../components/CancelAppointmentModal';
 import AppointmentDetailModal from '../../components/AppointmentDetailModal';
 import PaymentScopeModal from '../../components/PaymentScopeModal';
@@ -85,7 +85,7 @@ export default function AppointmentsAdmin() {
     to.setDate(to.getDate() + 30);
     const from = new Date();
     from.setDate(from.getDate() - 30);
-    return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+    return { from: toLocalDateStr(from), to: toLocalDateStr(to) };
   };
 
   const refetch = () => setReloadKey((k) => k + 1);
@@ -404,7 +404,7 @@ export default function AppointmentsAdmin() {
                         </div>
                       </td>
                       <td style={{ padding: '0.65rem 1rem', fontSize: '0.8rem', color: '#3D2E24', whiteSpace: 'nowrap' }}>
-                        {apt.date ? new Date(apt.date).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
+                        {formatDate(apt.date)}
                       </td>
                       <td style={{ padding: '0.65rem 1rem', fontSize: '0.8rem', color: '#3D2E24', whiteSpace: 'nowrap' }}>
                         {getTime(apt)} - {getEndTime(apt)}
@@ -646,7 +646,7 @@ export default function AppointmentsAdmin() {
       <ConfirmModal
         open={!!deleteTarget}
         title="Eliminar Cita"
-        message={deleteTarget ? `¿Estás seguro de que deseas eliminar esta cita de forma permanente?\n\n• Cliente: ${deleteTarget.client_name || deleteTarget.person?.name || 'Cliente'}\n• Fecha: ${deleteTarget.date || ''} ${deleteTarget.start_time ? `a las ${deleteTarget.start_time.slice(0, 5)}` : ''}\n\n⚠️ Nota importante: Esta acción eliminará únicamente esta cita. El cliente seguirá existiendo en el sistema con sus datos y ficha intactos.` : ''}
+        message={deleteTarget ? `¿Estás seguro de que deseas eliminar esta cita de forma permanente?\n\n• Cliente: ${deleteTarget.client_name || deleteTarget.person?.name || 'Cliente'}\n• Fecha: ${formatDate(deleteTarget.date)} ${deleteTarget.start_time ? `a las ${deleteTarget.start_time.slice(0, 5)}` : ''}\n\n⚠️ Nota importante: Esta acción eliminará únicamente esta cita. El cliente seguirá existiendo en el sistema con sus datos y ficha intactos.` : ''}
         confirmLabel={deletingAppointment ? 'Eliminando...' : 'Sí, eliminar cita'}
         cancelLabel="Cancelar"
         onConfirm={handleDeleteAppointment}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import useEscClose from '../hooks/useEscClose';
 import { personAPI } from '../services/api';
+import { formatDate } from '../utils/hours';
 import {
   User,
   Phone,
@@ -552,7 +553,7 @@ export default function ClientFichaModal({
                                 }}
                               >
                                 <Calendar size={14} />
-                                {app.date}
+                                {formatDate(app.date)}
                               </div>
                               <div
                                 style={{
@@ -730,7 +731,7 @@ export default function ClientFichaModal({
                                       <td style={{ fontWeight: 600, padding: '0.45rem 0.75rem' }}>
                                         Sesión {s.session_number || '-'}
                                       </td>
-                                      <td style={{ padding: '0.45rem 0.75rem' }}>{s.date || 'Pendiente'}</td>
+                                      <td style={{ padding: '0.45rem 0.75rem' }}>{s.date ? formatDate(s.date) : 'Pendiente'}</td>
                                       <td style={{ padding: '0.45rem 0.75rem' }}>
                                         {s.start_time ? `${s.start_time.slice(0, 5)} - ${s.end_time?.slice(0, 5)}` : '-'}
                                       </td>

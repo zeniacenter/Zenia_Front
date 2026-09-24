@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import useEscClose from '../hooks/useEscClose';
 import LoadingButton from './LoadingButton';
+import { formatDate } from '../utils/hours';
 
 const CANCEL_REASONS = [
   { value: 'cliente_solicita', label: 'El cliente solicitó la cancelación' },
@@ -71,7 +72,7 @@ export default function CancelAppointmentModal({ open, appointment, onConfirm, o
           <strong>{clientName}</strong> — {services}
         </p>
         <p style={{ margin: '0 0 1rem', fontSize: '0.78rem', color: '#A89888' }}>
-          {appointment.date} · {appointment.start_time} - {appointment.end_time}
+          {formatDate(appointment.date)} · {appointment.start_time} - {appointment.end_time}
         </p>
 
         <div style={{ marginBottom: '1.25rem' }}>

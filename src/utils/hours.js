@@ -159,3 +159,49 @@ export function unionSlotsForTherapists(therapists, date, durationMin = 60, toda
   });
   return [...set].sort((a, b) => a - b);
 }
+
+export function parseLocalDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  const clean = String(val).split('T')[0];
+  const parts = clean.split('-').map(Number);
+  if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+  return new Date(val);
+}
+
+export function formatDate(val) {
+  if (!val) return '-';
+  if (typeof val === 'string') {
+    const clean = val.split('T')[0];
+    const parts = clean.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+      return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+    }
+  }
+  const dt = parseLocalDate(val);
+  if (!dt || isNaN(dt.getTime())) return '-';
+  return dt.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+export function formatLongDate(val) {
+  const dt = parseLocalDate(val);
+  if (!dt || isNaN(dt.getTime())) return '-';
+  return dt.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+export function toLocalDateStr(d) {
+  if (!d) return '';
+  if (typeof d === 'string') {
+    return d.split('T')[0].slice(0, 10);
+  }
+  if (d instanceof Date && !isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  return '';
+}
+
