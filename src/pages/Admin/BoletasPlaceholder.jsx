@@ -232,6 +232,11 @@ export default function BoletasPlaceholder() {
                 Cliente: {data.name}{data.last_name ? ' ' + data.last_name : ''}
                 {' · '}
                 {data.document_type === 'ruc' ? 'RUC: ' + data.ruc : 'DNI: ' + data.dni}
+                {Number(data.discount_percent || 0) > 0 && (
+                  <span style={{ marginLeft: '0.75rem', background: '#E8F5E9', color: '#2E7D32', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.78rem', fontWeight: 600 }}>
+                    {data.discount_percent}% de descuento
+                  </span>
+                )}
               </p>
             )}
             <p style={{ color: 'var(--text-muted)', marginTop: '0.25rem' }}>
@@ -331,6 +336,11 @@ export default function BoletasPlaceholder() {
               <div>
                 <h3>Resumen</h3>
                 <p style={{ color: 'var(--text-muted)' }}>{selected.length} cita(s) seleccionada(s)</p>
+                {Number(data?.discount_percent || 0) > 0 && (
+                  <p style={{ color: '#2E7D32', fontSize: '0.82rem', fontWeight: 500, margin: '0.2rem 0 0' }}>
+                    Incluye descuento de cliente ({data.discount_percent}%)
+                  </p>
+                )}
               </div>
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontSize: '1.3rem', fontWeight: 700 }}>S/ {formatMoney(total)}</p>

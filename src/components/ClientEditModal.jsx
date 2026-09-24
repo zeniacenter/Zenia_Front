@@ -59,12 +59,17 @@ export default function ClientEditModal({
   const [activeTab, setActiveTab] = useState(initialTab || 'general');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [scopeModalOpen, setScopeModalOpen] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState(null);
 
-  useEscClose(open, onClose);
+  useEscClose(open && !scopeModalOpen, onClose);
+  useEscClose(scopeModalOpen, () => setScopeModalOpen(false));
 
   useEffect(() => {
     if (open) {
       setError('');
+      setScopeModalOpen(false);
+      setPendingPayload(null);
       setActiveTab(initialTab || 'general');
       if (client && !isCreating) {
         setForm({
@@ -107,7 +112,7 @@ export default function ClientEditModal({
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (saving) return;
     setError('');
 
@@ -120,30 +125,46 @@ export default function ClientEditModal({
       return;
     }
 
-    setSaving(true);
-    try {
-      const payload = {
-        name: form.name.trim(),
-        last_name: form.last_name.trim() || null,
-        dni: form.dni.trim() || null,
-        phone: form.phone.trim(),
-        email: form.email.trim() || null,
-        address: form.address.trim() || null,
-        discount_percent: Math.max(0, Math.min(100, parseFloat(form.discount_percent) || 0)),
-        allergies: form.allergies.trim() || null,
-        frequent_pain_zone: form.frequent_pain_zone.trim() || null,
-        preferred_pressure: form.preferred_pressure.trim() || null,
-        clinical_notes: form.clinical_notes.trim() || null,
-      };
+    const newDiscount = Math.max(0, Math.min(100, parseFloat(form.discount_percent) || 0));
+    const oldDiscount = client?.discount_percent != null ? Number(client.discount_percent) : 0;
 
+    const basePayload = {
+      name: form.name.trim(),
+      last_name: form.last_name.trim() || null,
+      dni: form.dni.trim() || null,
+      phone: form.phone.trim(),
+      email: form.email.trim() || null,
+      address: form.address.trim() || null,
+      discount_percent: newDiscount,
+      allergies: form.allergies.trim() || null,
+      frequent_pain_zone: form.frequent_pain_zone.trim() || null,
+      preferred_pressure: form.preferred_pressure.trim() || null,
+      clinical_notes: form.clinical_notes.trim() || null,
+    };
+
+    // Si es edición de un cliente existente y se modificó el descuento, preguntar si aplica a futuras o a todas
+    if (!isCreating && client && newDiscount !== oldDiscount) {
+      setPendingPayload(basePayload);
+      setScopeModalOpen(true);
+      return;
+    }
+
+    await doSave(basePayload);
+  };
+
+  const doSave = async (payloadWithScope) => {
+    setSaving(true);
+    setError('');
+    try {
       let res;
       if (isCreating) {
-        res = await personAPI.create(payload);
+        res = await personAPI.create(payloadWithScope);
       } else {
-        res = await personAPI.update(client.id, payload);
+        res = await personAPI.update(client.id, payloadWithScope);
       }
 
       onSaved?.(res.data);
+      setScopeModalOpen(false);
       onClose();
     } catch (err) {
       console.error('Error guardando cliente:', err);
@@ -151,6 +172,7 @@ export default function ClientEditModal({
         err.response?.data?.message ||
         (isCreating ? 'Error al registrar el cliente.' : 'Error al guardar los cambios.');
       setError(msg);
+      setScopeModalOpen(false);
     } finally {
       setSaving(false);
     }
@@ -744,6 +766,125 @@ export default function ClientEditModal({
           </div>
         </form>
       </div>
+
+      {scopeModalOpen && (
+        <div
+          className="modal-overlay"
+          style={{
+            zIndex: 1300,
+            backgroundColor: 'rgba(30, 20, 12, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            className="modal"
+            style={{
+              maxWidth: '490px',
+              width: '92%',
+              borderRadius: '16px',
+              padding: '1.75rem',
+              background: '#FFFFFF',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+              border: '1px solid #EDE7DE',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
+              <div
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  background: '#FDF3E7',
+                  color: '#8C6B45',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Percent size={18} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#2A1B10', fontWeight: 700 }}>
+                  Aplicar Descuento
+                </h3>
+                <span style={{ fontSize: '0.78rem', color: '#7D6B5C' }}>
+                  {client?.name} {client?.last_name || ''}
+                </span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.88rem', color: '#4A3B30', lineHeight: 1.5, margin: '0 0 1.25rem 0' }}>
+              Has configurado un descuento del <strong>{pendingPayload?.discount_percent}%</strong>. ¿Deseas que este descuento aplique solo en citas futuras o en todas sus citas?
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                style={{
+                  padding: '1rem',
+                  borderRadius: '10px',
+                  textAlign: 'left',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem',
+                  border: '1.5px solid #DCD5CB',
+                  background: '#FFFFFF',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onClick={() => doSave({ ...pendingPayload, discount_scope: 'future' })}
+                disabled={saving}
+              >
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#2A1B10' }}>
+                  📅 Solo en citas futuras
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#7D6B5C' }}>
+                  Aplica únicamente a las nuevas citas que se agenden de aquí en adelante. Las citas actuales no cambiarán.
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{
+                  padding: '1rem',
+                  borderRadius: '10px',
+                  textAlign: 'left',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                onClick={() => doSave({ ...pendingPayload, discount_scope: 'all' })}
+                disabled={saving}
+              >
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#FFFFFF' }}>
+                  ✨ En todas sus citas
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.88)' }}>
+                  Aplica a citas futuras y actualiza el precio de las citas existentes que aún no han sido facturadas.
+                </div>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ fontSize: '0.85rem', color: '#888' }}
+                onClick={() => setScopeModalOpen(false)}
+                disabled={saving}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
